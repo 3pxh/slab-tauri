@@ -1,18 +1,26 @@
 import React, {useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+interface RowStructure {
+  height: number;
+  columns: number[];
+}
+
 interface AnimatedGridProps {
-  structure: number[];
+  structure: RowStructure[];
 }
 
 const AnimatedGrid: React.FC<AnimatedGridProps> = ({ structure }) => {
   const prevStructureRef = useRef(structure);
   
+  // Calculate total height for percentage calculations
+  const totalHeight = structure.reduce((sum, row) => sum + row.height, 0);
+  
   // Determine what's new
   const getAnimationProps = (rowIndex: number, cellIndex: number) => {
     const prevStructure = prevStructureRef.current;
     const isNewRow = rowIndex >= prevStructure.length;
-    const prevCellCount = prevStructure[rowIndex] || 0;
+    const prevCellCount = prevStructure[rowIndex]?.columns.length || 0;
     const isNewCell = cellIndex >= prevCellCount;
     
     return { isNewRow, isNewCell };
@@ -23,13 +31,15 @@ const AnimatedGrid: React.FC<AnimatedGridProps> = ({ structure }) => {
     prevStructureRef.current = structure;
   });
 
-  const rowHeight = `${100 / structure.length}%`;
-
   return (
-    <div className="flex flex-col gap-2 w-full p-4 h-96 bg-gray-50 rounded-lg">
+    <div className="flex flex-col gap-2 w-full p-4 h-full bg-gray-50 rounded-lg">
       <AnimatePresence>
-        {structure.map((cellCount: number, rowIndex: number) => {
+        {structure.map((row, rowIndex) => {
           const { isNewRow } = getAnimationProps(rowIndex, 0);
+          const rowHeight = `${(row.height / totalHeight) * 100}%`;
+          
+          // Calculate total width for this row's columns
+          const totalColumnWidth = row.columns.reduce((sum, width) => sum + width, 0);
           
           return (
             <motion.div
@@ -46,15 +56,16 @@ const AnimatedGrid: React.FC<AnimatedGridProps> = ({ structure }) => {
               className="flex gap-2 overflow-hidden"
             >
               <AnimatePresence>
-                {Array.from({ length: cellCount }).map((_, cellIndex) => {
+                {row.columns.map((columnWidth, cellIndex) => {
                   const { isNewCell } = getAnimationProps(rowIndex, cellIndex);
+                  const cellWidth = `${(columnWidth / totalColumnWidth) * 100}%`;
                   
                   return (
                     <motion.div
                       key={`cell-${rowIndex}-${cellIndex}`}
                       layout
                       initial={isNewCell && !isNewRow ? { flexBasis: 0, opacity: 0 } : false}
-                      animate={{ flexBasis: `${100/cellCount}%`, opacity: 1 }}
+                      animate={{ flexBasis: cellWidth, opacity: 1 }}
                       exit={{ flexBasis: 0, opacity: 0 }}
                       transition={{ 
                         duration: 0.2, 

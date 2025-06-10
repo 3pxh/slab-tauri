@@ -1,41 +1,55 @@
 import React, { useState } from 'react';
 import AnimatedGrid from './AnimatedGrid';
 
-const GridController: React.FC = () => {
-  const [structure, setStructure] = useState<number[]>([1]);
+interface RowStructure {
+  height: number;
+  columns: number[];
+}
 
-  const addCellToLastRow = () => {
+const GridController: React.FC = () => {
+  const [structure, setStructure] = useState<RowStructure[]>([
+    { height: 1, columns: [1] }
+  ]);
+
+  const addNewCell = () => {
     setStructure(prev => {
       const newStructure = [...prev];
-      newStructure[newStructure.length - 1] += 1;
+      const lastRow = { ...newStructure[newStructure.length - 1] };
+      lastRow.columns = [...lastRow.columns, 1];
+      newStructure[newStructure.length - 1] = lastRow;
+      return newStructure;
+    });
+  };
+
+  const extendLastCell = () => {
+    setStructure(prev => {
+      const newStructure = [...prev];
+      const lastRow = newStructure[newStructure.length - 1];
+      const lastCellIndex = lastRow.columns.length - 1;
+      lastRow.columns[lastCellIndex] += 1;
       return newStructure;
     });
   };
 
   const addNewRow = () => {
-    setStructure(prev => [...prev, 1]);
+    setStructure(prev => [...prev, { height: 1, columns: [1] }]);
   };
 
-  const reset = () => {
-    setStructure([1]);
-  };
-
-  const removeCellFromLastRow = () => {
+  const extendLastRow = () => {
     setStructure(prev => {
-      if (prev.length === 0) return prev;
       const newStructure = [...prev];
-      const lastRowIndex = newStructure.length - 1;
-      if (newStructure[lastRowIndex] > 1) {
-        newStructure[lastRowIndex] -= 1;
-      } else if (newStructure.length > 1) {
-        newStructure.pop();
-      }
+      const lastRow = newStructure[newStructure.length - 1];
+      lastRow.height += 1;
       return newStructure;
     });
   };
 
+  const reset = () => {
+    setStructure([{ height: 1, columns: [1] }]);
+  };
+
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-6 h-[calc(100vh-3rem)] flex flex-col">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-4">
           Framer Motion Animated Grid
@@ -43,24 +57,31 @@ const GridController: React.FC = () => {
         
         <div className="flex gap-3 mb-4 flex-wrap">
           <button
-            onClick={addCellToLastRow}
+            onClick={addNewCell}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 font-medium"
           >
-            Add Cell to Last Row
+            New Cell
+          </button>
+          
+          <button
+            onClick={extendLastCell}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors duration-200 font-medium"
+          >
+            Extend Cell
           </button>
           
           <button
             onClick={addNewRow}
             className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 font-medium"
           >
-            Add New Row
+            New Row
           </button>
           
           <button
-            onClick={removeCellFromLastRow}
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors duration-200 font-medium"
+            onClick={extendLastRow}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors duration-200 font-medium"
           >
-            Remove Cell/Row
+            Extend Row
           </button>
           
           <button
@@ -72,11 +93,13 @@ const GridController: React.FC = () => {
         </div>
 
         <div className="text-sm text-gray-600 mb-4">
-          Current structure: [{structure.join(', ')}]
+          Current structure: {JSON.stringify(structure, null, 2)}
         </div>
       </div>
 
-      <AnimatedGrid structure={structure} />
+      <div className="flex-1 min-h-0">
+        <AnimatedGrid structure={structure} />
+      </div>
       
       <div className="mt-6 text-sm text-gray-600">
         <h3 className="font-semibold mb-2">Animation Features:</h3>
