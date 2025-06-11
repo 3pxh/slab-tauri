@@ -1,16 +1,13 @@
 import React, {useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-interface RowStructure {
-  height: number;
-  columns: number[];
-}
+import { Slab } from '../slab';
 
 interface AnimatedGridProps {
-  structure: RowStructure[];
+  structure: Slab;
+  children?: React.ReactNode[];
 }
 
-const AnimatedGrid: React.FC<AnimatedGridProps> = ({ structure }) => {
+const AnimatedGrid: React.FC<AnimatedGridProps> = ({ structure, children = [] }) => {
   const prevStructureRef = useRef(structure);
   
   // Calculate total height for percentage calculations
@@ -20,7 +17,7 @@ const AnimatedGrid: React.FC<AnimatedGridProps> = ({ structure }) => {
   const getAnimationProps = (rowIndex: number, cellIndex: number) => {
     const prevStructure = prevStructureRef.current;
     const isNewRow = rowIndex >= prevStructure.length;
-    const prevCellCount = prevStructure[rowIndex]?.columns.length || 0;
+    const prevCellCount = prevStructure[rowIndex]?.cells.length || 0;
     const isNewCell = cellIndex >= prevCellCount;
     
     return { isNewRow, isNewCell };
@@ -31,15 +28,17 @@ const AnimatedGrid: React.FC<AnimatedGridProps> = ({ structure }) => {
     prevStructureRef.current = structure;
   });
 
+  let childIndex = 0;
+
   return (
-    <div className="flex flex-col gap-2 w-full p-4 h-full bg-gray-50 rounded-lg">
+    <div className="flex flex-col gap-1 w-full p-0 h-full bg-gray-300 rounded-lg">
       <AnimatePresence>
         {structure.map((row, rowIndex) => {
           const { isNewRow } = getAnimationProps(rowIndex, 0);
           const rowHeight = `${(row.height / totalHeight) * 100}%`;
           
-          // Calculate total width for this row's columns
-          const totalColumnWidth = row.columns.reduce((sum, width) => sum + width, 0);
+          // Calculate total width for this row's cells
+          const totalCellWidth = row.cells.reduce((sum: number, cell) => sum + cell.width, 0);
           
           return (
             <motion.div
@@ -53,29 +52,40 @@ const AnimatedGrid: React.FC<AnimatedGridProps> = ({ structure }) => {
                 ease: "easeOut",
                 layout: { duration: 0.2 }
               }}
-              className="flex gap-2 overflow-hidden"
+              className="flex overflow-hidden gap-1"
             >
               <AnimatePresence>
-                {row.columns.map((columnWidth, cellIndex) => {
+                {row.cells.map((cell, cellIndex) => {
                   const { isNewCell } = getAnimationProps(rowIndex, cellIndex);
-                  const cellWidth = `${(columnWidth / totalColumnWidth) * 100}%`;
+                  const widthPercentage = `${(cell.width / totalCellWidth) * 100}%`;
+                  const child = children[childIndex++];
                   
                   return (
                     <motion.div
                       key={`cell-${rowIndex}-${cellIndex}`}
                       layout
                       initial={isNewCell && !isNewRow ? { flexBasis: 0, opacity: 0 } : false}
-                      animate={{ flexBasis: cellWidth, opacity: 1 }}
+                      animate={{ flexBasis: widthPercentage, opacity: 1 }}
                       exit={{ flexBasis: 0, opacity: 0 }}
                       transition={{ 
                         duration: 0.2, 
                         ease: "easeOut",
                         layout: { duration: 0.2 }
                       }}
-                      className="bg-blue-500 rounded-md h-full flex items-center justify-center text-white font-semibold hover:bg-blue-600 transition-colors"
-                      style={{ minWidth: 0 }}
+                      className="rounded-md h-full flex items-center justify-center text-white font-semibold hover:opacity-90 transition-opacity"
+                      style={{ 
+                        minWidth: 0,
+                        backgroundColor: cell.color || '#3B82F6' // Default to blue if no color
+                      }}
                     >
-                      R{rowIndex + 1}C{cellIndex + 1}
+                      {cell.slab ? (
+                        <AnimatedGrid 
+                          structure={cell.slab}
+                          children={[]}
+                        />
+                      ) : (
+                        child || ''//`R${rowIndex + 1}C${cellIndex + 1}`
+                      )}
                     </motion.div>
                   );
                 })}
