@@ -191,6 +191,7 @@ export function parseSlab(
         break;
 
       case 'S':
+        currentColor = undefined;
         if (!currentRow) {
           currentRow = { height: nextRowHeight, cells: [] };
         }
