@@ -7,6 +7,9 @@ interface AnimatedGridProps {
   children?: React.ReactNode[];
 }
 
+// TODO: children are not passed to sub-slabs
+// TODO: add border to subslab given color?
+
 const AnimatedGrid: React.FC<AnimatedGridProps> = ({ structure, children = [] }) => {
   const prevStructureRef = useRef(structure);
   

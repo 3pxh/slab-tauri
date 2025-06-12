@@ -11,10 +11,23 @@ export interface Row {
 
 export type Slab = Row[];
 
+export enum COMMANDS {
+  SLAB = 'w',
+  PILLAR = 'a',
+  BEAM = 's',
+  BLOCK = 'd',
+  RECURSE = 'i',           // Replace with the entire input string
+  COLOR_RED = 'r',         // Set color to red
+  COLOR_TEAL = 't',        // Set color to teal
+  COLOR_YELLOW = 'y',      // Set color to yellow
+  COLOR_GREEN = 'g',       // Set color to green
+  COLOR_BLUE = 'b',        // Set color to blue
+  LIGHTEN = 'h',           // Increase lightness
+}
+
 // TODO: 
 // make lighten / darken work in a palette?
 // recursion should be based on area; and un-recursed should be indicated
-
 
 /*
 B - Prepare for a new row (but do not create it); BB will end a slab context
@@ -37,7 +50,7 @@ export function parseSlab(
   if (!input) return [];
   
   // Replace all 'i's with the entire input string
-  if (input.includes('i') && doRecursion) {
+  if (input.includes(COMMANDS.RECURSE) && doRecursion) {
     let recursedInput = input;
     while (recursedInput.length < 800 / (input.match(/S/i) || [1]).length) {
       // Count S's in the input
@@ -87,28 +100,28 @@ export function parseSlab(
     const nextChar = input[i + 1];
 
     switch (char) {
-      case 'h':
+      case COMMANDS.LIGHTEN:
         currentLightness = currentLightness + 0.05;
-        lastChar = 'h';
         break;
 
-      case 'r':
+      case COMMANDS.COLOR_RED:
         currentColor = '#DC2626';
-        lastChar = 'r';
         break;
 
-      case 't':
+      case COMMANDS.COLOR_GREEN:
         currentColor = '#0D9488';
-        lastChar = 't';
         break;
 
-      case 'y':
+      case COMMANDS.COLOR_TEAL:
+        currentColor = '#3B82F6';
+        break;
+
+      case COMMANDS.COLOR_YELLOW:
         currentColor = '#EAB308';
-        lastChar = 'y';
         break;
 
-      case 'B':
-        if (nextChar === 'B') {
+      case COMMANDS.BEAM:
+        if (nextChar === COMMANDS.BEAM) {
           // End current slab context
           if (stack.length > 0) {
             currentSlab = stack.pop() || null;
@@ -123,18 +136,17 @@ export function parseSlab(
           pendingCells = 0;
           consecutivePs = 0;
         }
-        lastChar = 'B';
         hasPrecedingB = false;
         nextRowHeight = 1;
         afterB = true;
         break;
 
-      case 'i':
-      case 'b':
+      case COMMANDS.RECURSE:
+      case COMMANDS.BLOCK:
         if (!currentRow) {
           currentRow = { height: nextRowHeight, cells: [] };
         }
-        const color = char === 'b' ? getCurrentColor() : '#FAA'
+        const color = char === COMMANDS.BLOCK ? getCurrentColor() : '#FAA'
         
         if (pendingCells > 0) {
           // Create a single cell for all pending p's
@@ -166,19 +178,18 @@ export function parseSlab(
         }
         pendingCells = 0;
         consecutivePs = 0;
-        lastChar = 'b';
         hasPrecedingB = true;
         afterB = false;
         break;
 
-      case 'p':
+      case COMMANDS.PILLAR:
         if (afterB) {
           // If we're after a B, these p's set the height for the next row
           consecutivePs++;
           nextRowHeight = Math.max(nextRowHeight, consecutivePs + 1);
         } else if (currentRow) {
           // Otherwise they work as before
-          if (lastChar === 'p') {
+          if (lastChar === COMMANDS.PILLAR) {
             consecutivePs++;
             currentRow.height = Math.max(currentRow.height, consecutivePs);
           } else {
@@ -186,12 +197,10 @@ export function parseSlab(
           }
         }
         pendingCells++;
-        lastChar = 'p';
         hasPrecedingB = false;
         break;
 
-      case 'S':
-        currentColor = undefined;
+      case COMMANDS.SLAB:
         if (!currentRow) {
           currentRow = { height: nextRowHeight, cells: [] };
         }
@@ -200,32 +209,23 @@ export function parseSlab(
         let nestedContent = '';
         let slabDepth = 1;
         let j = i + 1;
-        let foundMatchingBB = false;
         let sCount = 1; // Count of S's we've seen
 
         while (j < input.length && slabDepth > 0) {
-          if (input[j] === 'S') {
+          if (input[j] === COMMANDS.SLAB) {
             sCount++;
             slabDepth++;
-            nestedContent += 'S';
-          } else if (input[j] === 'B' && input[j + 1] === 'B') {
+            nestedContent += COMMANDS.SLAB;
+          } else if (input[j] === COMMANDS.BEAM && input[j + 1] === COMMANDS.BEAM) {
             slabDepth--;
             if (slabDepth > 0) {
               nestedContent += 'BB';
             }
             j++;
-            if (slabDepth === 0) {
-              foundMatchingBB = true;
-            }
           } else {
             nestedContent += input[j];
           }
           j++;
-        }
-
-        // If we hit the end of string, treat it as having all necessary BB's
-        if (j >= input.length && slabDepth > 0) {
-          foundMatchingBB = true;
         }
 
         // Parse the nested content
@@ -259,11 +259,11 @@ export function parseSlab(
         i = j - 1;
         pendingCells = 0;
         consecutivePs = 0;
-        lastChar = 'S';
         hasPrecedingB = false;
         afterB = false;
         break;
     }
+    lastChar = char;
   }
 
   // Add the last row if it exists
@@ -272,5 +272,6 @@ export function parseSlab(
   }
 
   console.log("rows", rows)
+
   return rows;
 } 

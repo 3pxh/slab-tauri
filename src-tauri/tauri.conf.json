@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "slab",
+  "productName": "Slab!",
   "version": "0.1.0",
   "identifier": "com.slab.app",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "slab",
+        "title": "Slab!",
         "width": 800,
         "height": 600
       }
