@@ -57,12 +57,12 @@ export function parseSlab(
   // Replace all 'i's with the entire input string
   if (input.includes(COMMANDS.RECURSE) && doRecursion) {
     let recursedInput = input;
-    while (recursedInput.length < 800 / (input.match(/w/i) || [1]).length) {
+    while (recursedInput.length < 200 / (input.match(/w/i) || [1]).length) {
       // Count S's in the input
-      const slabCount = 1 + (input.match(/w/g) || []).length;
+      const slabCount = 1 + (input.match(new RegExp(COMMANDS.SLAB, 'g')) || []).length;
       // Create the BB's needed to close all S's
       const closingBeams = COMMANDS.BEAM.repeat(2 * slabCount);
-      recursedInput = recursedInput.replace(/i/g, COMMANDS.SLAB + input + closingBeams);
+      recursedInput = recursedInput.replace(new RegExp(COMMANDS.RECURSE, 'g'), COMMANDS.SLAB + input + closingBeams);
     }
     console.log("recursed", recursedInput)
     return parseSlab(recursedInput, false, parentColor, parentLightness)
