@@ -12,17 +12,22 @@ export interface Row {
 export type Slab = Row[];
 
 export enum COMMANDS {
-  SLAB = 'w',
-  PILLAR = 'a',
+  SLAB = 'a',
+  PILLAR = 'w',
   BEAM = 's',
   BLOCK = 'd',
-  RECURSE = 'i',           // Replace with the entire input string
-  COLOR_RED = 'r',         // Set color to red
-  COLOR_TEAL = 't',        // Set color to teal
-  COLOR_YELLOW = 'y',      // Set color to yellow
-  COLOR_GREEN = 'g',       // Set color to green
-  COLOR_BLUE = 'b',        // Set color to blue
-  LIGHTEN = 'h',           // Increase lightness
+
+  MODE_COLOR = 'q',
+  MODE_GLYPH = 'e',
+
+  COLOR_RED = 'r',
+  COLOR_TEAL = 't',
+  COLOR_YELLOW = 'y',
+  COLOR_GREEN = 'g',
+  COLOR_FUCHSIA = 'f',
+  COLOR_LIGHTEN = 'h',
+
+  RECURSE = 'i',  
 }
 
 // TODO: 
@@ -52,12 +57,12 @@ export function parseSlab(
   // Replace all 'i's with the entire input string
   if (input.includes(COMMANDS.RECURSE) && doRecursion) {
     let recursedInput = input;
-    while (recursedInput.length < 800 / (input.match(/S/i) || [1]).length) {
+    while (recursedInput.length < 800 / (input.match(/w/i) || [1]).length) {
       // Count S's in the input
-      const sCount = 1 + (input.match(/S/g) || []).length;
+      const slabCount = 1 + (input.match(/w/g) || []).length;
       // Create the BB's needed to close all S's
-      const closingBBs = 'BB'.repeat(sCount);
-      recursedInput = recursedInput.replace(/i/g, 'S' + input + closingBBs);
+      const closingBeams = COMMANDS.BEAM.repeat(2 * slabCount);
+      recursedInput = recursedInput.replace(/i/g, COMMANDS.SLAB + input + closingBeams);
     }
     console.log("recursed", recursedInput)
     return parseSlab(recursedInput, false, parentColor, parentLightness)
@@ -100,7 +105,7 @@ export function parseSlab(
     const nextChar = input[i + 1];
 
     switch (char) {
-      case COMMANDS.LIGHTEN:
+      case COMMANDS.COLOR_LIGHTEN:
         currentLightness = currentLightness + 0.05;
         break;
 
@@ -219,7 +224,7 @@ export function parseSlab(
           } else if (input[j] === COMMANDS.BEAM && input[j + 1] === COMMANDS.BEAM) {
             slabDepth--;
             if (slabDepth > 0) {
-              nestedContent += 'BB';
+              nestedContent += COMMANDS.BEAM.repeat(2);
             }
             j++;
           } else {
@@ -271,7 +276,7 @@ export function parseSlab(
     rows.push(currentRow);
   }
 
-  console.log("rows", rows)
+  // console.log("rows", rows)
 
   return rows;
 } 
