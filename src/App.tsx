@@ -41,7 +41,7 @@ function ControlGrid({mode}: {mode: "FULL" | "COLOR" | "GLYPH"}) {
           <div key="cmd-a" className="text-center">A<br/>pillar</div>,
           <div key="cmd-s" className="text-center">S<br/>beam</div>,
           <div key="cmd-d" className="text-center">D<br/>block</div>,
-          <div key="cmd-s" className="text-center">Z undo</div>,
+          <div key="cmd-s" className="text-center">z undo/Z redo</div>,
           <div key="cmd-d" className="text-center">X reset</div>,
         ]}
       />
@@ -77,6 +77,7 @@ function ControlGrid({mode}: {mode: "FULL" | "COLOR" | "GLYPH"}) {
 function App() {
   const [text, setText] = useState('');
   const [textHistory, setTextHistory] = useState<string[]>([]);
+  const [redoHistory, setRedoHistory] = useState<string[]>([]);
   const audioContextRef = useRef<AudioContext | null>(null);
   const slideBufferRef = useRef<AudioBuffer | null>(null);
   const blockBufferRef = useRef<AudioBuffer | null>(null);
@@ -122,17 +123,28 @@ function App() {
       if (textHistory.length > 0) {
         const previousState = textHistory[textHistory.length - 2];
         setText(previousState);
+        setRedoHistory(prev => [...prev, textHistory[textHistory.length - 1]]);
         setTextHistory(prev => prev.slice(0, -1));
-        return;
       }
+      return;
+    } else if (newText.endsWith('Z')) {
+      if (redoHistory.length > 0) {
+        const redoState = redoHistory[redoHistory.length - 1];
+        setText(redoState);
+        setTextHistory(prev => [...prev, redoState]);
+        setRedoHistory(prev => prev.slice(0, -1));
+      }
+      return;
     } else if (newText.endsWith('x')) {
       setText('');
       setTextHistory(prev => [...prev, '']);
+      setRedoHistory([]);
       return;
     }
     
     setText(newText);
     setTextHistory(prev => [...prev, newText]);
+    setRedoHistory([]);
   };
 
   const parsedStructure = parseSlab(text);
