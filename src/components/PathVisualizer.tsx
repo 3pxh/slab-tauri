@@ -51,6 +51,14 @@ const PathVisualizer: React.FC<PathVisualizerProps> = ({
         case 'd':
           x += stepSize;
           break;
+        case '/':
+          y -= stepSize;
+          x += stepSize;
+          break;
+        case '\\':
+          y -= stepSize;
+          x -= stepSize;
+          break;
       }
       ctx.lineTo(x, y);
     }

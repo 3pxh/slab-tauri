@@ -2,6 +2,7 @@ export interface Cell {
   width: number;
   slab?: Slab;
   color?: string;
+  diagonal?: 'forward' | 'backward' | 'forward-flip' | 'backward-flip';
 }
 
 export interface Row {
@@ -16,6 +17,9 @@ export enum COMMANDS {
   PILLAR = 'w',
   BEAM = 's',
   BLOCK = 'd',
+  DIAGONAL_FORWARD = '/',
+  DIAGONAL_BACKWARD = '\\',
+  FLIP = 'f',
 
   MODE_COLOR = 'q',
   MODE_GLYPH = 'e',
@@ -50,14 +54,15 @@ export function parseSlab(
   input: string, 
   doRecursion: boolean = true,
   parentColor?: string,
-  parentLightness: number = 1.0
+  parentLightness: number = 1.0,
+  parentIsFlipped: boolean = false
 ): Slab {
   if (!input) return [];
   
   // Replace all 'i's with the entire input string
   if (input.includes(COMMANDS.RECURSE) && doRecursion) {
     let recursedInput = input;
-    while (recursedInput.length < 200 / (input.match(/w/i) || [1]).length) {
+    while (recursedInput.length < 500 / (input.match(/w/i) || [1]).length) {
       // Count S's in the input
       const slabCount = 1 + (input.match(new RegExp(COMMANDS.SLAB, 'g')) || []).length;
       // Create the BB's needed to close all S's
@@ -65,7 +70,7 @@ export function parseSlab(
       recursedInput = recursedInput.replace(new RegExp(COMMANDS.RECURSE, 'g'), COMMANDS.SLAB + input + closingBeams);
     }
     console.log("recursed", recursedInput)
-    return parseSlab(recursedInput, false, parentColor, parentLightness)
+    return parseSlab(recursedInput, false, parentColor, parentLightness, parentIsFlipped)
   }
   
   const rows: Row[] = [];
@@ -80,6 +85,7 @@ export function parseSlab(
   let hasPrecedingB = false;
   let nextRowHeight = 1;
   let afterB = false;
+  let isFlipped = parentIsFlipped;
 
   const lightenColor = (hex: string, lightness: number): string => {
     // Convert hex to RGB
@@ -105,6 +111,10 @@ export function parseSlab(
     const nextChar = input[i + 1];
 
     switch (char) {
+      case COMMANDS.FLIP:
+        isFlipped = !isFlipped;
+        break;
+
       case COMMANDS.COLOR_LIGHTEN:
         currentLightness = currentLightness + 0.05;
         break;
@@ -148,17 +158,34 @@ export function parseSlab(
 
       case COMMANDS.RECURSE:
       case COMMANDS.BLOCK:
+      case COMMANDS.DIAGONAL_FORWARD:
+      case COMMANDS.DIAGONAL_BACKWARD:
         if (!currentRow) {
           currentRow = { height: nextRowHeight, cells: [] };
         }
-        const color = char === COMMANDS.BLOCK ? getCurrentColor() : '#FAA'
+        const color = char === COMMANDS.RECURSE ? '#FAA' : getCurrentColor();
+        let diagonal: Cell['diagonal'] = undefined;
+        
+        if (char === COMMANDS.DIAGONAL_FORWARD) {
+          diagonal = isFlipped ? 'forward-flip' : 'forward';
+        } else if (char === COMMANDS.DIAGONAL_BACKWARD) {
+          diagonal = isFlipped ? 'backward-flip' : 'backward';
+        }
         
         if (pendingCells > 0) {
           // Create a single cell for all pending p's
           if (currentSlab) {
-            currentSlab[currentSlab.length - 1].cells.push({ width: 1, color: color });
+            currentSlab[currentSlab.length - 1].cells.push({ 
+              width: 1, 
+              color: color,
+              diagonal: diagonal 
+            });
           } else if (currentRow) {
-            currentRow.cells.push({ width: 1, color: color });
+            currentRow.cells.push({ 
+              width: 1, 
+              color: color,
+              diagonal: diagonal 
+            });
           }
         } else {
           // Extend current cell or create new one if none exists
@@ -168,16 +195,26 @@ export function parseSlab(
             if (lastIndex >= 0) {
               lastRow.cells[lastIndex].width++;
               lastRow.cells[lastIndex].color = color;
+              lastRow.cells[lastIndex].diagonal = diagonal;
             } else {
-              lastRow.cells.push({ width: 1, color: color });
+              lastRow.cells.push({ 
+                width: 1, 
+                color: color,
+                diagonal: diagonal 
+              });
             }
           } else if (currentRow) {
             const lastIndex = currentRow.cells.length - 1;
             if (lastIndex >= 0) {
               currentRow.cells[lastIndex].width++;
               currentRow.cells[lastIndex].color = color;
+              currentRow.cells[lastIndex].diagonal = diagonal;
             } else {
-              currentRow.cells.push({ width: 1, color: color });
+              currentRow.cells.push({ 
+                width: 1, 
+                color: color,
+                diagonal: diagonal 
+              });
             }
           }
         }
@@ -234,7 +271,7 @@ export function parseSlab(
         }
 
         // Parse the nested content
-        const nestedSlab = parseSlab(nestedContent, false, currentColor, currentLightness);
+        const nestedSlab = parseSlab(nestedContent, false, currentColor, currentLightness, isFlipped);
         
         // Add the nested slab to the current context
         if (currentSlab) {

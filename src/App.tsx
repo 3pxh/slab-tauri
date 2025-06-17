@@ -11,10 +11,12 @@ function ControlGrid({mode}: {mode: "FULL" | "COLOR" | "GLYPH"}) {
     case "FULL":
       return <AnimatedGrid 
         key="ControlGrid"
+        alwaysShowGap
         structure={parseSlab("gdwdwdwwsdwdwdwwsdwd")}
         children={[
           <AnimatedGrid 
             key="cmd-q"
+            alwaysShowGap
             structure={parseSlab("rdwtdwydwwgsdwdwdww")}
             children={[
               <div key="cmd-r" className="text-xs text-center">r</div>,
@@ -28,6 +30,7 @@ function ControlGrid({mode}: {mode: "FULL" | "COLOR" | "GLYPH"}) {
           <div key="cmd-w" className="text-center">W<br/>slab</div>,
           <AnimatedGrid 
             key="cmd-e"
+            alwaysShowGap
             structure={parseSlab("gdwdwdwwsdwdwdww")}
             children={[
               <div key="cmd-u" className="text-xs text-center">u</div>,
@@ -48,6 +51,7 @@ function ControlGrid({mode}: {mode: "FULL" | "COLOR" | "GLYPH"}) {
     case "COLOR":
       return <AnimatedGrid 
         key="ControlGrid"
+        alwaysShowGap
         structure={parseSlab("gdwdwdwwsdwdwdww")}
         children={[
           <div key="cmd-a" className="text-center">Q<br/>red</div>,
@@ -61,6 +65,7 @@ function ControlGrid({mode}: {mode: "FULL" | "COLOR" | "GLYPH"}) {
     case "GLYPH":
       return <AnimatedGrid 
         key="ControlGrid"
+        alwaysShowGap
         structure={parseSlab("gdwdwdwwsdwdwdww")}
         children={[
           <div key="cmd-a" className="text-center">u<br/></div>,
@@ -153,6 +158,7 @@ function App() {
     <div className="h-screen bg-gray-300 p-1">
       <AnimatedGrid 
         structure={parseSlab("dwwdsdwdwydd")}
+        alwaysShowGap
         children={[
           <PathVisualizer key="2" path={text} width={400} height={400} />,
           <AnimatedGrid 
@@ -163,6 +169,7 @@ function App() {
           <AnimatedGrid 
             key="3"
             structure={parseSlab("dsd")}
+            alwaysShowGap
             children={[
               <textarea 
                 key="1" 
@@ -195,6 +202,7 @@ function App() {
           <AnimatedGrid 
             key="3"
             structure={parseSlab(s1)}
+            alwaysShowGap
             children={[]}
           />,
           <div key="boss" className="text-2xl">management</div>,
