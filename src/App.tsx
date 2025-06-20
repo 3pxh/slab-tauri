@@ -86,6 +86,7 @@ function App() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const slideBufferRef = useRef<AudioBuffer | null>(null);
   const blockBufferRef = useRef<AudioBuffer | null>(null);
+  const appDivRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Initialize audio context and load sounds
@@ -152,10 +153,53 @@ function App() {
     setRedoHistory([]);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return; // ignore shortcuts
+    let keyToAdd: string | null = null;
+    if (e.key.length === 1 && !e.repeat) {
+      keyToAdd = e.key;
+    } else if (e.key === 'ArrowUp') {
+      keyToAdd = 'w';
+    } else if (e.key === 'ArrowLeft') {
+      keyToAdd = 'a';
+    } else if (e.key === 'ArrowDown') {
+      keyToAdd = 's';
+    } else if (e.key === 'ArrowRight') {
+      keyToAdd = 'd';
+    }
+    if (keyToAdd) {
+      const newText = text + keyToAdd;
+      playSound(keyToAdd);
+      handleTextChange(newText);
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'Backspace') {
+      const newText = text.slice(0, -1);
+      handleTextChange(newText);
+      e.preventDefault();
+    } else if (e.key === 'z' || e.key === 'Z' || e.key === 'x') {
+      // Let handleTextChange handle these commands
+      const newText = text + e.key;
+      handleTextChange(newText);
+      e.preventDefault();
+    }
+  };
+
+  useEffect(() => {
+    // Optionally focus on mount
+    appDivRef.current?.focus();
+  }, []);
+
   const parsedStructure = parseSlab(text);
 
   return (
-    <div className="h-screen bg-gray-300 p-1">
+    <div
+      ref={appDivRef}
+      className="h-screen bg-gray-300 p-1"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+    >
       <AnimatedGrid 
         structure={parseSlab("dwwdsdwdwydd")}
         alwaysShowGap
@@ -171,19 +215,17 @@ function App() {
             structure={parseSlab("dsd")}
             alwaysShowGap
             children={[
-              <textarea 
-                key="1" 
+              <textarea
+                key="1"
                 value={text}
                 onChange={e => {
-                  const newText = e.target.value;
-                  // Only play sound if text length increased
-                  if (newText.length > text.length) {
-                    const newChar = newText[newText.length - 1];
-                    playSound(newChar);
-                  }
-                  handleTextChange(newText);
+                  setText(e.target.value);
+                  e.stopPropagation();
                 }}
+                onKeyDown={e => e.stopPropagation()}
                 className="w-full h-full p-2 resize-none bg-transparent text-white placeholder-white/50 focus:outline-none"
+                style={{ minHeight: '2em', cursor: 'text', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
+                aria-label="Type slab commands (B, b, p)..."
                 placeholder="Type slab commands (B, b, p)..."
               />,
               ControlGrid({
