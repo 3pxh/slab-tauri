@@ -143,7 +143,7 @@ class AnimationController {
         this.ctx.fillRect(cell.x, cell.y, cell.width + 1, cell.height + 1);
         this.ctx.strokeStyle = '#FFF';
         this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(cell.x + 0.5, cell.y + 0.5, Math.max(0, cell.width - 1), Math.max(0, cell.height - 1));
+        this.ctx.strokeRect(Math.floor(cell.x) + 0.5, Math.floor(cell.y) + 0.5, Math.max(0, Math.ceil(cell.width)), Math.max(0, Math.ceil(cell.height)));
       }
       if (cell.slab) {
         this.draw(cell.slab, { x: cell.x, y: cell.y, width: cell.width, height: cell.height });
