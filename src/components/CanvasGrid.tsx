@@ -60,7 +60,7 @@ function interpolateSlabs(from: Slab, to: Slab, t: number): Slab {
         width: fromCell.width + (toCell.width - fromCell.width) * t,
         color: toCell.color || fromCell.color,
         slab: animatedSlab,
-        diagonal: toCell.diagonal,
+        diagonal: toCell.diagonal ?? fromCell.diagonal,
       });
     }
     result.push({
