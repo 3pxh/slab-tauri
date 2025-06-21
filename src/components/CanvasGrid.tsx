@@ -261,7 +261,7 @@ export default function CanvasGrid({ structure, width = 800, height = 600, durat
     <div ref={containerRef} style={{ width: '100%', height: '100%' }}>
       <canvas 
         ref={canvasRef} 
-        style={{ display: 'block', background: '#222', width: '100%', height: '100%' }} 
+        style={{ display: 'block', background: '#FFF', width: '100%', height: '100%' }} 
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       />
