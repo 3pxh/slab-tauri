@@ -28,7 +28,6 @@ export enum COMMANDS {
   COLOR_TEAL = 't',
   COLOR_YELLOW = 'y',
   COLOR_GREEN = 'g',
-  COLOR_FUCHSIA = 'f',
   COLOR_LIGHTEN = 'h',
 
   RECURSE = 'i',  
@@ -60,14 +59,26 @@ export function parseSlab(
   if (!input) return [];
   
   // Replace all 'i's with the entire input string
+  // We should probably first build out the slab with "to recurse" subslabs
+  // Then for each "to recurse" we calculate its dimensions and recurse if it's big enough
   if (input.includes(COMMANDS.RECURSE) && doRecursion) {
     let recursedInput = input;
-    while (recursedInput.length < 500 / (input.match(/w/i) || [1]).length) {
+    let unclosedSlabs = 0;
+    for (let i = 0; i < input.length; i++) {
+      if (input[i] === COMMANDS.SLAB) {
+        unclosedSlabs += 1;
+      } else if (input[i] === COMMANDS.BEAM && input[i+1] === COMMANDS.BEAM) {
+        unclosedSlabs = Math.max(0, unclosedSlabs - 1);
+        i += 1;
+      }
+    }
+    let beamClosedInput = input + COMMANDS.BEAM.repeat(2 * unclosedSlabs);
+    while (recursedInput.length < 8800 / (beamClosedInput.match(/w/i) || [1]).length) {
       // Count S's in the input
-      const slabCount = 1 + (input.match(new RegExp(COMMANDS.SLAB, 'g')) || []).length;
+      const slabCount = 1 + (beamClosedInput.match(new RegExp(COMMANDS.SLAB, 'g')) || []).length;
       // Create the BB's needed to close all S's
       const closingBeams = COMMANDS.BEAM.repeat(2 * slabCount);
-      recursedInput = recursedInput.replace(new RegExp(COMMANDS.RECURSE, 'g'), COMMANDS.SLAB + input + closingBeams);
+      recursedInput = recursedInput.replace(new RegExp(COMMANDS.RECURSE, 'g'), COMMANDS.SLAB + beamClosedInput + closingBeams);
     }
     console.log("recursed", recursedInput)
     return parseSlab(recursedInput, false, parentColor, parentLightness, parentIsFlipped)

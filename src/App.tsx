@@ -3,6 +3,7 @@ import './index.css';
 import AnimatedGrid from './components/AnimatedGrid';
 import PathVisualizer from './components/PathVisualizer';
 import { parseSlab, COMMANDS } from './slab';
+import CanvasGrid, { Structure } from './components/CanvasGrid';
 
 const s1 = "dwdsd"
 
@@ -205,10 +206,11 @@ function App() {
         alwaysShowGap
         children={[
           <PathVisualizer key="2" path={text} width={400} height={400} />,
-          <AnimatedGrid 
+          <CanvasGrid 
             key="3"
-            structure={parsedStructure}
-            children={[]}
+            structure={parsedStructure as Structure}
+            width={400}
+            height={400}
           />,
           <AnimatedGrid 
             key="3"
