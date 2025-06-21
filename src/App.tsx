@@ -205,7 +205,7 @@ function App() {
         structure={parseSlab("dwwdsdwdwydd")}
         alwaysShowGap
         children={[
-          <PathVisualizer key="2" path={text} width={400} height={400} />,
+          <div>RPG world</div>,
           <CanvasGrid 
             key="3"
             structure={parsedStructure}
@@ -243,12 +243,7 @@ function App() {
           />,
           
           // This is the same aspect ratio as the slab canvas!
-          <AnimatedGrid 
-            key="3"
-            structure={parseSlab(s1)}
-            alwaysShowGap
-            children={[]}
-          />,
+          <PathVisualizer key="2" path={text} />,
           <div key="boss" className="text-2xl">management</div>,
         ]}
       />
