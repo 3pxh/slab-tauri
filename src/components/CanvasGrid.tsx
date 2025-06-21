@@ -80,6 +80,7 @@ class AnimationController {
   target: Slab | null = null;
   pending: Slab | null = null;
   isAnimating = false;
+  noBorders: boolean = false;
 
   constructor(ctx: CanvasRenderingContext2D, width: number, height: number, duration: number, initial: Slab) {
     this.ctx = ctx;
@@ -178,9 +179,11 @@ class AnimationController {
           this.ctx.fillRect(cell.x, cell.y, cell.width + 1, cell.height + 1);
         }
         
-        this.ctx.strokeStyle = '#FFF';
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(Math.floor(cell.x) + 0.5, Math.floor(cell.y) + 0.5, Math.max(0, Math.ceil(cell.width)), Math.max(0, Math.ceil(cell.height)));
+        if (!this.noBorders) {
+          this.ctx.strokeStyle = '#FFF';
+          this.ctx.lineWidth = 1;
+          this.ctx.strokeRect(Math.floor(cell.x) + 0.5, Math.floor(cell.y) + 0.5, Math.max(0, Math.ceil(cell.width)), Math.max(0, Math.ceil(cell.height)));
+        }
       }
       if (cell.slab) {
         this.draw(cell.slab, { x: cell.x, y: cell.y, width: cell.width, height: cell.height });
@@ -196,6 +199,7 @@ export default function CanvasGrid({ structure, width = 800, height = 600, durat
   const containerRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<AnimationController | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width, height });
+  const [hovered, setHovered] = useState(false);
 
   // Resize canvas to fit parent with proper pixel density
   useEffect(() => {
@@ -233,23 +237,35 @@ export default function CanvasGrid({ structure, width = 800, height = 600, durat
     return () => resizeObserver.disconnect();
   }, []);
 
+  // Redraw on hover state change
+  useEffect(() => {
+    if (controllerRef.current) {
+      controllerRef.current.noBorders = !hovered;
+      controllerRef.current.draw(structure);
+    }
+  }, [hovered, structure]);
+
   useEffect(() => {
     const ctx = canvasRef.current!.getContext('2d')!;
     if (!controllerRef.current) {
       controllerRef.current = new AnimationController(ctx, canvasSize.width, canvasSize.height, duration, structure);
+      controllerRef.current.noBorders = !hovered;
       controllerRef.current.draw(structure);
     } else {
       controllerRef.current.width = canvasSize.width;
       controllerRef.current.height = canvasSize.height;
+      controllerRef.current.noBorders = !hovered;
       controllerRef.current.setStructure(structure);
     }
-  }, [structure, canvasSize.width, canvasSize.height, duration]);
+  }, [structure, canvasSize.width, canvasSize.height, duration, hovered]);
 
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%' }}>
       <canvas 
         ref={canvasRef} 
         style={{ display: 'block', background: '#222', width: '100%', height: '100%' }} 
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       />
     </div>
   );
