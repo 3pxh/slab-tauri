@@ -3,7 +3,7 @@ import './index.css';
 import AnimatedGrid from './components/AnimatedGrid';
 import PathVisualizer from './components/PathVisualizer';
 import { parseSlab, COMMANDS } from './slab';
-import CanvasGrid, { Structure } from './components/CanvasGrid';
+import CanvasGrid from './components/CanvasGrid';
 
 const s1 = "dwdsd"
 
@@ -208,7 +208,7 @@ function App() {
           <PathVisualizer key="2" path={text} width={400} height={400} />,
           <CanvasGrid 
             key="3"
-            structure={parsedStructure as Structure}
+            structure={parsedStructure}
             width={400}
             height={400}
           />,

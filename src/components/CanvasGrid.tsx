@@ -104,8 +104,6 @@ class AnimationController {
     const start = performance.now();
     const from = this.current;
     const duration = this.duration;
-    const width = this.width;
-    const height = this.height;
     const step = (now: number) => {
       const t = Math.min((now - start) / duration, 1);
       const interp = interpolateSlabs(from, target, t);
