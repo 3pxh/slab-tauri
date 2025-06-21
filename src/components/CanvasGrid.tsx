@@ -32,6 +32,7 @@ function flattenStructureWithRatios(structure: Slab, totalWidth: number, totalHe
         height: rowHeightPx,
         color: cell.color || '#FFF',
         slab: cell.slab,
+        diagonal: cell.diagonal,
       };
     });
     return cells;
@@ -59,6 +60,7 @@ function interpolateSlabs(from: Slab, to: Slab, t: number): Slab {
         width: fromCell.width + (toCell.width - fromCell.width) * t,
         color: toCell.color || fromCell.color,
         slab: animatedSlab,
+        diagonal: toCell.diagonal,
       });
     }
     result.push({
@@ -131,6 +133,9 @@ class AnimationController {
     if (!bounds) {
       // Only clear the canvas when drawing the main structure
       this.ctx.clearRect(0, 0, this.width, this.height);
+      // Fill with white background
+      this.ctx.fillStyle = '#FFF';
+      this.ctx.fillRect(0, 0, this.width, this.height);
     }
     
     this.ctx.save();
@@ -140,7 +145,39 @@ class AnimationController {
       this.ctx.save();
       if (!cell.slab || !Array.isArray(cell.slab) || cell.slab.length === 0) {
         this.ctx.fillStyle = cell.color || '#FFF';
-        this.ctx.fillRect(cell.x, cell.y, cell.width + 1, cell.height + 1);
+        
+        if (cell.diagonal) {
+          // Draw a triangle based on diagonal type
+          this.ctx.beginPath();
+          switch (cell.diagonal) {
+            case 'forward':
+              this.ctx.moveTo(cell.x, cell.y + cell.height + 1);
+              this.ctx.lineTo(cell.x + cell.width + 1, cell.y + cell.height + 1);
+              this.ctx.lineTo(cell.x + cell.width + 1, cell.y);
+              break;
+            case 'backward':
+              this.ctx.moveTo(cell.x, cell.y);
+              this.ctx.lineTo(cell.x, cell.y + cell.height + 1);
+              this.ctx.lineTo(cell.x + cell.width + 1, cell.y + cell.height + 1);
+              break;
+            case 'forward-flip':
+              this.ctx.moveTo(cell.x, cell.y);
+              this.ctx.lineTo(cell.x + cell.width + 1, cell.y);
+              this.ctx.lineTo(cell.x, cell.y + cell.height + 1);
+              break;
+            case 'backward-flip':
+              this.ctx.moveTo(cell.x, cell.y);
+              this.ctx.lineTo(cell.x + cell.width + 1, cell.y);
+              this.ctx.lineTo(cell.x + cell.width + 1, cell.y + cell.height + 1);
+              break;
+          }
+          this.ctx.closePath();
+          this.ctx.fill();
+        } else {
+          // Draw rectangle
+          this.ctx.fillRect(cell.x, cell.y, cell.width + 1, cell.height + 1);
+        }
+        
         this.ctx.strokeStyle = '#FFF';
         this.ctx.lineWidth = 1;
         this.ctx.strokeRect(Math.floor(cell.x) + 0.5, Math.floor(cell.y) + 0.5, Math.max(0, Math.ceil(cell.width)), Math.max(0, Math.ceil(cell.height)));
