@@ -113,7 +113,7 @@ const AnimatedGrid: React.FC<AnimatedGridProps> = ({ structure, children = [], a
                         ease: "easeOut",
                         layout: { duration: 0.2 }
                       }}
-                      className="h-full flex items-center justify-center text-white font-semibold hover:opacity-90 transition-opacity"
+                      className="h-full flex items-center justify-center text-white font-semibold hover:opacity-90 transition-opacity overflow-hidden"
                       style={{ 
                         minWidth: 0,
                         backgroundColor: cell.diagonal ? 'transparent' : (cell.color || '#3B82F6')

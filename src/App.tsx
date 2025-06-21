@@ -4,8 +4,7 @@ import AnimatedGrid from './components/AnimatedGrid';
 import PathVisualizer from './components/PathVisualizer';
 import { parseSlab, COMMANDS } from './slab';
 import CanvasGrid from './components/CanvasGrid';
-
-const s1 = "dwdsd"
+import PhaserGame from './components/PhaserGame';
 
 function ControlGrid({mode}: {mode: "FULL" | "COLOR" | "GLYPH"}) {
   switch(mode) {
@@ -128,7 +127,7 @@ function App() {
     // If the last character is 'z', undo to previous state
     if (newText.endsWith('z')) {
       if (textHistory.length > 0) {
-        const previousState = textHistory[textHistory.length - 2];
+        const previousState = textHistory[textHistory.length - 2] ?? '';
         setText(previousState);
         setRedoHistory(prev => [...prev, textHistory[textHistory.length - 1]]);
         setTextHistory(prev => prev.slice(0, -1));
@@ -136,7 +135,7 @@ function App() {
       return;
     } else if (newText.endsWith('Z')) {
       if (redoHistory.length > 0) {
-        const redoState = redoHistory[redoHistory.length - 1];
+        const redoState = redoHistory[redoHistory.length - 1] ?? '';
         setText(redoState);
         setTextHistory(prev => [...prev, redoState]);
         setRedoHistory(prev => prev.slice(0, -1));
@@ -172,18 +171,18 @@ function App() {
       const newText = text + keyToAdd;
       playSound(keyToAdd);
       handleTextChange(newText);
-      e.preventDefault();
+      // e.preventDefault();
       return;
     }
     if (e.key === 'Backspace') {
       const newText = text.slice(0, -1);
       handleTextChange(newText);
-      e.preventDefault();
+      // e.preventDefault();
     } else if (e.key === 'z' || e.key === 'Z' || e.key === 'x') {
       // Let handleTextChange handle these commands
       const newText = text + e.key;
       handleTextChange(newText);
-      e.preventDefault();
+      // e.preventDefault();
     }
   };
 
@@ -205,7 +204,9 @@ function App() {
         structure={parseSlab("dwwdsdwdwydd")}
         alwaysShowGap
         children={[
-          <div>RPG world</div>,
+          <div id="rpg-world-container" key="rpg-container">
+            <PhaserGame parent="rpg-world-container" />
+          </div>,
           <CanvasGrid 
             key="3"
             structure={parsedStructure}
@@ -231,7 +232,7 @@ function App() {
                 placeholder="Type slab commands (B, b, p)..."
               />,
               ControlGrid({
-                mode: text.length > 0 
+                mode: text && text.length > 0 
                   ? text[text.length - 1] === 'q' 
                     ? "COLOR" 
                     : text[text.length - 1] === 'e' 

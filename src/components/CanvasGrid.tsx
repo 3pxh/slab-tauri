@@ -30,7 +30,7 @@ function flattenStructureWithRatios(structure: Slab, totalWidth: number, totalHe
         y: rowY,
         width: cellWidthPx,
         height: rowHeightPx,
-        color: cell.color || '#FFF',
+        color: cell.color,
         slab: cell.slab,
         diagonal: cell.diagonal,
       };
@@ -143,7 +143,7 @@ class AnimationController {
     for (const cell of cells) {
       this.ctx.save();
       if (!cell.slab || !Array.isArray(cell.slab) || cell.slab.length === 0) {
-        this.ctx.fillStyle = cell.color || '#FFF';
+        this.ctx.fillStyle = cell.color || '#AAA';
         
         if (cell.diagonal) {
           // Draw a triangle based on diagonal type
@@ -238,7 +238,7 @@ export default function CanvasGrid({ structure, width = 800, height = 600, durat
   // Redraw on hover state change
   useEffect(() => {
     if (controllerRef.current) {
-      controllerRef.current.noBorders = !hovered;
+      controllerRef.current.noBorders = hovered;
       controllerRef.current.draw(structure);
     }
   }, [hovered, structure]);
@@ -247,12 +247,12 @@ export default function CanvasGrid({ structure, width = 800, height = 600, durat
     const ctx = canvasRef.current!.getContext('2d')!;
     if (!controllerRef.current) {
       controllerRef.current = new AnimationController(ctx, canvasSize.width, canvasSize.height, duration, structure);
-      controllerRef.current.noBorders = !hovered;
+      controllerRef.current.noBorders = hovered;
       controllerRef.current.draw(structure);
     } else {
       controllerRef.current.width = canvasSize.width;
       controllerRef.current.height = canvasSize.height;
-      controllerRef.current.noBorders = !hovered;
+      controllerRef.current.noBorders = hovered;
       controllerRef.current.setStructure(structure);
     }
   }, [structure, canvasSize.width, canvasSize.height, duration, hovered]);
