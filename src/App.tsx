@@ -5,6 +5,7 @@ import PathVisualizer from './components/PathVisualizer';
 import { parseSlab, COMMANDS } from './slab';
 import CanvasGrid from './components/CanvasGrid';
 import PhaserGame from './components/PhaserGame';
+import SlabInventory from './components/SlabInventory';
 
 function ControlGrid({mode}: {mode: "FULL" | "COLOR" | "GLYPH"}) {
   switch(mode) {
@@ -81,6 +82,7 @@ function ControlGrid({mode}: {mode: "FULL" | "COLOR" | "GLYPH"}) {
 
 function App() {
   const [text, setText] = useState('');
+  const [viewMode, setViewMode] = useState<'rpg' | 'inventory'>('inventory');
   const [textHistory, setTextHistory] = useState<string[]>([]);
   const [redoHistory, setRedoHistory] = useState<string[]>([]);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -105,6 +107,14 @@ function App() {
     };
     initAudio();
   }, []);
+
+  const inventorySlabs = [
+    "tdwrdwydwsiwi",
+    "rdwisiwtd",
+    "tdwi",
+    "rdwatdsyd",
+    "ydsrdwtd"
+  ];
 
   const playSound = (char: string) => {
     if (!audioContextRef.current) return;
@@ -155,6 +165,12 @@ function App() {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return; // ignore shortcuts
+
+    if (e.key === 'm') {
+      setViewMode(prev => prev === 'rpg' ? 'inventory' : 'rpg');
+      return;
+    }
+
     let keyToAdd: string | null = null;
     if (e.key.length === 1 && !e.repeat) {
       keyToAdd = e.key;
@@ -204,9 +220,15 @@ function App() {
         structure={parseSlab("dwwdsdwdwydd")}
         alwaysShowGap
         children={[
-          <div id="rpg-world-container" key="rpg-container">
-            <PhaserGame parent="rpg-world-container" />
-          </div>,
+          viewMode === 'rpg' ? (
+            <div id="rpg-world-container" key="rpg-container">
+              <PhaserGame parent="rpg-world-container" />
+            </div>
+          ) : (
+            <div key="inventory" className="w-full h-full bg-gray-200 p-2 overflow-y-auto">
+              <SlabInventory slabs={inventorySlabs} />
+            </div>
+          ),
           <CanvasGrid 
             key="3"
             structure={parsedStructure}
