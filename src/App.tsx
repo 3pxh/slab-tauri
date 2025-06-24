@@ -6,6 +6,7 @@ import { parseSlab, COMMANDS } from './slab';
 import CanvasGrid from './components/CanvasGrid';
 import PhaserGame from './components/PhaserGame';
 import SlabInventory from './components/SlabInventory';
+import { evenRows } from './koan';
 
 function ControlGrid({mode}: {mode: "FULL" | "COLOR" | "GLYPH"}) {
   switch(mode) {
@@ -82,6 +83,7 @@ function ControlGrid({mode}: {mode: "FULL" | "COLOR" | "GLYPH"}) {
 
 function App() {
   const [text, setText] = useState('');
+  const [currentKoan, setCurrentKoan] = useState(evenRows);
   const [viewMode, setViewMode] = useState<'rpg' | 'inventory'>('inventory');
   const [textHistory, setTextHistory] = useState<string[]>([]);
   const [redoHistory, setRedoHistory] = useState<string[]>([]);
@@ -171,6 +173,18 @@ function App() {
       return;
     }
 
+    if (e.key === 'Enter') {
+      if (text.length > 0) {
+        setCurrentKoan(prevKoan => ({
+          ...prevKoan,
+          examples: [...prevKoan.examples, text]
+        }));
+        handleTextChange('');
+      }
+      e.preventDefault();
+      return;
+    }
+
     let keyToAdd: string | null = null;
     if (e.key.length === 1 && !e.repeat) {
       keyToAdd = e.key;
@@ -226,7 +240,7 @@ function App() {
             </div>
           ) : (
             <div key="inventory" className="w-full h-full bg-gray-200 p-2 overflow-y-auto">
-              <SlabInventory slabs={inventorySlabs} />
+              <SlabInventory slabs={currentKoan.examples} test={currentKoan.test} isCode={false} />
             </div>
           ),
           <CanvasGrid 
@@ -267,7 +281,9 @@ function App() {
           
           // This is the same aspect ratio as the slab canvas!
           <PathVisualizer key="2" path={text} />,
-          <div key="boss" className="text-2xl">management</div>,
+          <div key="boss" className="w-full h-full bg-gray-100 p-2 overflow-y-auto">
+            <SlabInventory slabs={currentKoan.codes} test={currentKoan.test} isCode={true} />
+          </div>,
         ]}
       />
     </div>
