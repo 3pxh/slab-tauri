@@ -16,20 +16,16 @@ interface Slab {
   groups: Map<number, Group>;
 }
 
-// Color array: gray, red, blue, yellow, and secondary colors
+// Color palette: gray + primaries (red, blue, yellow) + secondaries (orange, purple, green)
+// Shades chosen to be similar to MUI 600 hues for a rich, modern look
 const COLORS = [
-  '#808080', // gray
-  '#FF0000', // red
-  '#0000FF', // blue
-  '#FFFF00', // yellow
-  '#FF8000', // orange
-  '#8000FF', // purple
-  '#00FF00', // green
-  '#FF0080', // pink
-  '#00FFFF', // cyan
-  '#800000', // maroon
-  '#008000', // olive
-  '#000080', // navy
+  '#9e9e9e', // gray 600
+  '#e53935', // red 600
+  '#1e88e5', // blue 600
+  '#fdd835', // yellow 600
+  '#fb8c00', // orange 600
+  '#8e24aa', // purple 600
+  '#43a047', // green 600
 ];
 
 // Initialize a new Slab with 6x6 grid
@@ -328,6 +324,11 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onHome }) => {
       
       // Select the group on single tap
       const groupId = slab.cells[row][col].groupId;
+      if (selectedGroup === groupId) {
+        // Tapping the selected group again deselects it
+        setSelectedGroup(null);
+        return;
+      }
       setSelectedGroup(groupId);
     }
   };
@@ -465,29 +466,29 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onHome }) => {
 
   return (
     <div className="p-4 w-full">
-      <div className="flex justify-center items-center gap-2 mb-4">
+      <div className="flex justify-start items-center gap-2 mb-4">
         <button
-          className="px-4 py-2 rounded border text-sm hover:bg-gray-100"
+          className="px-4 py-2 rounded text-sm"
           onClick={onHome}
           title="Back to levels"
           aria-label="Go home"
         >
-          <FiHome />
+          <FiHome size={22} />
         </button>
         <button
-          className={`px-4 py-2 rounded border text-sm ${history.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+          className={`px-4 py-2 rounded text-sm ${history.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
           onClick={handleUndo}
           disabled={history.length === 0}
           title={history.length === 0 ? 'Nothing to undo' : 'Undo last action'}
         >
-          <FiRotateCcw />
+          <FiRotateCcw size={22} />
         </button>
         <button
-          className="px-4 py-2 rounded border text-sm hover:bg-gray-100"
+          className="px-4 py-2 rounded text-sm hover:bg-gray-100"
           onClick={handleReset}
           title="Reset to a new slab"
         >
-          <FiRefreshCw />
+          <FiRefreshCw size={22} />
         </button>
       </div>
       <div className="grid grid-cols-6 w-full max-w-screen mx-auto" style={{ gridAutoRows: '1fr' }}>
@@ -496,7 +497,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onHome }) => {
             {row.map((cell, colIndex) => (
               <div
                 key={`${rowIndex}-${colIndex}`}
-                className="relative aspect-square w-full h-full flex items-center justify-center text-xs font-mono cursor-pointer hover:opacity-80 transition-opacity select-none"
+                className="relative aspect-square w-full h-full flex items-center justify-center text-xs font-mono cursor-pointer transition-opacity select-none"
                 style={{
                   backgroundColor: COLORS[slab.groups.get(cell.groupId)?.color || 0],
                   color: (slab.groups.get(cell.groupId)?.color || 0) === 0 ? '#000' : '#fff',
@@ -556,7 +557,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onHome }) => {
             {COLORS.map((color, index) => (
               <button
                 key={index}
-                className="w-12 h-12 border-2 border-gray-300 hover:border-gray-500 rounded cursor-pointer transition-all hover:scale-110"
+                className="w-12 h-12 rounded cursor-pointer transition-all hover:scale-110"
                 style={{ backgroundColor: color }}
                 onClick={() => applyColorToGroup(index)}
                 title={`Color ${index}`}
