@@ -1,4 +1,5 @@
 import React from 'react';
+import { FiRotateCcw, FiRefreshCw, FiHome } from 'react-icons/fi';
 
 // Define the Slab data structure
 interface Group {
@@ -57,8 +58,13 @@ const createSlab = (): Slab => {
   return { cells, groups };
 };
 
-const SlabMaker: React.FC = () => {
+type SlabMakerProps = {
+  onHome: () => void;
+};
+
+const SlabMaker: React.FC<SlabMakerProps> = ({ onHome }) => {
   const [slab, setSlab] = React.useState<Slab>(() => createSlab());
+  const [history, setHistory] = React.useState<Slab[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
   const [encounteredGroups, setEncounteredGroups] = React.useState<Set<number>>(new Set());
   const [firstGroup, setFirstGroup] = React.useState<number | null>(null);
@@ -66,6 +72,53 @@ const SlabMaker: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = React.useState<number | null>(null);
   const [lastTapTime, setLastTapTime] = React.useState<number>(0);
   const [lastTapCell, setLastTapCell] = React.useState<{row: number, col: number} | null>(null);
+
+  // Keep a snapshot from drag start to push at drag end
+  const preDragSnapshotRef = React.useRef<Slab | null>(null);
+
+  // Helper: deep clone a slab snapshot
+  const cloneSlab = (source: Slab): Slab => {
+    const clonedCells: Cell[][] = source.cells.map(row => row.map(cell => ({ ...cell })));
+    const clonedGroups = new Map<number, Group>();
+    source.groups.forEach((group, id) => {
+      clonedGroups.set(id, { ...group });
+    });
+    return { cells: clonedCells, groups: clonedGroups };
+  };
+
+  // Push current slab into history
+  const pushHistory = (snapshot?: Slab) => {
+    setHistory(prev => [...prev, cloneSlab(snapshot ?? slab)]);
+  };
+
+  // Undo action
+  const handleUndo = () => {
+    setHistory(prev => {
+      if (prev.length === 0) return prev;
+      const nextHistory = prev.slice(0, -1);
+      const last = prev[prev.length - 1];
+      setSlab(cloneSlab(last));
+      setSelectedGroup(null);
+      setIsDragging(false);
+      setEncounteredGroups(new Set());
+      setFirstGroup(null);
+      setDragStartCell(null);
+      preDragSnapshotRef.current = null;
+      return nextHistory;
+    });
+  };
+
+  // Reset to a fresh slab, but allow undo to recover previous state
+  const handleReset = () => {
+    pushHistory();
+    setSlab(createSlab());
+    setSelectedGroup(null);
+    setIsDragging(false);
+    setEncounteredGroups(new Set());
+    setFirstGroup(null);
+    setDragStartCell(null);
+    preDragSnapshotRef.current = null;
+  };
 
   // Helper function to get coordinates from event
   const getEventCoordinates = (event: React.MouseEvent | React.TouchEvent) => {
@@ -105,6 +158,8 @@ const SlabMaker: React.FC = () => {
     setFirstGroup(groupId);
     setEncounteredGroups(new Set([groupId]));
     setDragStartCell({ row, col });
+    // Capture snapshot now; push to history at drag end if there was a change
+    preDragSnapshotRef.current = cloneSlab(slab);
   };
 
   // Continue drag operation
@@ -155,15 +210,23 @@ const SlabMaker: React.FC = () => {
   const handleDragEnd = () => {
     if (!isDragging) return;
 
+    // If anything merged during drag, persist the pre-drag snapshot
+    if (preDragSnapshotRef.current && encounteredGroups.size > 1) {
+      pushHistory(preDragSnapshotRef.current);
+    }
+
     // Reset drag state (cells have already been updated during drag)
     setIsDragging(false);
     setEncounteredGroups(new Set());
     setFirstGroup(null);
     setDragStartCell(null);
+    preDragSnapshotRef.current = null;
   };
 
   // Handle double-tap to split group into unique IDs
   const handleDoubleTap = (row: number, col: number) => {
+    // Persist snapshot before breaking apart
+    pushHistory();
     const targetGroupId = slab.cells[row][col].groupId;
     
     // Find all cells in the same group
@@ -303,6 +366,8 @@ const SlabMaker: React.FC = () => {
   // Apply color to selected group
   const applyColorToGroup = (colorIndex: number) => {
     if (selectedGroup === null) return;
+    // Persist snapshot before coloring
+    pushHistory();
     
     setSlab(prevSlab => {
       const newSlab = { ...prevSlab };
@@ -360,6 +425,31 @@ const SlabMaker: React.FC = () => {
 
   return (
     <div className="p-4 w-full">
+      <div className="flex justify-center items-center gap-2 mb-4">
+        <button
+          className="px-4 py-2 rounded border text-sm hover:bg-gray-100"
+          onClick={onHome}
+          title="Back to levels"
+          aria-label="Go home"
+        >
+          <FiHome />
+        </button>
+        <button
+          className={`px-4 py-2 rounded border text-sm ${history.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+          onClick={handleUndo}
+          disabled={history.length === 0}
+          title={history.length === 0 ? 'Nothing to undo' : 'Undo last action'}
+        >
+          <FiRotateCcw />
+        </button>
+        <button
+          className="px-4 py-2 rounded border text-sm hover:bg-gray-100"
+          onClick={handleReset}
+          title="Reset to a new slab"
+        >
+          <FiRefreshCw />
+        </button>
+      </div>
       <div className="grid grid-cols-6 w-full max-w-screen mx-auto" style={{ gridAutoRows: '1fr' }}>
         {slab.cells.map((row, rowIndex) => (
           <React.Fragment key={rowIndex}>
