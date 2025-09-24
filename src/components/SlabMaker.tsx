@@ -63,7 +63,6 @@ const SlabMaker: React.FC = () => {
   const [encounteredGroups, setEncounteredGroups] = React.useState<Set<number>>(new Set());
   const [firstGroup, setFirstGroup] = React.useState<number | null>(null);
   const [dragStartCell, setDragStartCell] = React.useState<{row: number, col: number} | null>(null);
-  const [dragEndCell, setDragEndCell] = React.useState<{row: number, col: number} | null>(null);
   const [selectedGroup, setSelectedGroup] = React.useState<number | null>(null);
   const [lastTapTime, setLastTapTime] = React.useState<number>(0);
   const [lastTapCell, setLastTapCell] = React.useState<{row: number, col: number} | null>(null);
@@ -105,7 +104,7 @@ const SlabMaker: React.FC = () => {
     setIsDragging(true);
     setFirstGroup(groupId);
     setEncounteredGroups(new Set([groupId]));
-    setDragStartCell({row, col});
+    setDragStartCell({ row, col });
   };
 
   // Continue drag operation
@@ -118,53 +117,49 @@ const SlabMaker: React.FC = () => {
     if (cellCoords) {
       const { row, col } = cellCoords;
       const groupId = slab.cells[row][col].groupId;
-      
-      setEncounteredGroups(prev => new Set([...prev, groupId]));
-      setDragEndCell({row, col});
+
+      // Only handle dragging if we've left the starting cell
+      if (dragStartCell && row === dragStartCell.row && col === dragStartCell.col) {
+        return;
+      }
+
+      // As we drag, merge the entire encountered group into the starting group
+      if (firstGroup !== null && groupId !== firstGroup) {
+        setEncounteredGroups(prev => {
+          if (prev.has(groupId)) return new Set(prev);
+
+          setSlab(prevSlab => {
+            const newSlab = { ...prevSlab };
+            const newGroups = new Map(prevSlab.groups);
+            // Reassign all cells of the encountered group to the first group
+            newSlab.cells = prevSlab.cells.map(rowArr =>
+              rowArr.map(cell => (
+                cell.groupId === groupId ? { ...cell, groupId: firstGroup } : cell
+              ))
+            );
+            // Remove the merged group's entry
+            newGroups.delete(groupId);
+            newSlab.groups = newGroups;
+            return newSlab;
+          });
+
+          const next = new Set(prev);
+          next.add(groupId);
+          return next;
+        });
+      }
     }
   };
 
   // End drag operation and merge groups
   const handleDragEnd = () => {
-    if (!isDragging || firstGroup === null || !dragStartCell) return;
-    
-    // Only merge groups if we ended on a different cell than we started
-    const endedOnDifferentCell = !dragEndCell || 
-      dragEndCell.row !== dragStartCell.row || 
-      dragEndCell.col !== dragStartCell.col;
-    
-    if (endedOnDifferentCell) {
-      // Merge all encountered groups into the first group
-      setSlab(prevSlab => {
-        const newSlab = { ...prevSlab };
-        const newGroups = new Map(prevSlab.groups);
-        
-        // Update cells to point to the first group
-        newSlab.cells = prevSlab.cells.map(row => 
-          row.map(cell => ({
-            ...cell,
-            groupId: encounteredGroups.has(cell.groupId) ? firstGroup : cell.groupId
-          }))
-        );
-        
-        // Remove merged groups (keep only the first group)
-        encounteredGroups.forEach(groupId => {
-          if (groupId !== firstGroup) {
-            newGroups.delete(groupId);
-          }
-        });
-        
-        newSlab.groups = newGroups;
-        return newSlab;
-      });
-    }
-    
-    // Reset drag state
+    if (!isDragging) return;
+
+    // Reset drag state (cells have already been updated during drag)
     setIsDragging(false);
     setEncounteredGroups(new Set());
     setFirstGroup(null);
     setDragStartCell(null);
-    setDragEndCell(null);
   };
 
   // Handle double-tap to split group into unique IDs
@@ -234,41 +229,75 @@ const SlabMaker: React.FC = () => {
     }
   };
 
-  // Helper function to get border styles based on neighbors
+  // Helper function to get border styles and corner radii based on neighbors
   const getBorderStyles = (row: number, col: number) => {
     const currentGroupId = slab.cells[row][col].groupId;
     const isSelected = selectedGroup === currentGroupId;
     const borderColor = isSelected ? '#ffff00' : 'white'; // Yellow for selected, white for normal
     const borderWidth = isSelected ? '3px' : '3px';
     
-    const borders = {
+    const sameTop = row > 0 && slab.cells[row - 1][col].groupId === currentGroupId;
+    const sameRight = col < 5 && slab.cells[row][col + 1].groupId === currentGroupId;
+    const sameBottom = row < 5 && slab.cells[row + 1][col].groupId === currentGroupId;
+    const sameLeft = col > 0 && slab.cells[row][col - 1].groupId === currentGroupId;
+
+    const radiusValue = '8px';
+
+    const borders: React.CSSProperties = {
       borderTop: `${borderWidth} solid ${borderColor}`,
       borderRight: `${borderWidth} solid ${borderColor}`,
       borderBottom: `${borderWidth} solid ${borderColor}`,
-      borderLeft: `${borderWidth} solid ${borderColor}`
+      borderLeft: `${borderWidth} solid ${borderColor}`,
+      borderTopLeftRadius: !sameTop && !sameLeft ? radiusValue : '0px',
+      borderTopRightRadius: !sameTop && !sameRight ? radiusValue : '0px',
+      borderBottomRightRadius: !sameBottom && !sameRight ? radiusValue : '0px',
+      borderBottomLeftRadius: !sameBottom && !sameLeft ? radiusValue : '0px'
     };
 
     // Check top neighbor
-    if (row > 0 && slab.cells[row - 1][col].groupId === currentGroupId) {
+    if (sameTop) {
       borders.borderTop = 'none';
     }
 
     // Check right neighbor
-    if (col < 5 && slab.cells[row][col + 1].groupId === currentGroupId) {
+    if (sameRight) {
       borders.borderRight = 'none';
     }
 
     // Check bottom neighbor
-    if (row < 5 && slab.cells[row + 1][col].groupId === currentGroupId) {
+    if (sameBottom) {
       borders.borderBottom = 'none';
     }
 
     // Check left neighbor
-    if (col > 0 && slab.cells[row][col - 1].groupId === currentGroupId) {
+    if (sameLeft) {
       borders.borderLeft = 'none';
     }
 
     return borders;
+  };
+
+  // Determine which corners are inner-concave (L-bend) for a cell
+  const getConcaveCorners = (row: number, col: number) => {
+    const currentGroupId = slab.cells[row][col].groupId;
+
+    const sameTop = row > 0 && slab.cells[row - 1][col].groupId === currentGroupId;
+    const sameRight = col < 5 && slab.cells[row][col + 1].groupId === currentGroupId;
+    const sameBottom = row < 5 && slab.cells[row + 1][col].groupId === currentGroupId;
+    const sameLeft = col > 0 && slab.cells[row][col - 1].groupId === currentGroupId;
+
+    const sameTopLeftDiag = row > 0 && col > 0 && slab.cells[row - 1][col - 1].groupId === currentGroupId;
+    const sameTopRightDiag = row > 0 && col < 5 && slab.cells[row - 1][col + 1].groupId === currentGroupId;
+    const sameBottomRightDiag = row < 5 && col < 5 && slab.cells[row + 1][col + 1].groupId === currentGroupId;
+    const sameBottomLeftDiag = row < 5 && col > 0 && slab.cells[row + 1][col - 1].groupId === currentGroupId;
+
+    // Inner concave if both adjacent sides are same-group but diagonal is not (prevents fully interior corners)
+    return {
+      topLeft: sameTop && sameLeft && !sameTopLeftDiag,
+      topRight: sameTop && sameRight && !sameTopRightDiag,
+      bottomRight: sameBottom && sameRight && !sameBottomRightDiag,
+      bottomLeft: sameBottom && sameLeft && !sameBottomLeftDiag,
+    };
   };
 
   // Apply color to selected group
@@ -330,15 +359,14 @@ const SlabMaker: React.FC = () => {
   }, [isDragging, encounteredGroups, firstGroup]);
 
   return (
-    <div className="p-8">
-      <h2 className="text-2xl font-bold mb-6 text-center">Slab Maker</h2>
-      <div className="grid grid-cols-6 w-fit mx-auto">
+    <div className="p-4 w-full">
+      <div className="grid grid-cols-6 w-full max-w-screen mx-auto" style={{ gridAutoRows: '1fr' }}>
         {slab.cells.map((row, rowIndex) => (
           <React.Fragment key={rowIndex}>
             {row.map((cell, colIndex) => (
               <div
                 key={`${rowIndex}-${colIndex}`}
-                className="w-12 h-12 flex items-center justify-center text-xs font-mono cursor-pointer hover:opacity-80 transition-opacity select-none"
+                className="relative aspect-square w-full h-full flex items-center justify-center text-xs font-mono cursor-pointer hover:opacity-80 transition-opacity select-none"
                 style={{
                   backgroundColor: COLORS[slab.groups.get(cell.groupId)?.color || 0],
                   color: (slab.groups.get(cell.groupId)?.color || 0) === 0 ? '#000' : '#fff',
@@ -355,7 +383,36 @@ const SlabMaker: React.FC = () => {
                   handleDragStart(e, rowIndex, colIndex);
                 }}
               >
-                {cell.groupId}
+                {(() => {
+                  const concave = getConcaveCorners(rowIndex, colIndex);
+                  const dotSize = 8;
+                  const offset = '-5px'
+                  const dotStyleBase: React.CSSProperties = {
+                    position: 'absolute',
+                    width: `${dotSize}px`,
+                    height: `${dotSize}px`,
+                    backgroundColor: 'white',
+                    borderRadius: '9999px',
+                    zIndex: 1,
+                  };
+
+                  return (
+                    <>
+                      {concave.topLeft && (
+                        <span style={{ ...dotStyleBase, top: offset, left: offset }} />
+                      )}
+                      {concave.topRight && (
+                        <span style={{ ...dotStyleBase, top: offset, right: offset }} />
+                      )}
+                      {concave.bottomRight && (
+                        <span style={{ ...dotStyleBase, bottom: offset, right: offset }} />
+                      )}
+                      {concave.bottomLeft && (
+                        <span style={{ ...dotStyleBase, bottom: offset, left: offset }} />
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             ))}
           </React.Fragment>
@@ -365,7 +422,6 @@ const SlabMaker: React.FC = () => {
       {/* Color Swatches */}
       {selectedGroup !== null && (
         <div className="mt-8">
-          <h3 className="text-lg font-semibold mb-4 text-center">Select Color for Group {selectedGroup}</h3>
           <div className="flex flex-wrap justify-center gap-2">
             {COLORS.map((color, index) => (
               <button
