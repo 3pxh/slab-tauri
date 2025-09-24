@@ -75,6 +75,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onHome }) => {
 
   // Keep a snapshot from drag start to push at drag end
   const preDragSnapshotRef = React.useRef<Slab | null>(null);
+  // Track last visited cell during drag to detect diagonals
+  const lastDragCellRef = React.useRef<{row: number, col: number} | null>(null);
 
   // Helper: deep clone a slab snapshot
   const cloneSlab = (source: Slab): Slab => {
@@ -160,6 +162,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onHome }) => {
     setDragStartCell({ row, col });
     // Capture snapshot now; push to history at drag end if there was a change
     preDragSnapshotRef.current = cloneSlab(slab);
+    lastDragCellRef.current = { row, col };
   };
 
   // Continue drag operation
@@ -176,6 +179,39 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onHome }) => {
       // Only handle dragging if we've left the starting cell
       if (dragStartCell && row === dragStartCell.row && col === dragStartCell.col) {
         return;
+      }
+
+      // If moving diagonally from the last visited cell, also merge an adjacent intermediate cell (prefer lower)
+      const prevCell = lastDragCellRef.current;
+      if (prevCell && (prevCell.row !== row || prevCell.col !== col)) {
+        const dRow = Math.abs(row - prevCell.row);
+        const dCol = Math.abs(col - prevCell.col);
+        if (dRow === 1 && dCol === 1) {
+          const candidateA = { row: row, col: prevCell.col }; // vertical then horizontal
+          const candidateB = { row: prevCell.row, col: col }; // horizontal then vertical
+          const lowerCandidate = candidateA.row >= candidateB.row ? candidateA : candidateB;
+          const adjGroupId = slab.cells[lowerCandidate.row][lowerCandidate.col].groupId;
+          if (firstGroup !== null && adjGroupId !== firstGroup) {
+            setEncounteredGroups(prev => {
+              if (prev.has(adjGroupId)) return new Set(prev);
+              setSlab(prevSlab => {
+                const newSlab = { ...prevSlab };
+                const newGroups = new Map(prevSlab.groups);
+                newSlab.cells = prevSlab.cells.map(rowArr =>
+                  rowArr.map(cell => (
+                    cell.groupId === adjGroupId ? { ...cell, groupId: firstGroup } : cell
+                  ))
+                );
+                newGroups.delete(adjGroupId);
+                newSlab.groups = newGroups;
+                return newSlab;
+              });
+              const next = new Set(prev);
+              next.add(adjGroupId);
+              return next;
+            });
+          }
+        }
       }
 
       // As we drag, merge the entire encountered group into the starting group
@@ -203,6 +239,9 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onHome }) => {
           return next;
         });
       }
+
+      // Update last visited cell
+      lastDragCellRef.current = { row, col };
     }
   };
 
@@ -221,6 +260,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onHome }) => {
     setFirstGroup(null);
     setDragStartCell(null);
     preDragSnapshotRef.current = null;
+    lastDragCellRef.current = null;
   };
 
   // Handle double-tap to split group into unique IDs
