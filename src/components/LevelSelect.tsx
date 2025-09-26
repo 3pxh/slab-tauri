@@ -2,11 +2,12 @@ import React from 'react';
 
 interface LevelSelectProps {
   onSelect: (date: Date) => void;
+  onCreatePuzzle: () => void;
 }
 
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect }) => {
+const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onCreatePuzzle }) => {
   const [visibleMonth, setVisibleMonth] = React.useState<Date>(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -51,16 +52,30 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect }) => {
 
   return (
     <div className="w-full max-w-md mx-auto p-4">
-      <div className="flex items-center justify-between mb-4">
-        <button className="px-3 py-1 rounded border hover:bg-gray-100" onClick={goPrevMonth}>
-          ←
+      {/* Title */}
+      <div className="mb-6 text-center">
+        <h1 className="text-2xl font-bold text-gray-800 mb-4">Slab Puzzles</h1>
+        <button
+          onClick={onCreatePuzzle}
+          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+        >
+          Create New Puzzle
         </button>
-        <div className="font-semibold">
-          {visibleMonth.toLocaleString(undefined, { month: 'long' })} {year}
+      </div>
+      
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-gray-700 mb-2 text-center">Select a Date to Solve</h2>
+        <div className="flex items-center justify-between">
+          <button className="px-3 py-1 rounded border hover:bg-gray-100" onClick={goPrevMonth}>
+            ←
+          </button>
+          <div className="font-semibold">
+            {visibleMonth.toLocaleString(undefined, { month: 'long' })} {year}
+          </div>
+          <button className="px-3 py-1 rounded border hover:bg-gray-100" onClick={goNextMonth}>
+            →
+          </button>
         </div>
-        <button className="px-3 py-1 rounded border hover:bg-gray-100" onClick={goNextMonth}>
-          →
-        </button>
       </div>
 
       <div className="grid grid-cols-7 gap-1 text-center text-sm text-gray-600 mb-2">

@@ -1,66 +1,17 @@
 import React from 'react';
 import { FiRotateCcw, FiRefreshCw, FiHome } from 'react-icons/fi';
+import { SlabData, createSlab, Group, Cell, COLORS, getGroup } from './Slab';
 
-// Define the Slab data structure
-interface Group {
-  id: number;
-  color: number;
-}
 
-interface Cell {
-  groupId: number;
-}
-
-interface Slab {
-  cells: Cell[][];
-  groups: Map<number, Group>;
-}
-
-// Color palette: gray + primaries (red, blue, yellow) + secondaries (orange, purple, green)
-// Shades chosen to be similar to MUI 600 hues for a rich, modern look
-const COLORS = [
-  '#9e9e9e', // gray 600
-  '#e53935', // red 600
-  '#1e88e5', // blue 600
-  '#fdd835', // yellow 600
-  '#fb8c00', // orange 600
-  '#8e24aa', // purple 600
-  '#43a047', // green 600
-];
-
-// Initialize a new Slab with 6x6 grid
-const createSlab = (): Slab => {
-  const cells: Cell[][] = [];
-  const groups = new Map<number, Group>();
-  
-  for (let row = 0; row < 6; row++) {
-    cells[row] = [];
-    for (let col = 0; col < 6; col++) {
-      const groupId = 6 * row + col;
-      cells[row][col] = {
-        groupId: groupId
-      };
-      
-      // Create group if it doesn't exist
-      if (!groups.has(groupId)) {
-        groups.set(groupId, {
-          id: groupId,
-          color: 0 // Initialize to gray
-        });
-      }
-    }
-  }
-  
-  return { cells, groups };
-};
 
 type SlabMakerProps = {
   onHome: () => void;
+  onCreate: (slab: SlabData) => void;
 };
 
-const SlabMaker: React.FC<SlabMakerProps> = ({ onHome }) => {
-  const [slab, setSlab] = React.useState<Slab>(() => createSlab());
-  const [history, setHistory] = React.useState<Slab[]>([]);
+const SlabMaker: React.FC<SlabMakerProps> = ({ onHome, onCreate }) => {
+  const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
+  const [history, setHistory] = React.useState<SlabData[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
   const [encounteredGroups, setEncounteredGroups] = React.useState<Set<number>>(new Set());
   const [firstGroup, setFirstGroup] = React.useState<number | null>(null);
@@ -70,12 +21,12 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onHome }) => {
   const [lastTapCell, setLastTapCell] = React.useState<{row: number, col: number} | null>(null);
 
   // Keep a snapshot from drag start to push at drag end
-  const preDragSnapshotRef = React.useRef<Slab | null>(null);
+  const preDragSnapshotRef = React.useRef<SlabData | null>(null);
   // Track last visited cell during drag to detect diagonals
   const lastDragCellRef = React.useRef<{row: number, col: number} | null>(null);
 
   // Helper: deep clone a slab snapshot
-  const cloneSlab = (source: Slab): Slab => {
+  const cloneSlab = (source: SlabData): SlabData => {
     const clonedCells: Cell[][] = source.cells.map(row => row.map(cell => ({ ...cell })));
     const clonedGroups = new Map<number, Group>();
     source.groups.forEach((group, id) => {
@@ -85,7 +36,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onHome }) => {
   };
 
   // Push current slab into history
-  const pushHistory = (snapshot?: Slab) => {
+  const pushHistory = (snapshot?: SlabData) => {
     setHistory(prev => [...prev, cloneSlab(snapshot ?? slab)]);
   };
 
@@ -490,6 +441,13 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onHome }) => {
         >
           <FiRefreshCw size={22} />
         </button>
+        <button
+          className="px-4 py-2 rounded text-sm bg-blue-500 text-white hover:bg-blue-600"
+          onClick={() => onCreate(slab)}
+          title="Create puzzle from current slab"
+        >
+          Create
+        </button>
       </div>
       <div className="grid grid-cols-6 w-full max-w-screen mx-auto" style={{ gridAutoRows: '1fr' }}>
         {slab.cells.map((row, rowIndex) => (
@@ -499,11 +457,11 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onHome }) => {
                 key={`${rowIndex}-${colIndex}`}
                 className="relative aspect-square w-full h-full flex items-center justify-center text-xs font-mono cursor-pointer transition-opacity select-none"
                 style={{
-                  backgroundColor: COLORS[slab.groups.get(cell.groupId)?.color || 0],
-                  color: (slab.groups.get(cell.groupId)?.color || 0) === 0 ? '#000' : '#fff',
+                  backgroundColor: COLORS[getGroup(slab.groups, cell.groupId)?.color || 0],
+                  color: (getGroup(slab.groups, cell.groupId)?.color || 0) === 0 ? '#000' : '#fff',
                   ...getBorderStyles(rowIndex, colIndex)
                 }}
-                title={`Group: ${cell.groupId}, Color: ${slab.groups.get(cell.groupId)?.color || 0}`}
+                title={`Group: ${cell.groupId}, Color: ${getGroup(slab.groups, cell.groupId)?.color || 0}`}
                 data-cell-coords={`${rowIndex},${colIndex}`}
                 onMouseDown={(e) => {
                   handleTap(e, rowIndex, colIndex);
