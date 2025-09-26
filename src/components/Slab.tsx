@@ -180,7 +180,7 @@ const Slab: React.FC<SlabProps> = ({ slab, size = 'medium', className = '' }) =>
   };
 
   return (
-    <div className={`grid grid-cols-6 rounded-sm border border-white ${sizeClasses[size]} ${className}`} style={{ gridAutoRows: '1fr', backgroundColor: 'white' }}>
+    <div className={`grid grid-cols-6 rounded-sm border border-white ${className.includes('w-full') ? 'w-full h-full' : sizeClasses[size]} ${className}`} style={{ gridAutoRows: '1fr', backgroundColor: 'white' }}>
       {slab.cells.map((row, rowIndex) => (
         <React.Fragment key={rowIndex}>
           {row.map((cell, colIndex) => (

@@ -28,7 +28,19 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   }, [puzzle.shown_examples]);
 
   const handleSlabCreate = (newSlab: SlabData) => {
-    setAllSlabs(prev => [newSlab, ...prev]);
+    // Deep clone the slab to prevent reference sharing with SlabMaker
+    const clonedCells: SlabData['cells'] = newSlab.cells.map(row => row.map(cell => ({ ...cell })));
+    const clonedGroups = new Map<number, { id: number; color: number }>();
+    newSlab.groups.forEach((group, id) => {
+      clonedGroups.set(id, { ...group });
+    });
+    
+    const clonedSlab: SlabData = {
+      cells: clonedCells,
+      groups: clonedGroups
+    };
+    
+    setAllSlabs(prev => [clonedSlab, ...prev]);
   };
 
   // Mouse-based drag and drop
@@ -275,7 +287,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         <div>
           <div className="bg-gray-200 p-2 rounded-lg">
             <div 
-              className="grid grid-cols-3 gap-2 justify-items-start max-w-fit mx-auto"
+              className="flex flex-wrap gap-2 justify-center"
               onDragOver={(e) => {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
@@ -299,14 +311,16 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                     onTouchEnd={handleTouchEnd}
                     onMouseDown={(e) => handleMouseDown(e, index)}
                     style={{
+                      width: 'calc(30% - 2px)',
+                      height: 'calc(30% - 2px)',
                       opacity: touchDraggedIndex === index || isMouseDraggingThis ? 0.5 : 1,
                       transform: touchDraggedIndex === index || isMouseDraggingThis ? 'scale(0.95)' : 'scale(1)',
                       transition: 'all 0.2s ease',
                       cursor: 'grab'
                     }}
                   >
-                    <div className="rounded-sm cursor-move relative">
-                      <Slab slab={slab} size="small" />
+                    <div className="rounded-sm cursor-move relative w-full h-full">
+                      <Slab slab={slab} size="small" className="w-full h-full" />
                       {/* Evaluation indicator circle */}
                       <div 
                         className="absolute w-3 h-3 rounded-full"
