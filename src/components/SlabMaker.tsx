@@ -212,7 +212,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate }) => {
   // Handle double-tap to split group into unique IDs
   const handleDoubleTap = (row: number, col: number) => {
     // Persist snapshot before breaking apart
-    pushHistory();
+    pushHistory(cloneSlab(slab));
     const targetGroupId = slab.cells[row][col].groupId;
     
     // Find all cells in the same group
