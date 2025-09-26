@@ -55,49 +55,51 @@ function App() {
 
 
   return (
-    <div className="w-full h-full relative">
-      {mode === 'select' ? (
-        <div>
-          <LevelSelect onSelect={handleSelect} onCreatePuzzle={handleCreatePuzzle} />
-          {loading && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-              <div className="bg-white p-4 rounded-lg">
-                <div className="text-center">Loading puzzle...</div>
+    <div className="w-full h-full relative flex justify-center">
+      <div className="w-full max-w-md mx-auto h-full">
+        {mode === 'select' ? (
+          <div>
+            <LevelSelect onSelect={handleSelect} onCreatePuzzle={handleCreatePuzzle} />
+            {loading && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                <div className="bg-white p-4 rounded-lg">
+                  <div className="text-center">Loading puzzle...</div>
+                </div>
               </div>
-            </div>
-          )}
-          {error && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-              <div className="bg-white p-4 rounded-lg max-w-md">
-                <div className="text-red-600 mb-2">Error loading puzzle</div>
-                <div className="text-sm text-gray-600 mb-4">{error}</div>
-                <button 
-                  onClick={() => setError(null)}
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                  Try Again
-                </button>
+            )}
+            {error && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                <div className="bg-white p-4 rounded-lg max-w-md">
+                  <div className="text-red-600 mb-2">Error loading puzzle</div>
+                  <div className="text-sm text-gray-600 mb-4">{error}</div>
+                  <button 
+                    onClick={() => setError(null)}
+                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  >
+                    Try Again
+                  </button>
+                </div>
               </div>
+            )}
+          </div>
+        ) : mode === 'create' && puzzle ? (
+          <div className="w-full h-full flex flex-col">
+            <div className="flex-1 min-h-0">
+              <SlabPuzzleCreator onHome={() => setMode('select')} puzzle={puzzle} />
             </div>
-          )}
-        </div>
-      ) : mode === 'create' && puzzle ? (
-        <div className="w-full h-full flex flex-col">
-          <div className="flex-1 min-h-0">
-            <SlabPuzzleCreator onHome={() => setMode('select')} puzzle={puzzle} />
           </div>
-        </div>
-      ) : mode === 'solve' && puzzle && currentSlab ? (
-        <div className="w-full h-full flex flex-col">
-          <div className="flex-1 min-h-0">
-            <SlabPuzzle 
-              onHome={() => setMode('select')} 
-              puzzle={puzzle} 
-              slab={currentSlab}
-            />
+        ) : mode === 'solve' && puzzle && currentSlab ? (
+          <div className="w-full h-full flex flex-col">
+            <div className="flex-1 min-h-0">
+              <SlabPuzzle 
+                onHome={() => setMode('select')} 
+                puzzle={puzzle} 
+                slab={currentSlab}
+              />
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }

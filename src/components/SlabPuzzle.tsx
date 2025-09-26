@@ -275,7 +275,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         <div>
           <div className="bg-gray-200 p-2 rounded-lg">
             <div 
-              className="grid grid-cols-3 gap-4"
+              className="grid grid-cols-3 gap-2 justify-items-start max-w-fit mx-auto"
               onDragOver={(e) => {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
@@ -292,7 +292,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                 return (
                   <div 
                     key={index} 
-                    className="flex flex-col items-center relative"
+                    className="flex flex-col relative"
                     data-slab-index={index}
                     onTouchStart={(e) => handleTouchStart(e, index)}
                     onTouchMove={handleTouchMove}
