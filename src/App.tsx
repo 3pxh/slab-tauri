@@ -53,6 +53,7 @@ function App() {
 
 
 
+
   return (
     <div className="w-full h-full relative">
       {mode === 'select' ? (
@@ -92,7 +93,7 @@ function App() {
             <SlabPuzzle 
               onHome={() => setMode('select')} 
               puzzle={puzzle} 
-              slab={currentSlab} 
+              slab={currentSlab}
             />
           </div>
         </div>

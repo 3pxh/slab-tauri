@@ -217,7 +217,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       
       {/* SlabMaker for creating slabs */}
       <div className="mb-8">
-        <SlabMaker onHome={onHome} onCreate={handleSlabCreate} />
+        <SlabMaker onCreate={handleSlabCreate} />
       </div>
       
       {/* Created Slabs Display */}

@@ -100,14 +100,14 @@ export const createSlab = (): SlabData => {
 const getBorderStyles = (row: number, col: number, slab: SlabData) => {
   const currentGroupId = slab.cells[row][col].groupId;
   const borderColor = 'white';
-  const borderWidth = '3px';
+  const borderWidth = '1px';
   
   const sameTop = row > 0 && slab.cells[row - 1][col].groupId === currentGroupId;
   const sameRight = col < 5 && slab.cells[row][col + 1].groupId === currentGroupId;
   const sameBottom = row < 5 && slab.cells[row + 1][col].groupId === currentGroupId;
   const sameLeft = col > 0 && slab.cells[row][col - 1].groupId === currentGroupId;
 
-  const radiusValue = '8px';
+  const radiusValue = '3px';
 
   const borders: React.CSSProperties = {
     borderTop: `${borderWidth} solid ${borderColor}`,
@@ -180,7 +180,7 @@ const Slab: React.FC<SlabProps> = ({ slab, size = 'medium', className = '' }) =>
   };
 
   return (
-    <div className={`grid grid-cols-6 ${sizeClasses[size]} ${className}`} style={{ gridAutoRows: '1fr' }}>
+    <div className={`grid grid-cols-6 rounded-sm border border-white ${sizeClasses[size]} ${className}`} style={{ gridAutoRows: '1fr', backgroundColor: 'white' }}>
       {slab.cells.map((row, rowIndex) => (
         <React.Fragment key={rowIndex}>
           {row.map((cell, colIndex) => (
@@ -195,8 +195,8 @@ const Slab: React.FC<SlabProps> = ({ slab, size = 'medium', className = '' }) =>
             >
               {(() => {
                 const concave = getConcaveCorners(rowIndex, colIndex, slab);
-                const dotSize = size === 'small' ? 4 : size === 'medium' ? 6 : 8;
-                const offset = size === 'small' ? '-3px' : size === 'medium' ? '-4px' : '-5px';
+                const dotSize = size === 'small' ? 3 : size === 'medium' ? 6 : 8;
+                const offset = size === 'small' ? '-2px' : size === 'medium' ? '-4px' : '-5px';
                 const dotStyleBase: React.CSSProperties = {
                   position: 'absolute',
                   width: `${dotSize}px`,

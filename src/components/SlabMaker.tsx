@@ -1,15 +1,14 @@
 import React from 'react';
-import { FiRotateCcw, FiRefreshCw, FiHome } from 'react-icons/fi';
+import { FiRotateCcw, FiRefreshCw, FiPlus } from 'react-icons/fi';
 import { SlabData, createSlab, Group, Cell, COLORS, getGroup } from './Slab';
 
 
 
 type SlabMakerProps = {
-  onHome: () => void;
   onCreate: (slab: SlabData) => void;
 };
 
-const SlabMaker: React.FC<SlabMakerProps> = ({ onHome, onCreate }) => {
+const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate }) => {
   const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
   const [history, setHistory] = React.useState<SlabData[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -417,38 +416,6 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onHome, onCreate }) => {
 
   return (
     <div className="p-4 w-full">
-      <div className="flex justify-start items-center gap-2 mb-4">
-        <button
-          className="px-4 py-2 rounded text-sm"
-          onClick={onHome}
-          title="Back to levels"
-          aria-label="Go home"
-        >
-          <FiHome size={22} />
-        </button>
-        <button
-          className={`px-4 py-2 rounded text-sm ${history.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
-          onClick={handleUndo}
-          disabled={history.length === 0}
-          title={history.length === 0 ? 'Nothing to undo' : 'Undo last action'}
-        >
-          <FiRotateCcw size={22} />
-        </button>
-        <button
-          className="px-4 py-2 rounded text-sm hover:bg-gray-100"
-          onClick={handleReset}
-          title="Reset to a new slab"
-        >
-          <FiRefreshCw size={22} />
-        </button>
-        <button
-          className="px-4 py-2 rounded text-sm bg-blue-500 text-white hover:bg-blue-600"
-          onClick={() => onCreate(slab)}
-          title="Create puzzle from current slab"
-        >
-          Create
-        </button>
-      </div>
       <div className="grid grid-cols-6 w-full max-w-screen mx-auto" style={{ gridAutoRows: '1fr' }}>
         {slab.cells.map((row, rowIndex) => (
           <React.Fragment key={rowIndex}>
@@ -509,21 +476,49 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onHome, onCreate }) => {
       </div>
       
       {/* Color Swatches */}
-      {selectedGroup !== null && (
-        <div className="mt-8">
-          <div className="flex flex-wrap justify-center gap-2">
-            {COLORS.map((color, index) => (
-              <button
-                key={index}
-                className="w-12 h-12 rounded cursor-pointer transition-all hover:scale-110"
-                style={{ backgroundColor: color }}
-                onClick={() => applyColorToGroup(index)}
-                title={`Color ${index}`}
-              />
-            ))}
-          </div>
+      <div className="mt-2">
+        <div className="flex flex-wrap justify-center gap-2">
+          {COLORS.map((color, index) => (
+            <button
+              key={index}
+              className={`w-12 h-12 rounded cursor-pointer transition-all hover:scale-110 ${
+                selectedGroup !== null ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+              style={{ backgroundColor: color }}
+              onClick={() => applyColorToGroup(index)}
+              title={`Color ${index}`}
+            />
+          ))}
         </div>
-      )}
+      </div>
+      
+      {/* Control Buttons */}
+      <div className="mt-2">
+        <div className="flex justify-center gap-2">
+          <button
+            className={`px-3 py-2 rounded text-sm ${history.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+            onClick={handleUndo}
+            disabled={history.length === 0}
+            title={history.length === 0 ? 'Nothing to undo' : 'Undo last action'}
+          >
+            <FiRotateCcw size={20} />
+          </button>
+          <button
+            className="px-3 py-2 rounded text-sm hover:bg-gray-100"
+            onClick={handleReset}
+            title="Reset to a new slab"
+          >
+            <FiRefreshCw size={20} />
+          </button>
+          <button
+            className="px-3 py-2 rounded text-sm bg-blue-500 text-white hover:bg-blue-600"
+            onClick={() => onCreate(slab)}
+            title="Create puzzle from current slab"
+          >
+            <FiPlus size={20} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
