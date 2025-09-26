@@ -146,13 +146,78 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     if (mouseStartPos !== null) {
       document.addEventListener('mousemove', handleGlobalMouseMove);
       document.addEventListener('mouseup', handleGlobalMouseUp);
+      // Prevent body scrolling during drag
+      document.body.style.overflow = 'hidden';
     }
 
     return () => {
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('mouseup', handleGlobalMouseUp);
+      // Restore body scrolling
+      document.body.style.overflow = '';
     };
   }, [mouseStartPos, draggedIndex, isMouseDragging]);
+
+  // Add global touch event listeners for drag operations
+  React.useEffect(() => {
+    const handleGlobalTouchMove = (event: TouchEvent) => {
+      if (touchStartPos && touchDraggedIndex !== null) {
+        const touch = event.touches[0];
+        const deltaX = Math.abs(touch.clientX - touchStartPos.x);
+        const deltaY = Math.abs(touch.clientY - touchStartPos.y);
+        
+        // Prevent scrolling during drag
+        if (deltaX > 10 || deltaY > 10) {
+          event.preventDefault();
+        }
+      }
+    };
+
+    const handleGlobalTouchEnd = (event: TouchEvent) => {
+      if (touchStartPos && touchDraggedIndex !== null) {
+        const touch = event.changedTouches[0];
+        const element = document.elementFromPoint(touch.clientX, touch.clientY);
+        
+        if (element) {
+          const dropTarget = element.closest('[data-slab-index]');
+          if (dropTarget) {
+            const dropIndex = parseInt(dropTarget.getAttribute('data-slab-index') || '0');
+            if (dropIndex !== touchDraggedIndex) {
+              setAllSlabs(prev => {
+                const newSlabs = [...prev];
+                const draggedSlab = newSlabs[touchDraggedIndex];
+                
+                // Remove the dragged item
+                newSlabs.splice(touchDraggedIndex, 1);
+                
+                // Insert at the new position
+                newSlabs.splice(dropIndex, 0, draggedSlab);
+                
+                return newSlabs;
+              });
+            }
+          }
+        }
+      }
+
+      setTouchStartPos(null);
+      setTouchDraggedIndex(null);
+    };
+
+    if (touchStartPos !== null) {
+      document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
+      document.addEventListener('touchend', handleGlobalTouchEnd);
+      // Prevent body scrolling during drag
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('touchmove', handleGlobalTouchMove);
+      document.removeEventListener('touchend', handleGlobalTouchEnd);
+      // Restore body scrolling
+      document.body.style.overflow = '';
+    };
+  }, [touchStartPos, touchDraggedIndex]);
 
   const formatDate = (dateString: string): string => {
     try {

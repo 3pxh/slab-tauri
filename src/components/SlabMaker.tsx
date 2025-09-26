@@ -392,6 +392,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate }) => {
     };
 
     const handleGlobalTouchMove = (event: TouchEvent) => {
+      // Prevent scrolling during drag
+      event.preventDefault();
       handleDragMove(event as any);
     };
 
@@ -404,6 +406,9 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate }) => {
       document.addEventListener('mouseup', handleGlobalMouseUp);
       document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
       document.addEventListener('touchend', handleGlobalTouchEnd);
+      
+      // Prevent body scrolling during drag
+      document.body.style.overflow = 'hidden';
     }
 
     return () => {
@@ -411,6 +416,9 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate }) => {
       document.removeEventListener('mouseup', handleGlobalMouseUp);
       document.removeEventListener('touchmove', handleGlobalTouchMove);
       document.removeEventListener('touchend', handleGlobalTouchEnd);
+      
+      // Restore body scrolling
+      document.body.style.overflow = '';
     };
   }, [isDragging, encounteredGroups, firstGroup]);
 
@@ -418,14 +426,19 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate }) => {
     <div className="p-4 w-full">
       {/* Color Swatches */}
       <div className="mb-2">
-        <div className="flex flex-wrap justify-center gap-2">
+        <div className="flex justify-center gap-1 w-full max-w-md mx-auto">
           {COLORS.map((color, index) => (
             <button
               key={index}
-              className={`w-12 h-12 rounded cursor-pointer transition-all hover:scale-110 ${
+              className={`flex-1 rounded cursor-pointer transition-all hover:scale-110 ${
                 selectedGroup !== null ? 'opacity-100' : 'opacity-0 pointer-events-none'
               }`}
-              style={{ backgroundColor: color }}
+              style={{ 
+                backgroundColor: color,
+                aspectRatio: '1',
+                maxWidth: '48px',
+                maxHeight: '48px'
+              }}
               onClick={() => applyColorToGroup(index)}
               title={`Color ${index}`}
             />
