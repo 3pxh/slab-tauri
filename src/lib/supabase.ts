@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
-// For local development, these should match your Supabase local setup
-const supabaseUrl = 'http://127.0.0.1:54321'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
+// Remote Supabase project configuration
+const supabaseUrl = 'https://gfdfhbulxqcjfmmufsmf.supabase.co'
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmZGZoYnVseHFjamZtbXVmc21mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2ODU1MzYsImV4cCI6MjA3NDI2MTUzNn0.fXz6LGRwyrYnDpGhJZ8eirRz6N9C06aiaYfyMBucYwg'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 

@@ -11,7 +11,6 @@ type SlabPuzzleCreatorProps = {
 };
 
 const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({ 
-  onHome, 
   puzzle
 }) => {
   const [createdSlabs, setCreatedSlabs] = React.useState<SlabWithId[]>([]);
