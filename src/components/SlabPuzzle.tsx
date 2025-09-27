@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowLeft, FiCheck, FiChevronLeft, FiChevronRight, FiStar, FiX, FiTarget } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight, FiCheck, FiChevronLeft, FiChevronRight, FiStar, FiX, FiTarget } from 'react-icons/fi';
 import { Puzzle } from '../lib/supabase';
 import Slab, { SlabData, deserializeSlabData, areSlabsEqual } from './Slab';
 import SlabMaker from './SlabMaker';
@@ -24,6 +24,8 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   const [hasWon, setHasWon] = React.useState(false);
   const [pendingGuessedSlabs, setPendingGuessedSlabs] = React.useState<SlabData[]>([]);
   const [guessesSubmitted, setGuessesSubmitted] = React.useState(false);
+  const [isInGuessSession, setIsInGuessSession] = React.useState(false);
+  const [flashGuessButton, setFlashGuessButton] = React.useState(false);
 
   // Load shown examples into state when component mounts
   React.useEffect(() => {
@@ -36,6 +38,13 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   }, [puzzle.shown_examples]);
 
   const handleSlabCreate = (newSlab: SlabData) => {
+    // If we're in a guess session, flash the guess button instead of creating a slab
+    if (isInGuessSession) {
+      setFlashGuessButton(true);
+      setTimeout(() => setFlashGuessButton(false), 1000); // Flash for 1 second
+      return;
+    }
+    
     // Deep clone the slab to prevent reference sharing with SlabMaker
     const clonedCells: SlabData['cells'] = newSlab.cells.map(row => row.map(cell => ({ ...cell })));
     const clonedGroups = new Map<number, { id: number; color: number }>();
@@ -303,16 +312,22 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     }
     
     setShowGuessOverlay(true);
-    // Reset all guess-related state when opening the overlay
-    setGuesses({});
-    setGuessResults({});
-    setShowSuccess(false);
-    setPendingGuessedSlabs([]);
-    setGuessesSubmitted(false);
+    
+    // Only start a new guess session if we're not already in one
+    if (!isInGuessSession) {
+      setIsInGuessSession(true);
+      // Reset all guess-related state when starting a new guess session
+      setGuesses({});
+      setGuessResults({});
+      setShowSuccess(false);
+      setPendingGuessedSlabs([]);
+      setGuessesSubmitted(false);
+    }
   };
 
   const handleCloseOverlay = () => {
     setShowGuessOverlay(false);
+    // Don't reset isInGuessSession here - only reset when guesses are submitted
     setGuesses({});
     setGuessResults({});
     setShowSuccess(false);
@@ -375,6 +390,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     setGuessResults(results);
     setShowSuccess(allCorrect);
     setGuessesSubmitted(true);
+    setIsInGuessSession(false); // Reset guess session when guesses are submitted
   };
 
   return (
@@ -408,6 +424,8 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         guessCount={remainingGuesses}
         maxGuesses={3}
         hasWon={hasWon}
+        flashGuessButton={flashGuessButton}
+        isInGuessSession={isInGuessSession}
       />
 
       {/* All Slabs */}
@@ -580,7 +598,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                     onClick={handleCloseOverlay}
                     title="Close"
                   >
-                    <FiX size={20} />
+                    <FiArrowRight size={20} />
                   </button>
                 ) : (
                   <button

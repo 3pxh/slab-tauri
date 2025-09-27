@@ -10,9 +10,11 @@ type SlabMakerProps = {
   guessCount?: number;
   maxGuesses?: number;
   hasWon?: boolean;
+  flashGuessButton?: boolean;
+  isInGuessSession?: boolean;
 };
 
-const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0, maxGuesses = 3, hasWon = false }) => {
+const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0, maxGuesses = 3, hasWon = false, flashGuessButton = false, isInGuessSession = false }) => {
   const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
   const [history, setHistory] = React.useState<SlabData[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -529,15 +531,19 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
           </button>
           {onGuess && (
             <button
-              className={`px-3 py-2 rounded text-sm flex flex-col items-center ${
-                hasWon
-                  ? 'bg-yellow-500 text-white hover:bg-yellow-600'
-                  : guessCount > 0 
-                    ? 'bg-green-500 text-white hover:bg-green-600' 
-                    : 'bg-gray-400 text-white cursor-not-allowed'
+              className={`px-3 py-2 rounded text-sm flex flex-col items-center transition-all duration-300 ${
+                flashGuessButton 
+                  ? 'animate-pulse bg-yellow-400 text-white shadow-lg scale-110' 
+                  : hasWon
+                    ? 'bg-yellow-500 text-white hover:bg-yellow-600'
+                    : isInGuessSession
+                      ? 'bg-green-500 text-white hover:bg-green-600'
+                      : guessCount > 0 
+                        ? 'bg-gray-400 text-white' 
+                        : 'bg-gray-400 text-white cursor-not-allowed'
               }`}
               onClick={onGuess}
-              disabled={guessCount <= 0 && !hasWon}
+              disabled={guessCount <= 0 && !hasWon && !isInGuessSession}
               title={
                 hasWon 
                   ? "Puzzle completed!" 
@@ -553,9 +559,13 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
             </button>
           )}
           <button
-            className="px-3 py-2 rounded text-sm bg-blue-500 text-white hover:bg-blue-600"
+            className={`px-3 py-2 rounded text-sm ${
+              isInGuessSession 
+                ? 'bg-gray-400 text-white' 
+                : 'bg-blue-500 text-white hover:bg-blue-600'
+            }`}
             onClick={() => onCreate(slab)}
-            title="Create puzzle from current slab"
+            title={isInGuessSession ? "Complete your guess first" : "Create puzzle from current slab"}
           >
             <FiPlus size={20} />
           </button>
