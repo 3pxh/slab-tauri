@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowLeft, FiCheck, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiArrowLeft, FiCheck, FiChevronLeft, FiChevronRight, FiStar, FiX, FiTarget } from 'react-icons/fi';
 import { Puzzle } from '../lib/supabase';
 import Slab, { SlabData, deserializeSlabData, areSlabsEqual } from './Slab';
 import SlabMaker from './SlabMaker';
@@ -20,6 +20,10 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   const [guesses, setGuesses] = React.useState<{ [key: number]: 'white' | 'black' | null }>({});
   const [guessResults, setGuessResults] = React.useState<{ [key: number]: boolean | null }>({});
   const [showSuccess, setShowSuccess] = React.useState(false);
+  const [remainingGuesses, setRemainingGuesses] = React.useState(3);
+  const [hasWon, setHasWon] = React.useState(false);
+  const [pendingGuessedSlabs, setPendingGuessedSlabs] = React.useState<SlabData[]>([]);
+  const [guessesSubmitted, setGuessesSubmitted] = React.useState(false);
 
   // Load shown examples into state when component mounts
   React.useEffect(() => {
@@ -281,12 +285,30 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     return filteredHidden.slice(0, 5);
   };
 
+  // Get slabs to display in the guess overlay
+  const getSlabsForOverlay = (): SlabData[] => {
+    // If we have pending guessed slabs (after submission), show those
+    if (pendingGuessedSlabs.length > 0) {
+      return pendingGuessedSlabs;
+    }
+    
+    // Otherwise, show filtered hidden examples
+    return getFilteredHiddenExamples();
+  };
+
   const handleGuessClick = () => {
+    // Don't allow guessing if no attempts remaining
+    if (remainingGuesses <= 0) {
+      return;
+    }
+    
     setShowGuessOverlay(true);
     // Reset all guess-related state when opening the overlay
     setGuesses({});
     setGuessResults({});
     setShowSuccess(false);
+    setPendingGuessedSlabs([]);
+    setGuessesSubmitted(false);
   };
 
   const handleCloseOverlay = () => {
@@ -294,6 +316,13 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     setGuesses({});
     setGuessResults({});
     setShowSuccess(false);
+    setGuessesSubmitted(false);
+    
+    // Add pending guessed slabs to the main list
+    if (pendingGuessedSlabs.length > 0) {
+      setAllSlabs(prev => [...pendingGuessedSlabs, ...prev]);
+      setPendingGuessedSlabs([]);
+    }
   };
 
   const handleGuessSelect = (index: number, guess: 'white' | 'black') => {
@@ -313,10 +342,12 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     const filteredHidden = getFilteredHiddenExamples();
     const results: { [key: number]: boolean } = {};
     let allCorrect = true;
+    let hasAnyGuess = false;
 
     filteredHidden.forEach((slab, index) => {
       const guess = guesses[index];
       if (guess !== null) {
+        hasAnyGuess = true;
         const actualResult = evaluateSlab(slab);
         const isCorrect = (guess === 'black' && actualResult) || (guess === 'white' && !actualResult);
         results[index] = isCorrect;
@@ -326,8 +357,24 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       }
     });
 
+    // Only process if there are actual guesses made
+    if (hasAnyGuess) {
+      // Decrement remaining guesses
+      setRemainingGuesses(prev => Math.max(0, prev - 1));
+      
+      // Store guessed slabs in pending state (will be added to main list when overlay closes)
+      const guessedSlabs = filteredHidden.filter((_, index) => guesses[index] !== null);
+      setPendingGuessedSlabs(guessedSlabs);
+      
+      // Check if player won (all guesses correct)
+      if (allCorrect) {
+        setHasWon(true);
+      }
+    }
+
     setGuessResults(results);
     setShowSuccess(allCorrect);
+    setGuessesSubmitted(true);
   };
 
   return (
@@ -343,7 +390,12 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
           >
             <FiArrowLeft size={20} />
           </button>
-          <h2 className="text-lg font-semibold">{puzzle.name}</h2>
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            {puzzle.name}
+            {hasWon && (
+              <FiStar className="text-yellow-500" size={20} />
+            )}
+          </h2>
         </div>
         <div className="text-sm text-gray-600">
           {formatDate(puzzle.publish_date)}
@@ -353,8 +405,9 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       <SlabMaker 
         onCreate={handleSlabCreate} 
         onGuess={handleGuessClick}
-        guessCount={3}
+        guessCount={remainingGuesses}
         maxGuesses={3}
+        hasWon={hasWon}
       />
 
       {/* All Slabs */}
@@ -420,12 +473,16 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Hidden Examples - Make Your Guesses</h3>
+              <div className="flex items-center gap-2">
+                <FiTarget size={20} />
+                <span className="text-lg font-semibold">{remainingGuesses}/3</span>
+              </div>
               <button
                 className="px-3 py-1 rounded text-sm bg-gray-200 hover:bg-gray-300"
                 onClick={handleCloseOverlay}
+                title="Close"
               >
-                Close
+                <FiX size={16} />
               </button>
             </div>
             
@@ -436,7 +493,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
             )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {getFilteredHiddenExamples().map((slab, index) => {
+              {getSlabsForOverlay().map((slab, index) => {
                 const currentGuess = guesses[index];
                 const result = guessResults[index];
                 const isIncorrect = result === false;
@@ -508,22 +565,32 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
               })}
             </div>
             
-            {getFilteredHiddenExamples().length === 0 && (
+            {getSlabsForOverlay().length === 0 && (
               <div className="text-center text-gray-500 py-8">
                 No hidden examples available or all have been revealed.
               </div>
             )}
             
-            {/* Submit Button */}
-            {getFilteredHiddenExamples().length > 0 && (
+            {/* Submit/Close Button */}
+            {getSlabsForOverlay().length > 0 && (
               <div className="mt-6 flex justify-center">
-                <button
-                  className="px-6 py-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-2"
-                  onClick={handleSubmitGuesses}
-                  title="Submit your guesses"
-                >
-                  <FiCheck size={20} />
-                </button>
+                {guessesSubmitted ? (
+                  <button
+                    className="px-6 py-3 rounded-lg bg-gray-500 text-white hover:bg-gray-600 flex items-center gap-2"
+                    onClick={handleCloseOverlay}
+                    title="Close"
+                  >
+                    <FiX size={20} />
+                  </button>
+                ) : (
+                  <button
+                    className="px-6 py-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-2"
+                    onClick={handleSubmitGuesses}
+                    title="Submit your guesses"
+                  >
+                    <FiCheck size={20} />
+                  </button>
+                )}
               </div>
             )}
           </div>

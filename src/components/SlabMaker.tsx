@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiRotateCcw, FiRefreshCw, FiPlus, FiTarget } from 'react-icons/fi';
+import { FiRotateCcw, FiRefreshCw, FiPlus, FiTarget, FiStar } from 'react-icons/fi';
 import { SlabData, createSlab, Group, Cell, COLORS, getGroup } from './Slab';
 
 
@@ -9,9 +9,10 @@ type SlabMakerProps = {
   onGuess?: () => void;
   guessCount?: number;
   maxGuesses?: number;
+  hasWon?: boolean;
 };
 
-const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0, maxGuesses = 3 }) => {
+const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0, maxGuesses = 3, hasWon = false }) => {
   const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
   const [history, setHistory] = React.useState<SlabData[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -528,12 +529,27 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
           </button>
           {onGuess && (
             <button
-              className="px-3 py-2 rounded text-sm bg-green-500 text-white hover:bg-green-600 flex flex-col items-center"
+              className={`px-3 py-2 rounded text-sm flex flex-col items-center ${
+                hasWon
+                  ? 'bg-yellow-500 text-white hover:bg-yellow-600'
+                  : guessCount > 0 
+                    ? 'bg-green-500 text-white hover:bg-green-600' 
+                    : 'bg-gray-400 text-white cursor-not-allowed'
+              }`}
               onClick={onGuess}
-              title="Attempt a guess"
+              disabled={guessCount <= 0 && !hasWon}
+              title={
+                hasWon 
+                  ? "Puzzle completed!" 
+                  : guessCount > 0 
+                    ? "Attempt a guess" 
+                    : "No guesses remaining"
+              }
             >
-              <FiTarget size={20} />
-              <span className="text-xs">{guessCount}/{maxGuesses}</span>
+              {hasWon ? <FiStar size={20} /> : <FiTarget size={20} />}
+              <span className="text-xs">
+                {hasWon ? "★" : `${guessCount}/${maxGuesses}`}
+              </span>
             </button>
           )}
           <button
