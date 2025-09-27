@@ -43,8 +43,36 @@ icon_guides = {
     "StoreLogo": 50,
 }
 
+# Apple AppIcon assets for iOS
+apple_icon_guides = {
+    # iPhone icons
+    "AppIcon-20x20@2x": 40,      # 20x20 @2x = 40x40
+    "AppIcon-20x20@3x": 60,      # 20x20 @3x = 60x60
+    "AppIcon-29x29@2x-1": 58,    # 29x29 @2x = 58x58
+    "AppIcon-29x29@3x": 87,      # 29x29 @3x = 87x87
+    "AppIcon-40x40@2x": 80,      # 40x40 @2x = 80x80
+    "AppIcon-40x40@3x": 120,     # 40x40 @3x = 120x120
+    "AppIcon-60x60@2x": 120,     # 60x60 @2x = 120x120
+    "AppIcon-60x60@3x": 180,     # 60x60 @3x = 180x180
+    
+    # iPad icons
+    "AppIcon-20x20@1x": 20,      # 20x20 @1x = 20x20
+    "AppIcon-20x20@2x-1": 40,    # 20x20 @2x = 40x40
+    "AppIcon-29x29@1x": 29,      # 29x29 @1x = 29x29
+    "AppIcon-29x29@2x": 58,      # 29x29 @2x = 58x58
+    "AppIcon-40x40@1x": 40,      # 40x40 @1x = 40x40
+    "AppIcon-40x40@2x-1": 80,    # 40x40 @2x = 80x80
+    "AppIcon-76x76@1x": 76,      # 76x76 @1x = 76x76
+    "AppIcon-76x76@2x": 152,     # 76x76 @2x = 152x152
+    "AppIcon-83.5x83.5@2x": 167, # 83.5x83.5 @2x = 167x167
+    
+    # iOS Marketing (App Store)
+    "AppIcon-512@2x": 1024,      # 1024x1024 for App Store
+}
+
 base_image_path = 'public/icon.png'
 tauri_icons_path = 'src-tauri/icons'
+apple_icons_path = 'src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset'
 
 try:
     base_image = Image.open(base_image_path)  # 1024x1024 base icon
@@ -57,10 +85,22 @@ if not os.path.exists(tauri_icons_path):
     print("Creating `icons` folder")
     os.mkdir(tauri_icons_path)
 
+# Create Apple icons directory if it doesn't exist
+if not os.path.exists(apple_icons_path):
+    print("Creating Apple AppIcon directory")
+    os.makedirs(apple_icons_path, exist_ok=True)
+
 # All png icons
 for filename, size in icon_guides.items():
     resized = base_image.resize((size, size)).convert("RGBA")
     resized.save(os.path.join(tauri_icons_path, filename + ".png"))
+
+# Apple AppIcon assets
+print("Generating Apple AppIcon assets...")
+for filename, size in apple_icon_guides.items():
+    resized = base_image.resize((size, size)).convert("RGBA")
+    resized.save(os.path.join(apple_icons_path, filename + ".png"))
+    print(f"Generated: {filename}.png ({size}x{size})")
 
 
 # .ico file

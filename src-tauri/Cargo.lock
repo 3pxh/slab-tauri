@@ -97,7 +97,7 @@ dependencies = [
  "fastrand",
  "futures-lite",
  "pin-project-lite",
- "slab 0.4.9",
+ "slab",
 ]
 
 [[package]]
@@ -114,7 +114,7 @@ dependencies = [
  "parking",
  "polling",
  "rustix",
- "slab 0.4.9",
+ "slab",
  "tracing",
  "windows-sys 0.59.0",
 ]
@@ -174,7 +174,7 @@ dependencies = [
  "futures-io",
  "rustix",
  "signal-hook-registry",
- "slab 0.4.9",
+ "slab",
  "windows-sys 0.59.0",
 ]
 
@@ -1081,7 +1081,7 @@ dependencies = [
  "memchr",
  "pin-project-lite",
  "pin-utils",
- "slab 0.4.9",
+ "slab",
 ]
 
 [[package]]
@@ -3240,6 +3240,15 @@ checksum = "56199f7ddabf13fe5074ce809e7d3f42b42ae711800501b5b16ea82ad029c39d"
 
 [[package]]
 name = "slab"
+version = "0.4.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f92a496fb766b417c996b9c5e57daf2f7ad3b0bebe1ccfca4856390e3d3bb67"
+dependencies = [
+ "autocfg",
+]
+
+[[package]]
+name = "slab-app"
 version = "0.1.0"
 dependencies = [
  "serde",
@@ -3247,15 +3256,6 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-opener",
-]
-
-[[package]]
-name = "slab"
-version = "0.4.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f92a496fb766b417c996b9c5e57daf2f7ad3b0bebe1ccfca4856390e3d3bb67"
-dependencies = [
- "autocfg",
 ]
 
 [[package]]

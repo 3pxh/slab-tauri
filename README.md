@@ -3,6 +3,7 @@
 ## Dev
 - `npm run tauri dev` to run the app
 - `python iconGenerator.py` will take the icon in public/ and regen app icons
+- `tauri ios dev --force-ip-prompt` to run on physical ios device
 
 ## Level Prompt
 
