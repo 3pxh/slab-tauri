@@ -70,6 +70,34 @@ export const deserializeSlabData = (data: any): SlabData => {
   };
 };
 
+// Helper function to compare if two SlabData objects are equal
+export const areSlabsEqual = (slab1: SlabData, slab2: SlabData): boolean => {
+  // Compare cells structure
+  if (slab1.cells.length !== slab2.cells.length) return false;
+  
+  for (let row = 0; row < slab1.cells.length; row++) {
+    if (slab1.cells[row].length !== slab2.cells[row].length) return false;
+    
+    for (let col = 0; col < slab1.cells[row].length; col++) {
+      if (slab1.cells[row][col].groupId !== slab2.cells[row][col].groupId) {
+        return false;
+      }
+    }
+  }
+  
+  // Compare groups
+  if (slab1.groups.size !== slab2.groups.size) return false;
+  
+  for (const [id, group1] of slab1.groups) {
+    const group2 = slab2.groups.get(id);
+    if (!group2 || group1.id !== group2.id || group1.color !== group2.color) {
+      return false;
+    }
+  }
+  
+  return true;
+};
+
 // Initialize a new Slab with 6x6 grid
 export const createSlab = (): SlabData => {
   const cells: Cell[][] = [];

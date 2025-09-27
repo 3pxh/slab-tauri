@@ -1,7 +1,7 @@
 import React from 'react';
-import { FiArrowLeft } from 'react-icons/fi';
+import { FiArrowLeft, FiCheck, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { Puzzle } from '../lib/supabase';
-import Slab, { SlabData, deserializeSlabData } from './Slab';
+import Slab, { SlabData, deserializeSlabData, areSlabsEqual } from './Slab';
 import SlabMaker from './SlabMaker';
 
 
@@ -16,6 +16,10 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
   const [isMouseDragging, setIsMouseDragging] = React.useState(false);
   const [mouseStartPos, setMouseStartPos] = React.useState<{x: number, y: number} | null>(null);
+  const [showGuessOverlay, setShowGuessOverlay] = React.useState(false);
+  const [guesses, setGuesses] = React.useState<{ [key: number]: 'white' | 'black' | null }>({});
+  const [guessResults, setGuessResults] = React.useState<{ [key: number]: boolean | null }>({});
+  const [showSuccess, setShowSuccess] = React.useState(false);
 
   // Load shown examples into state when component mounts
   React.useEffect(() => {
@@ -260,6 +264,72 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     }
   };
 
+  // Get hidden examples that are not already in the current slabs list
+  const getFilteredHiddenExamples = (): SlabData[] => {
+    if (!puzzle.hidden_examples || puzzle.hidden_examples.length === 0) {
+      return [];
+    }
+
+    const hiddenSlabs = puzzle.hidden_examples.map(example => deserializeSlabData(example));
+    
+    // Filter out hidden examples that are already in allSlabs
+    const filteredHidden = hiddenSlabs.filter(hiddenSlab => 
+      !allSlabs.some(existingSlab => areSlabsEqual(hiddenSlab, existingSlab))
+    );
+
+    // Return the first 5 filtered hidden examples
+    return filteredHidden.slice(0, 5);
+  };
+
+  const handleGuessClick = () => {
+    setShowGuessOverlay(true);
+    // Reset all guess-related state when opening the overlay
+    setGuesses({});
+    setGuessResults({});
+    setShowSuccess(false);
+  };
+
+  const handleCloseOverlay = () => {
+    setShowGuessOverlay(false);
+    setGuesses({});
+    setGuessResults({});
+    setShowSuccess(false);
+  };
+
+  const handleGuessSelect = (index: number, guess: 'white' | 'black') => {
+    setGuesses(prev => ({
+      ...prev,
+      [index]: prev[index] === guess ? null : guess
+    }));
+    // Clear any previous results when making a new guess
+    setGuessResults(prev => ({
+      ...prev,
+      [index]: null
+    }));
+    setShowSuccess(false);
+  };
+
+  const handleSubmitGuesses = () => {
+    const filteredHidden = getFilteredHiddenExamples();
+    const results: { [key: number]: boolean } = {};
+    let allCorrect = true;
+
+    filteredHidden.forEach((slab, index) => {
+      const guess = guesses[index];
+      if (guess !== null) {
+        const actualResult = evaluateSlab(slab);
+        const isCorrect = (guess === 'black' && actualResult) || (guess === 'white' && !actualResult);
+        results[index] = isCorrect;
+        if (!isCorrect) {
+          allCorrect = false;
+        }
+      }
+    });
+
+    setGuessResults(results);
+    setShowSuccess(allCorrect);
+  };
+
   return (
     <div className="w-full">
       {/* Puzzle Information */}
@@ -280,7 +350,12 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         </div>
       </div>
       
-      <SlabMaker onCreate={handleSlabCreate} />
+      <SlabMaker 
+        onCreate={handleSlabCreate} 
+        onGuess={handleGuessClick}
+        guessCount={3}
+        maxGuesses={3}
+      />
 
       {/* All Slabs */}
       {allSlabs.length > 0 && (
@@ -336,6 +411,121 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                 );
               })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Guess Overlay */}
+      {showGuessOverlay && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Hidden Examples - Make Your Guesses</h3>
+              <button
+                className="px-3 py-1 rounded text-sm bg-gray-200 hover:bg-gray-300"
+                onClick={handleCloseOverlay}
+              >
+                Close
+              </button>
+            </div>
+            
+            {showSuccess && (
+              <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+                🎉 Congratulations! All your guesses are correct!
+              </div>
+            )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {getFilteredHiddenExamples().map((slab, index) => {
+                const currentGuess = guesses[index];
+                const result = guessResults[index];
+                const isIncorrect = result === false;
+                const hasBeenSubmitted = result !== null && result !== undefined;
+                
+                return (
+                  <div 
+                    key={index} 
+                    className={`relative flex flex-col items-center p-4 rounded-lg border-2 ${
+                      hasBeenSubmitted && isIncorrect ? 'border-red-500 bg-red-50' : 
+                      hasBeenSubmitted && !isIncorrect ? 'border-green-500 bg-green-50' :
+                      currentGuess ? 'border-blue-300 bg-blue-50' : 
+                      'border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      {/* White Guess Button (Left) */}
+                      <button
+                        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${
+                          currentGuess === 'white' 
+                            ? 'bg-white border-gray-400' 
+                            : 'bg-gray-100 border-gray-300 hover:bg-gray-200'
+                        }`}
+                        onClick={() => handleGuessSelect(index, 'white')}
+                        title="Guess: White (False)"
+                      >
+                        <FiChevronLeft 
+                          size={16} 
+                          className={currentGuess === 'white' ? 'text-gray-800' : 'text-gray-600'} 
+                        />
+                      </button>
+                      
+                      {/* Slab */}
+                      <div className="w-32 h-32">
+                        <Slab slab={slab} size="small" className="w-full h-full" />
+                      </div>
+                      
+                      {/* Black Guess Button (Right) */}
+                      <button
+                        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${
+                          currentGuess === 'black' 
+                            ? 'bg-black border-gray-400' 
+                            : 'bg-gray-100 border-gray-300 hover:bg-gray-200'
+                        }`}
+                        onClick={() => handleGuessSelect(index, 'black')}
+                        title="Guess: Black (True)"
+                      >
+                        <FiChevronRight 
+                          size={16} 
+                          className={currentGuess === 'black' ? 'text-white' : 'text-gray-600'} 
+                        />
+                      </button>
+                    </div>
+                    
+                      {/* Evaluation result dot - only show after submission */}
+                      {hasBeenSubmitted && (
+                        <div 
+                          className="absolute w-3 h-3 rounded-full"
+                          style={{
+                            backgroundColor: evaluateSlab(slab) ? '#000000' : '#ffffff',
+                            bottom: '8px',
+                            right: '8px',
+                            boxShadow: '1px 1px 2px rgba(0,0,0,0.25)'
+                          }}
+                        />
+                      )}
+                  </div>
+                );
+              })}
+            </div>
+            
+            {getFilteredHiddenExamples().length === 0 && (
+              <div className="text-center text-gray-500 py-8">
+                No hidden examples available or all have been revealed.
+              </div>
+            )}
+            
+            {/* Submit Button */}
+            {getFilteredHiddenExamples().length > 0 && (
+              <div className="mt-6 flex justify-center">
+                <button
+                  className="px-6 py-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-2"
+                  onClick={handleSubmitGuesses}
+                  title="Submit your guesses"
+                >
+                  <FiCheck size={20} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

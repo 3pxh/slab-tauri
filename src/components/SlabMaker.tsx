@@ -1,14 +1,17 @@
 import React from 'react';
-import { FiRotateCcw, FiRefreshCw, FiPlus } from 'react-icons/fi';
+import { FiRotateCcw, FiRefreshCw, FiPlus, FiTarget } from 'react-icons/fi';
 import { SlabData, createSlab, Group, Cell, COLORS, getGroup } from './Slab';
 
 
 
 type SlabMakerProps = {
   onCreate: (slab: SlabData) => void;
+  onGuess?: () => void;
+  guessCount?: number;
+  maxGuesses?: number;
 };
 
-const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate }) => {
+const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0, maxGuesses = 3 }) => {
   const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
   const [history, setHistory] = React.useState<SlabData[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -523,6 +526,16 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate }) => {
           >
             <FiRefreshCw size={20} />
           </button>
+          {onGuess && (
+            <button
+              className="px-3 py-2 rounded text-sm bg-green-500 text-white hover:bg-green-600 flex flex-col items-center"
+              onClick={onGuess}
+              title="Attempt a guess"
+            >
+              <FiTarget size={20} />
+              <span className="text-xs">{guessCount}/{maxGuesses}</span>
+            </button>
+          )}
           <button
             className="px-3 py-2 rounded text-sm bg-blue-500 text-white hover:bg-blue-600"
             onClick={() => onCreate(slab)}
