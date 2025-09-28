@@ -32,7 +32,7 @@ const Instructions: React.FC = () => {
               <FaLightbulb className="w-4 h-4 text-white" />
             </div>
           </div>
-          <p>Guess 5 slabs correctly to win. You can't make slabs until you finish a guess.</p>
+          <p>Guess 5 slabs correctly to win. You can't make slabs while a guess is in progress.</p>
         </div>
         
         <div className="flex items-start space-x-3">
