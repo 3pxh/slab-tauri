@@ -4,5 +4,6 @@
 
 /* Prevent pull-to-refresh on mobile */
 html, body {
+  overflow: hidden;
   overscroll-behavior-y: contain;
 } 
