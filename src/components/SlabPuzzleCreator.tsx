@@ -1,7 +1,7 @@
 import React from 'react';
-import { Puzzle, createPuzzle, getAllDates } from '../lib/supabase';
+import { Puzzle, createPuzzle, getAllDates, getPuzzle } from '../lib/supabase';
 import SlabMaker from './SlabMaker';
-import Slab, { SlabData, serializeSlabData } from './Slab';
+import Slab, { SlabData, serializeSlabData, deserializeSlabData } from './Slab';
 
 type SlabWithId = SlabData & { id: number };
 
@@ -18,9 +18,11 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   const [evaluationFn, setEvaluationFn] = React.useState(puzzle.evaluate_fn || '');
   const [isCreating, setIsCreating] = React.useState(false);
   const [shownExamples, setShownExamples] = React.useState<boolean[]>([]);
+  const [hiddenExamples, setHiddenExamples] = React.useState<boolean[]>([]);
   const [evaluationResults, setEvaluationResults] = React.useState<boolean[]>([]);
   const [isRunning, setIsRunning] = React.useState(false);
   const [displayDate, setDisplayDate] = React.useState(puzzle.publish_date);
+  const [isLoadingHistory, setIsLoadingHistory] = React.useState(false);
 
   // Function to calculate the next date after the last puzzle date
   const calculateNextDate = (dates: string[]): string => {
@@ -37,6 +39,77 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
     nextDate.setDate(nextDate.getDate() + 1);
     
     return nextDate.toISOString();
+  };
+
+  // Function to load the last 3 days of puzzles and their examples
+  const loadLastThreeDaysPuzzles = async () => {
+    setIsLoadingHistory(true);
+    try {
+      const response = await getAllDates();
+      console.log('All puzzle dates:', response.dates);
+      
+      if (response.dates.length === 0) {
+        console.log('No existing puzzles found');
+        return;
+      }
+      
+      // Sort dates in descending order (most recent first)
+      const sortedDates = response.dates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+      
+      // Get the last 3 days worth of puzzles
+      const lastThreeDays = sortedDates.slice(0, 3);
+      console.log('Loading puzzles for last 3 days:', lastThreeDays);
+      
+      const allExamples: SlabWithId[] = [];
+      
+      // Fetch each puzzle and extract examples
+      for (const date of lastThreeDays) {
+        try {
+          const puzzleResponse = await getPuzzle(date);
+          if (puzzleResponse.success && puzzleResponse.puzzle) {
+            const puzzleData = puzzleResponse.puzzle;
+            console.log(`Loading examples from puzzle: ${puzzleData.name} (${date})`);
+            
+            // Add shown examples
+            if (puzzleData.shown_examples && puzzleData.shown_examples.length > 0) {
+              puzzleData.shown_examples.forEach((example: any, index: number) => {
+                const deserializedSlab = deserializeSlabData(example);
+                allExamples.push({
+                  ...deserializedSlab,
+                  id: Date.now() + Math.random() + index // Ensure unique IDs
+                });
+              });
+            }
+            
+            // Add hidden examples
+            if (puzzleData.hidden_examples && puzzleData.hidden_examples.length > 0) {
+              puzzleData.hidden_examples.forEach((example: any, index: number) => {
+                const deserializedSlab = deserializeSlabData(example);
+                allExamples.push({
+                  ...deserializedSlab,
+                  id: Date.now() + Math.random() + index + 1000 // Ensure unique IDs
+                });
+              });
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to load puzzle for date ${date}:`, error);
+        }
+      }
+      
+      if (allExamples.length > 0) {
+        setCreatedSlabs(prev => [...prev, ...allExamples]);
+        setShownExamples(prev => [...prev, ...new Array(allExamples.length).fill(false)]);
+        setHiddenExamples(prev => [...prev, ...new Array(allExamples.length).fill(false)]);
+        setEvaluationResults(prev => [...prev, ...new Array(allExamples.length).fill(false)]);
+        console.log(`Loaded ${allExamples.length} examples from last 3 days of puzzles`);
+      }
+      
+    } catch (error) {
+      console.error('Failed to load puzzle history:', error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
   };
 
   // Set the publish date automatically when component mounts
@@ -82,7 +155,8 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
     };
     
     setCreatedSlabs(prev => [...prev, slabWithId]);
-    setShownExamples(prev => [...prev, true]); // Default to shown example
+    setShownExamples(prev => [...prev, false]); // Initialize shown example
+    setHiddenExamples(prev => [...prev, false]); // Initialize hidden example
     setEvaluationResults(prev => [...prev, false]); // Initialize evaluation result
   };
 
@@ -91,6 +165,42 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       const newShown = [...prev];
       newShown[index] = isShown;
       return newShown;
+    });
+  };
+
+  const handleHiddenExampleChange = (index: number, isHidden: boolean) => {
+    setHiddenExamples(prev => {
+      const newHidden = [...prev];
+      newHidden[index] = isHidden;
+      return newHidden;
+    });
+  };
+
+  const handleSlabClick = (index: number) => {
+    // Move the clicked slab to the beginning of the list
+    setCreatedSlabs(prev => {
+      const newSlabs = [...prev];
+      const clickedSlab = newSlabs.splice(index, 1)[0];
+      return [clickedSlab, ...newSlabs];
+    });
+
+    // Reorder the corresponding state arrays
+    setShownExamples(prev => {
+      const newShown = [...prev];
+      const clickedShown = newShown.splice(index, 1)[0];
+      return [clickedShown, ...newShown];
+    });
+
+    setHiddenExamples(prev => {
+      const newHidden = [...prev];
+      const clickedHidden = newHidden.splice(index, 1)[0];
+      return [clickedHidden, ...newHidden];
+    });
+
+    setEvaluationResults(prev => {
+      const newResults = [...prev];
+      const clickedResult = newResults.splice(index, 1)[0];
+      return [clickedResult, ...newResults];
     });
   };
 
@@ -139,7 +249,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
     try {
       // Separate slabs into shown and hidden examples
       const shownSlabs = createdSlabs.filter((_, index) => shownExamples[index]);
-      const hiddenSlabs = createdSlabs.filter((_, index) => !shownExamples[index]);
+      const hiddenSlabs = createdSlabs.filter((_, index) => hiddenExamples[index]);
 
       // Serialize the slabs to convert Map objects to plain objects for JSON storage
       const serializedShownSlabs = shownSlabs.map(slab => serializeSlabData(slab));
@@ -214,6 +324,17 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
         </div>
       </div>
       
+      {/* Load History Button */}
+      <div className="mb-4">
+        <button
+          onClick={loadLastThreeDaysPuzzles}
+          disabled={isLoadingHistory}
+          className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+        >
+          {isLoadingHistory ? 'Loading...' : 'Load Last 3 Days of Puzzles'}
+        </button>
+      </div>
+
       {/* SlabMaker for creating slabs */}
       <div className="mb-8">
         <SlabMaker onCreate={handleSlabCreate} />
@@ -227,18 +348,34 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
             {createdSlabs.map((slab, index) => (
               <div key={slab.id} className="flex flex-col items-center">
                 <div className="mb-2 text-sm font-medium">Slab #{index + 1}</div>
-                <Slab slab={slab} size="small" />
-                <div className="mt-2 flex items-center">
-                  <input
-                    type="checkbox"
-                    id={`shown-${index}`}
-                    checked={shownExamples[index] || false}
-                    onChange={(e) => handleShownExampleChange(index, e.target.checked)}
-                    className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor={`shown-${index}`} className="text-sm text-gray-700">
-                    Shown Example?
-                  </label>
+                <div 
+                  onClick={() => handleSlabClick(index)}
+                  className="cursor-pointer hover:opacity-80 transition-opacity duration-200"
+                  title="Click to move to front"
+                >
+                  <Slab slab={slab} size="small" />
+                </div>
+                <div className="mt-2 flex gap-1">
+                  <button
+                    onClick={() => handleShownExampleChange(index, !shownExamples[index])}
+                    className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                      shownExamples[index] 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Shown
+                  </button>
+                  <button
+                    onClick={() => handleHiddenExampleChange(index, !hiddenExamples[index])}
+                    className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                      hiddenExamples[index] 
+                        ? 'bg-red-600 text-white' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Hidden
+                  </button>
                 </div>
                 {/* Evaluation Result Dot */}
                 {evaluationResults.length > index && (
@@ -259,8 +396,27 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
         </div>
       )}
 
+      {/* Example Count Summary */}
+      {createdSlabs.length > 0 && (
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">Example Summary</h4>
+            <div className="flex justify-between text-sm">
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-blue-600 rounded-full mr-2"></div>
+                <span className="text-gray-600">Shown Examples: <strong>{shownExamples.filter(Boolean).length}</strong></span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-red-600 rounded-full mr-2"></div>
+                <span className="text-gray-600">Hidden Examples: <strong>{hiddenExamples.filter(Boolean).length}</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Create Puzzle Button */}
-      <div className="mt-8 pt-6 border-t border-gray-200">
+      <div className="mt-4">
         <button
           onClick={handleCreatePuzzle}
           disabled={isCreating || !puzzleName.trim() || !evaluationFn.trim()}

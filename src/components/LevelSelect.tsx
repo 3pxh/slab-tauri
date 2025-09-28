@@ -1,6 +1,7 @@
 import React from 'react';
 import { getAllDates } from '../lib/supabase';
 import Instructions from './Instructions';
+import favicon from '../assets/favicon.png';
 
 interface LevelSelectProps {
   onSelect: (date: Date) => void;
@@ -82,7 +83,20 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onCreatePuzzle }) =
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-4">      
+    <div className="w-full max-w-md mx-auto p-4">
+      {/* App Header */}
+      <div className="flex items-center justify-center mb-6">
+        <img 
+          src={favicon} 
+          alt="Slab! App Icon" 
+          className="w-12 h-12 rounded-lg mr-3"
+        />
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Slab!</h1>
+          <p className="text-sm text-gray-600 italic">a formal imagining</p>
+        </div>
+      </div>
+      
       <div className="mb-4">
         {isLoadingDates ? (
           <div className="flex items-center justify-center py-8">
@@ -107,7 +121,7 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onCreatePuzzle }) =
       </div>
 
       {!isLoadingDates && (
-        <>
+        <div className="mb-4">
           <div className="grid grid-cols-7 gap-1 text-center text-sm text-gray-600 mb-2">
             {dayNames.map((dn) => (
               <div key={dn} className="py-1">
@@ -141,11 +155,13 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onCreatePuzzle }) =
               );
             })}
           </div>
-        </>
+        </div>
       )}
 
+      <Instructions />
+
       {!__HIDE_PUZZLE_CREATOR__ && (
-        <div className="mb-6 text-center">
+        <div className="mt-4 text-center">
           <button
             onClick={onCreatePuzzle}
             className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
@@ -154,8 +170,6 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onCreatePuzzle }) =
           </button>
         </div>
       )}
-
-      <Instructions />
     </div>
   );
 };
