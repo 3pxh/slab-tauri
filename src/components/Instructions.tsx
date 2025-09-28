@@ -1,4 +1,5 @@
 import React from 'react';
+import { FaLightbulb } from 'react-icons/fa6';
 
 const Instructions: React.FC = () => {
   return (
@@ -13,7 +14,7 @@ const Instructions: React.FC = () => {
               <div className="absolute w-4 h-4 bg-black rounded-full" style={{ left: '8px', top: '8px' }}></div>
             </div>
           </div>
-          <p>There is a hidden rule which marks slabs as black or white. (e.g. "no red squares")</p>
+          <p>There is a hidden rule which marks slabs as black or white (for example, "no red squares").</p>
         </div>
         
         <div className="flex items-start space-x-3">
@@ -27,10 +28,8 @@ const Instructions: React.FC = () => {
         
         <div className="flex items-start space-x-3">
           <div className="flex-shrink-0">
-            <div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
+            <div className="w-6 h-6 bg-yellow-500 rounded flex items-center justify-center">
+              <FaLightbulb className="w-4 h-4 text-white" />
             </div>
           </div>
           <p>Guess 5 slabs correctly to win. You can't make slabs until you finish a guess.</p>
