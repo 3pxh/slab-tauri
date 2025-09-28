@@ -6,4 +6,11 @@
 html, body {
   overflow: hidden;
   overscroll-behavior-y: contain;
+  height: 100%;
+}
+
+#root {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 } 
