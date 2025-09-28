@@ -1,5 +1,7 @@
 import React from 'react';
-import { FiRotateCcw, FiRefreshCw, FiPlus, FiTarget, FiStar } from 'react-icons/fi';
+import { FiRotateCcw, FiRefreshCw, FiPlus, FiStar } from 'react-icons/fi';
+import { FaArrowDownUpAcrossLine, FaLightbulb } from 'react-icons/fa6';
+import { PiShuffleBold } from 'react-icons/pi';
 import { SlabData, createSlab, Group, Cell, COLORS, getGroup } from './Slab';
 
 
@@ -12,9 +14,12 @@ type SlabMakerProps = {
   hasWon?: boolean;
   flashGuessButton?: boolean;
   isInGuessSession?: boolean;
+  initialSlab?: SlabData;
+  onShuffle?: () => void;
+  onSort?: () => void;
 };
 
-const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0, maxGuesses = 3, hasWon = false, flashGuessButton = false, isInGuessSession = false }) => {
+const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0, maxGuesses = 3, hasWon = false, flashGuessButton = false, isInGuessSession = false, initialSlab, onShuffle, onSort }) => {
   const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
   const [history, setHistory] = React.useState<SlabData[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -29,6 +34,21 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
   const preDragSnapshotRef = React.useRef<SlabData | null>(null);
   // Track last visited cell during drag to detect diagonals
   const lastDragCellRef = React.useRef<{row: number, col: number} | null>(null);
+
+  // Handle initialSlab prop changes
+  React.useEffect(() => {
+    if (initialSlab) {
+      // Push current state to history before setting new slab
+      pushHistory();
+      setSlab(cloneSlab(initialSlab));
+      setSelectedGroup(null);
+      setIsDragging(false);
+      setEncounteredGroups(new Set());
+      setFirstGroup(null);
+      setDragStartCell(null);
+      preDragSnapshotRef.current = null;
+    }
+  }, [initialSlab]);
 
   // Helper: deep clone a slab snapshot
   const cloneSlab = (source: SlabData): SlabData => {
@@ -513,62 +533,91 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
       
       {/* Control Buttons */}
       <div className="mt-2">
-        <div className="flex justify-center gap-2">
-          <button
-            className={`px-3 py-2 rounded text-sm ${history.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
-            onClick={handleUndo}
-            disabled={history.length === 0}
-            title={history.length === 0 ? 'Nothing to undo' : 'Undo last action'}
-          >
-            <FiRotateCcw size={20} />
-          </button>
-          <button
-            className="px-3 py-2 rounded text-sm hover:bg-gray-100"
-            onClick={handleReset}
-            title="Reset to a new slab"
-          >
-            <FiRefreshCw size={20} />
-          </button>
-          {onGuess && (
+        <div className="flex justify-between items-center">
+          {/* Left group: Undo, Reset */}
+          <div className="flex gap-2">
             <button
-              className={`px-3 py-2 rounded text-sm flex flex-col items-center transition-all duration-300 ${
-                flashGuessButton 
-                  ? 'animate-pulse bg-yellow-400 text-white shadow-lg scale-110' 
-                  : hasWon
-                    ? 'bg-yellow-500 text-white hover:bg-yellow-600'
-                    : isInGuessSession
-                      ? 'bg-green-500 text-white hover:bg-green-600'
-                      : guessCount > 0 
-                        ? 'bg-gray-400 text-white' 
-                        : 'bg-gray-400 text-white cursor-not-allowed'
-              }`}
-              onClick={onGuess}
-              disabled={guessCount <= 0 && !hasWon && !isInGuessSession}
-              title={
-                hasWon 
-                  ? "Puzzle completed!" 
-                  : guessCount > 0 
-                    ? "Attempt a guess" 
-                    : "No guesses remaining"
-              }
+              className={`px-3 py-2 rounded text-sm bg-gray-100 h-12 flex items-center justify-center ${history.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'}`}
+              onClick={handleUndo}
+              disabled={history.length === 0}
+              title={history.length === 0 ? 'Nothing to undo' : 'Undo last action'}
             >
-              {hasWon ? <FiStar size={20} /> : <FiTarget size={20} />}
-              <span className="text-xs">
-                {hasWon ? "★" : `${guessCount}/${maxGuesses}`}
-              </span>
+              <FiRotateCcw size={16} />
             </button>
-          )}
-          <button
-            className={`px-3 py-2 rounded text-sm ${
-              isInGuessSession 
-                ? 'bg-gray-400 text-white' 
-                : 'bg-blue-500 text-white hover:bg-blue-600'
-            }`}
-            onClick={() => onCreate(slab)}
-            title={isInGuessSession ? "Complete your guess first" : "Create puzzle from current slab"}
-          >
-            <FiPlus size={20} />
-          </button>
+            <button
+              className="px-3 py-2 rounded text-sm bg-gray-100 hover:bg-gray-200 h-12 flex items-center justify-center"
+              onClick={handleReset}
+              title="Reset to a new slab"
+            >
+              <FiRefreshCw size={16} />
+            </button>
+          </div>
+          
+          {/* Center group: Shuffle, Sort */}
+          <div className="flex gap-2">
+            {onShuffle && (
+              <button
+                className="px-3 py-2 rounded text-sm bg-gray-100 hover:bg-gray-200 flex items-center justify-center h-12"
+                onClick={onShuffle}
+                title="Randomize slab order"
+              >
+                <PiShuffleBold size={16} />
+              </button>
+            )}
+            {onSort && (
+              <button
+                className="px-3 py-2 rounded text-sm bg-gray-100 hover:bg-gray-200 flex items-center justify-center h-12"
+                onClick={onSort}
+                title="Sort by evaluation (black first, then white)"
+              >
+                <FaArrowDownUpAcrossLine size={16} />
+              </button>
+            )}
+          </div>
+          
+          {/* Right group: Create, Guess */}
+          <div className="flex gap-2">
+            <button
+              className={`px-3 py-2 rounded text-sm h-12 flex items-center justify-center ${
+                isInGuessSession 
+                  ? 'bg-gray-400 text-white' 
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
+              onClick={() => onCreate(slab)}
+              title={isInGuessSession ? "Complete your guess first" : "Create puzzle from current slab"}
+            >
+              <FiPlus size={16} />
+            </button>
+            {onGuess && (
+              <button
+                className={`px-3 py-2 rounded text-sm flex flex-col items-center justify-center h-12 transition-all duration-300 ${
+                  flashGuessButton 
+                    ? 'animate-pulse bg-yellow-400 text-white shadow-lg scale-110' 
+                    : hasWon
+                      ? 'bg-yellow-500 text-white hover:bg-yellow-600'
+                      : isInGuessSession
+                        ? 'bg-green-500 text-white hover:bg-green-600'
+                        : guessCount > 0 
+                          ? 'bg-yellow-500 text-white hover:bg-yellow-600' 
+                          : 'bg-gray-400 text-white cursor-not-allowed'
+                }`}
+                onClick={onGuess}
+                disabled={guessCount <= 0 && !hasWon && !isInGuessSession}
+                title={
+                  hasWon 
+                    ? "Puzzle completed!" 
+                    : guessCount > 0 
+                      ? "Attempt a guess" 
+                      : "No guesses remaining"
+                }
+              >
+                {hasWon ? <FiStar size={16} /> : <FaLightbulb size={16} />}
+                <span className="text-xs">
+                  {hasWon ? "★" : `${guessCount}/${maxGuesses}`}
+                </span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

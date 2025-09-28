@@ -61,7 +61,7 @@ function App() {
           <div>
             <LevelSelect onSelect={handleSelect} onCreatePuzzle={handleCreatePuzzle} />
             {loading && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div className="bg-white p-4 rounded-lg">
                   <div className="text-center">Loading puzzle...</div>
                 </div>

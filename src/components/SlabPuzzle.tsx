@@ -26,6 +26,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   const [guessesSubmitted, setGuessesSubmitted] = React.useState(false);
   const [isInGuessSession, setIsInGuessSession] = React.useState(false);
   const [flashGuessButton, setFlashGuessButton] = React.useState(false);
+  const [selectedSlabForMaker, setSelectedSlabForMaker] = React.useState<SlabData | null>(null);
 
   // Load shown examples into state when component mounts
   React.useEffect(() => {
@@ -57,7 +58,57 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       groups: clonedGroups
     };
     
-    setAllSlabs(prev => [clonedSlab, ...prev]);
+    setAllSlabs(prev => {
+      // Remove any existing slabs that are identical to the new one
+      const filteredSlabs = prev.filter(existingSlab => !areSlabsEqual(clonedSlab, existingSlab));
+      // Add the new slab at the beginning
+      return [clonedSlab, ...filteredSlabs];
+    });
+    
+    // Clear the selected slab after creating
+    setSelectedSlabForMaker(null);
+  };
+
+  const handleSlabClick = (clickedSlab: SlabData) => {
+    // Deep clone the slab to prevent reference sharing
+    const clonedCells: SlabData['cells'] = clickedSlab.cells.map(row => row.map(cell => ({ ...cell })));
+    const clonedGroups = new Map<number, { id: number; color: number }>();
+    clickedSlab.groups.forEach((group, id) => {
+      clonedGroups.set(id, { ...group });
+    });
+    
+    const clonedSlab: SlabData = {
+      cells: clonedCells,
+      groups: clonedGroups
+    };
+    
+    setSelectedSlabForMaker(clonedSlab);
+  };
+
+  const handleShuffle = () => {
+    setAllSlabs(prev => {
+      const shuffled = [...prev];
+      // Fisher-Yates shuffle algorithm
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    });
+  };
+
+  const handleSort = () => {
+    setAllSlabs(prev => {
+      const sorted = [...prev].sort((a, b) => {
+        const aResult = evaluateSlab(a);
+        const bResult = evaluateSlab(b);
+        // Black (true) comes first, then white (false)
+        if (aResult && !bResult) return -1;
+        if (!aResult && bResult) return 1;
+        return 0;
+      });
+      return sorted;
+    });
   };
 
   // Mouse-based drag and drop
@@ -426,6 +477,9 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         hasWon={hasWon}
         flashGuessButton={flashGuessButton}
         isInGuessSession={isInGuessSession}
+        initialSlab={selectedSlabForMaker || undefined}
+        onShuffle={handleShuffle}
+        onSort={handleSort}
       />
 
       {/* All Slabs */}
@@ -465,7 +519,24 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                       cursor: 'grab'
                     }}
                   >
-                    <div className="rounded-sm cursor-move relative w-full h-full">
+                    <div 
+                      className="rounded-sm cursor-move relative w-full h-full hover:ring-2 hover:ring-blue-400 hover:ring-opacity-50"
+                      onClick={(e) => {
+                        // Only handle click if not dragging
+                        if (!isMouseDragging && touchDraggedIndex === null) {
+                          e.stopPropagation();
+                          handleSlabClick(slab);
+                        }
+                      }}
+                      onTouchEnd={(e) => {
+                        // Only handle tap if not dragging
+                        if (touchDraggedIndex === null) {
+                          e.stopPropagation();
+                          handleSlabClick(slab);
+                        }
+                      }}
+                      title="Click to edit in SlabMaker"
+                    >
                       <Slab slab={slab} size="small" className="w-full h-full" />
                       {/* Evaluation indicator circle */}
                       <div 
@@ -530,17 +601,17 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                     <div className="flex items-center gap-3 mb-3">
                       {/* White Guess Button (Left) */}
                       <button
-                        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${
+                        className={`w-8 h-8 rounded-full flex items-center justify-center ${
                           currentGuess === 'white' 
-                            ? 'bg-white border-gray-400' 
-                            : 'bg-gray-100 border-gray-300 hover:bg-gray-200'
+                            ? 'bg-white border-4 border-yellow-500 shadow-xl' 
+                            : 'bg-white border-2 border-gray-400 hover:border-gray-500'
                         }`}
                         onClick={() => handleGuessSelect(index, 'white')}
                         title="Guess: White (False)"
                       >
                         <FiChevronLeft 
                           size={16} 
-                          className={currentGuess === 'white' ? 'text-gray-800' : 'text-gray-600'} 
+                          className="text-gray-800" 
                         />
                       </button>
                       
@@ -551,17 +622,17 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                       
                       {/* Black Guess Button (Right) */}
                       <button
-                        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${
+                        className={`w-8 h-8 rounded-full flex items-center justify-center ${
                           currentGuess === 'black' 
-                            ? 'bg-black border-gray-400' 
-                            : 'bg-gray-100 border-gray-300 hover:bg-gray-200'
+                            ? 'bg-black border-4 border-yellow-500 shadow-xl' 
+                            : 'bg-black border-2 border-gray-400 hover:border-gray-500'
                         }`}
                         onClick={() => handleGuessSelect(index, 'black')}
                         title="Guess: Black (True)"
                       >
                         <FiChevronRight 
                           size={16} 
-                          className={currentGuess === 'black' ? 'text-white' : 'text-gray-600'} 
+                          className="text-white" 
                         />
                       </button>
                     </div>
@@ -602,11 +673,26 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                   </button>
                 ) : (
                   <button
-                    className="px-6 py-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-2"
+                    className={`px-6 py-3 rounded-lg flex items-center gap-2 ${
+                      getSlabsForOverlay().length > 0 && getSlabsForOverlay().every((_, index) => guesses[index] !== null && guesses[index] !== undefined)
+                        ? 'bg-blue-500 text-white hover:bg-blue-600'
+                        : 'bg-gray-400 text-white cursor-not-allowed'
+                    }`}
                     onClick={handleSubmitGuesses}
-                    title="Submit your guesses"
+                    disabled={getSlabsForOverlay().length === 0 || !getSlabsForOverlay().every((_, index) => guesses[index] !== null && guesses[index] !== undefined)}
+                    title={
+                      getSlabsForOverlay().length > 0 && getSlabsForOverlay().every((_, index) => guesses[index] !== null && guesses[index] !== undefined)
+                        ? "Submit your guesses"
+                        : "Please guess all slabs before submitting"
+                    }
                   >
-                    <FiCheck size={20} />
+                    {getSlabsForOverlay().length > 0 && getSlabsForOverlay().every((_, index) => guesses[index] !== null && guesses[index] !== undefined) ? (
+                      <FiCheck size={20} />
+                    ) : (
+                      <span>
+                        Guess {getSlabsForOverlay().filter((_, index) => guesses[index] === null || guesses[index] === undefined).length} more
+                      </span>
+                    )}
                   </button>
                 )}
               </div>
