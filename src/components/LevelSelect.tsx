@@ -1,5 +1,6 @@
 import React from 'react';
 import { getAllDates } from '../lib/supabase';
+import Instructions from './Instructions';
 
 interface LevelSelectProps {
   onSelect: (date: Date) => void;
@@ -153,6 +154,8 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onCreatePuzzle }) =
           </button>
         </div>
       )}
+
+      <Instructions />
     </div>
   );
 };
