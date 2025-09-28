@@ -23,7 +23,7 @@ const Instructions: React.FC = () => {
               <span className="text-white text-sm font-bold">+</span>
             </div>
           </div>
-          <p>Create slabs to see how they follow the rule.</p>
+          <p>Make your own slabs to see how they follow the rule.</p>
         </div>
         
         <div className="flex items-start space-x-3">
