@@ -56,7 +56,7 @@ const Instructions: React.FC = () => {
           >
             Bluesky
           </a>
-          {' '}or contact us at{' '}
+          {' '}or reach out to{' '}
           hi åt slab17 döt com
         </p>
       </div>
