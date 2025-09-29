@@ -92,7 +92,7 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onCreatePuzzle }) =
           className="w-12 h-12 rounded-lg mr-3"
         />
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Slab!</h1>
+          <h1 className="text-3xl font-bold text-gray-800">Slab 17</h1>
           <p className="text-sm text-gray-600 italic">a formal imagining</p>
         </div>
       </div>
