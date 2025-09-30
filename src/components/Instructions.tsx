@@ -1,5 +1,6 @@
 import React from 'react';
 import { FaLightbulb } from 'react-icons/fa6';
+import { GiPlasticDuck } from 'react-icons/gi';
 
 const Instructions: React.FC = () => {
   return (
@@ -7,17 +8,16 @@ const Instructions: React.FC = () => {
       <h3 className="text-lg font-semibold text-gray-800 mb-3">How to Play</h3>
       
       <div className="space-y-3 text-sm text-gray-700">
-        <div className="flex items-start space-x-3">
-          <div className="flex-shrink-0 mt-1">
-            <div className="relative w-6 h-6">
-              <div className="absolute w-4 h-4 bg-white border border-gray-300 rounded-full z-10" style={{ left: '0px', top: '0px' }}></div>
-              <div className="absolute w-4 h-4 bg-black rounded-full" style={{ left: '8px', top: '8px' }}></div>
+        <div className="flex items-center space-x-3">
+          <div className="flex-shrink-0">
+            <div className="w-6 h-6 bg-white border border-gray-300 rounded flex items-center justify-center">
+              <GiPlasticDuck className="w-4 h-4 text-black" />
             </div>
           </div>
           <p>There is a hidden rule which marks slabs as a duck (for example, "no red squares").</p>
         </div>
         
-        <div className="flex items-start space-x-3">
+        <div className="flex items-center space-x-3">
           <div className="flex-shrink-0">
             <div className="w-6 h-6 bg-blue-500 rounded flex items-center justify-center">
               <span className="text-white text-sm font-bold">+</span>
@@ -26,7 +26,7 @@ const Instructions: React.FC = () => {
           <p>Make your own slabs to see which ones are ducks.</p>
         </div>
         
-        <div className="flex items-start space-x-3">
+        <div className="flex items-center space-x-3">
           <div className="flex-shrink-0">
             <div className="w-6 h-6 bg-yellow-500 rounded flex items-center justify-center">
               <FaLightbulb className="w-4 h-4 text-white" />
@@ -35,7 +35,7 @@ const Instructions: React.FC = () => {
           <p>Guess 5 slabs correctly to win. You can't make slabs while a guess is in progress.</p>
         </div>
         
-        <div className="flex items-start space-x-3">
+        <div className="flex items-center space-x-3">
           <div className="flex-shrink-0">
             <div className="w-6 h-6 bg-gray-200 rounded flex items-center justify-center">
               <span className="text-gray-700 text-xs font-bold">3/3</span>
