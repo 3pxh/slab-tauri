@@ -23,7 +23,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
   const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
   const [history, setHistory] = React.useState<SlabData[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
-  const [encounteredGroups, setEncounteredGroups] = React.useState<Set<number>>(new Set());
+  const [encounteredCells, setEncounteredCells] = React.useState<Set<string>>(new Set());
   const [firstGroup, setFirstGroup] = React.useState<number | null>(null);
   const [dragStartCell, setDragStartCell] = React.useState<{row: number, col: number} | null>(null);
   const [selectedGroup, setSelectedGroup] = React.useState<number | null>(null);
@@ -43,7 +43,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
       setSlab(cloneSlab(initialSlab));
       setSelectedGroup(null);
       setIsDragging(false);
-      setEncounteredGroups(new Set());
+      setEncounteredCells(new Set());
       setFirstGroup(null);
       setDragStartCell(null);
       preDragSnapshotRef.current = null;
@@ -60,6 +60,102 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
     return { cells: clonedCells, groups: clonedGroups };
   };
 
+  // Helper: find all connected components of a group using flood fill
+  const findConnectedComponents = (groupId: number, cells: Cell[][]): {row: number, col: number}[][] => {
+    const components: {row: number, col: number}[][] = [];
+    const visited = new Set<string>();
+    
+    // Find all cells belonging to this group
+    const groupCells: {row: number, col: number}[] = [];
+    for (let r = 0; r < 6; r++) {
+      for (let c = 0; c < 6; c++) {
+        if (cells[r][c].groupId === groupId) {
+          groupCells.push({row: r, col: c});
+        }
+      }
+    }
+    
+    // For each unvisited cell, do flood fill to find connected component
+    for (const startCell of groupCells) {
+      const cellKey = `${startCell.row},${startCell.col}`;
+      if (visited.has(cellKey)) continue;
+      
+      const component: {row: number, col: number}[] = [];
+      const stack = [startCell];
+      
+      while (stack.length > 0) {
+        const current = stack.pop()!;
+        const currentKey = `${current.row},${current.col}`;
+        
+        if (visited.has(currentKey)) continue;
+        visited.add(currentKey);
+        component.push(current);
+        
+        // Check all 4 adjacent cells
+        const directions = [
+          {row: current.row - 1, col: current.col}, // up
+          {row: current.row + 1, col: current.col}, // down
+          {row: current.row, col: current.col - 1}, // left
+          {row: current.row, col: current.col + 1}  // right
+        ];
+        
+        for (const dir of directions) {
+          if (dir.row >= 0 && dir.row < 6 && dir.col >= 0 && dir.col < 6) {
+            const dirKey = `${dir.row},${dir.col}`;
+            if (!visited.has(dirKey) && cells[dir.row][dir.col].groupId === groupId) {
+              stack.push(dir);
+            }
+          }
+        }
+      }
+      
+      if (component.length > 0) {
+        components.push(component);
+      }
+    }
+    
+    return components;
+  };
+
+  // Helper: split disconnected groups into separate groups
+  const splitDisconnectedGroups = (slab: SlabData): SlabData => {
+    const newSlab = cloneSlab(slab);
+    const groupsToCheck = Array.from(slab.groups.keys());
+    
+    for (const groupId of groupsToCheck) {
+      const components = findConnectedComponents(groupId, newSlab.cells);
+      
+      // If there are multiple components, split them into separate groups
+      if (components.length > 1) {
+        const originalGroup = newSlab.groups.get(groupId);
+        if (!originalGroup) continue;
+        
+        // Keep the first component with the original group ID
+        // Create new groups for the remaining components
+        for (let i = 1; i < components.length; i++) {
+          const component = components[i];
+          const newGroupId = 6 * component[0].row + component[0].col; // Use first cell position as unique ID
+          
+          // Update all cells in this component to use the new group ID
+          for (const cell of component) {
+            newSlab.cells[cell.row][cell.col] = {
+              ...newSlab.cells[cell.row][cell.col],
+              groupId: newGroupId
+            };
+          }
+          
+          // Create new group with same color as original
+          newSlab.groups.set(newGroupId, {
+            id: newGroupId,
+            color: originalGroup.color
+          });
+        }
+      }
+    }
+    
+    return newSlab;
+  };
+
   // Push current slab into history
   const pushHistory = (snapshot?: SlabData) => {
     setHistory(prev => [...prev, cloneSlab(snapshot ?? slab)]);
@@ -74,7 +170,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
       setSlab(cloneSlab(last));
       setSelectedGroup(null);
       setIsDragging(false);
-      setEncounteredGroups(new Set());
+      setEncounteredCells(new Set());
       setFirstGroup(null);
       setDragStartCell(null);
       preDragSnapshotRef.current = null;
@@ -88,7 +184,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
     setSlab(createSlab());
     setSelectedGroup(null);
     setIsDragging(false);
-    setEncounteredGroups(new Set());
+    setEncounteredCells(new Set());
     setFirstGroup(null);
     setDragStartCell(null);
     preDragSnapshotRef.current = null;
@@ -130,7 +226,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
     
     setIsDragging(true);
     setFirstGroup(groupId);
-    setEncounteredGroups(new Set([groupId]));
+    setEncounteredCells(new Set([`${row},${col}`]));
     setDragStartCell({ row, col });
     // Capture snapshot now; push to history at drag end if there was a change
     preDragSnapshotRef.current = cloneSlab(slab);
@@ -164,50 +260,64 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
           const lowerCandidate = candidateA.row >= candidateB.row ? candidateA : candidateB;
           const adjGroupId = slab.cells[lowerCandidate.row][lowerCandidate.col].groupId;
           if (firstGroup !== null && adjGroupId !== firstGroup) {
-            setEncounteredGroups(prev => {
-              if (prev.has(adjGroupId)) return new Set(prev);
+            const cellKey = `${lowerCandidate.row},${lowerCandidate.col}`;
+            setEncounteredCells(prev => {
+              if (prev.has(cellKey)) return new Set(prev);
               setSlab(prevSlab => {
                 const newSlab = { ...prevSlab };
                 const newGroups = new Map(prevSlab.groups);
-                newSlab.cells = prevSlab.cells.map(rowArr =>
-                  rowArr.map(cell => (
-                    cell.groupId === adjGroupId ? { ...cell, groupId: firstGroup } : cell
-                  ))
+                // Only merge the individual cell, not the entire group
+                newSlab.cells[lowerCandidate.row][lowerCandidate.col] = {
+                  ...newSlab.cells[lowerCandidate.row][lowerCandidate.col],
+                  groupId: firstGroup
+                };
+                // Check if the original group still has any cells
+                const hasRemainingCells = newSlab.cells.some(rowArr => 
+                  rowArr.some(cell => cell.groupId === adjGroupId)
                 );
-                newGroups.delete(adjGroupId);
+                if (!hasRemainingCells) {
+                  newGroups.delete(adjGroupId);
+                }
                 newSlab.groups = newGroups;
-                return newSlab;
+                // Immediately check for and split disconnected groups
+                return splitDisconnectedGroups(newSlab);
               });
               const next = new Set(prev);
-              next.add(adjGroupId);
+              next.add(cellKey);
               return next;
             });
           }
         }
       }
 
-      // As we drag, merge the entire encountered group into the starting group
+      // As we drag, merge only the individual cell we're dragging over
       if (firstGroup !== null && groupId !== firstGroup) {
-        setEncounteredGroups(prev => {
-          if (prev.has(groupId)) return new Set(prev);
+        const cellKey = `${row},${col}`;
+        setEncounteredCells(prev => {
+          if (prev.has(cellKey)) return new Set(prev);
 
           setSlab(prevSlab => {
             const newSlab = { ...prevSlab };
             const newGroups = new Map(prevSlab.groups);
-            // Reassign all cells of the encountered group to the first group
-            newSlab.cells = prevSlab.cells.map(rowArr =>
-              rowArr.map(cell => (
-                cell.groupId === groupId ? { ...cell, groupId: firstGroup } : cell
-              ))
+            // Only merge the individual cell, not the entire group
+            newSlab.cells[row][col] = {
+              ...newSlab.cells[row][col],
+              groupId: firstGroup
+            };
+            // Check if the original group still has any cells
+            const hasRemainingCells = newSlab.cells.some(rowArr => 
+              rowArr.some(cell => cell.groupId === groupId)
             );
-            // Remove the merged group's entry
-            newGroups.delete(groupId);
+            if (!hasRemainingCells) {
+              newGroups.delete(groupId);
+            }
             newSlab.groups = newGroups;
-            return newSlab;
+            // Immediately check for and split disconnected groups
+            return splitDisconnectedGroups(newSlab);
           });
 
           const next = new Set(prev);
-          next.add(groupId);
+          next.add(cellKey);
           return next;
         });
       }
@@ -222,13 +332,13 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
     if (!isDragging) return;
 
     // If anything merged during drag, persist the pre-drag snapshot
-    if (preDragSnapshotRef.current && encounteredGroups.size > 1) {
+    if (preDragSnapshotRef.current && encounteredCells.size > 1) {
       pushHistory(preDragSnapshotRef.current);
     }
 
     // Reset drag state (cells have already been updated during drag)
     setIsDragging(false);
-    setEncounteredGroups(new Set());
+    setEncounteredCells(new Set());
     setFirstGroup(null);
     setDragStartCell(null);
     preDragSnapshotRef.current = null;
@@ -278,6 +388,9 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
       newSlab.groups = newGroups;
       return newSlab;
     });
+    
+    // After breaking apart, check for and split any disconnected groups
+    setSlab(prevSlab => splitDisconnectedGroups(prevSlab));
   };
 
   // Handle single tap/click
@@ -446,7 +559,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
       // Restore body scrolling
       document.body.style.overflow = '';
     };
-  }, [isDragging, encounteredGroups, firstGroup]);
+  }, [isDragging, encounteredCells, firstGroup]);
 
   return (
     <div className="p-4 w-full">
