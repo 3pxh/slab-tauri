@@ -198,9 +198,10 @@ type SlabProps = {
   slab: SlabData;
   size?: 'small' | 'medium' | 'large';
   className?: string;
+  colors?: string[];
 };
 
-const Slab: React.FC<SlabProps> = ({ slab, size = 'medium', className = '' }) => {
+const Slab: React.FC<SlabProps> = ({ slab, size = 'medium', className = '', colors = COLORS }) => {
   const sizeClasses = {
     small: 'w-32 h-32',
     medium: 'w-48 h-48',
@@ -216,7 +217,7 @@ const Slab: React.FC<SlabProps> = ({ slab, size = 'medium', className = '' }) =>
               key={`${rowIndex}-${colIndex}`}
               className="relative aspect-square w-full h-full flex items-center justify-center text-xs font-mono select-none"
               style={{
-                backgroundColor: COLORS[getGroup(slab.groups, cell.groupId)?.color || 0],
+                backgroundColor: colors[getGroup(slab.groups, cell.groupId)?.color || 0],
                 color: (getGroup(slab.groups, cell.groupId)?.color || 0) === 0 ? '#000' : '#fff',
                 ...getBorderStyles(rowIndex, colIndex, slab)
               }}

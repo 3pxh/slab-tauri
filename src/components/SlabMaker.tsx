@@ -17,9 +17,10 @@ type SlabMakerProps = {
   initialSlab?: SlabData;
   onShuffle?: () => void;
   onSort?: () => void;
+  colors?: string[];
 };
 
-const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0, maxGuesses = 3, hasWon = false, flashGuessButton = false, isInGuessSession = false, initialSlab, onShuffle, onSort }) => {
+const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0, maxGuesses = 3, hasWon = false, flashGuessButton = false, isInGuessSession = false, initialSlab, onShuffle, onSort, colors = COLORS }) => {
   const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
   const [history, setHistory] = React.useState<SlabData[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -566,7 +567,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
       {/* Color Swatches */}
       <div className="mb-2">
         <div className="flex justify-center gap-1 w-full max-w-md mx-auto">
-          {COLORS.map((color, index) => (
+          {colors.map((color, index) => (
             <button
               key={index}
               className={`flex-1 rounded cursor-pointer transition-all hover:scale-110 ${
@@ -593,7 +594,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
                 key={`${rowIndex}-${colIndex}`}
                 className="relative aspect-square w-full h-full flex items-center justify-center text-xs font-mono cursor-pointer transition-opacity select-none"
                 style={{
-                  backgroundColor: COLORS[getGroup(slab.groups, cell.groupId)?.color || 0],
+                  backgroundColor: colors[getGroup(slab.groups, cell.groupId)?.color || 0],
                   color: (getGroup(slab.groups, cell.groupId)?.color || 0) === 0 ? '#000' : '#fff',
                   ...getBorderStyles(rowIndex, colIndex)
                 }}

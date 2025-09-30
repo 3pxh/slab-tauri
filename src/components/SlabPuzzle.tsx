@@ -1,7 +1,7 @@
 import React from 'react';
-import { FiArrowLeft, FiArrowRight, FiCheck, FiChevronLeft, FiChevronRight, FiStar, FiX, FiTarget } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight, FiCheck, FiChevronLeft, FiChevronRight, FiStar, FiX, FiTarget, FiMonitor } from 'react-icons/fi';
 import { Puzzle } from '../lib/supabase';
-import Slab, { SlabData, deserializeSlabData, areSlabsEqual } from './Slab';
+import Slab, { SlabData, deserializeSlabData, areSlabsEqual, COLORS } from './Slab';
 import SlabMaker from './SlabMaker';
 
 
@@ -27,6 +27,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   const [isInGuessSession, setIsInGuessSession] = React.useState(false);
   const [flashGuessButton, setFlashGuessButton] = React.useState(false);
   const [selectedSlabForMaker, setSelectedSlabForMaker] = React.useState<SlabData | null>(null);
+  const [isGrayscale, setIsGrayscale] = React.useState(false);
 
   // Load shown examples into state when component mounts
   React.useEffect(() => {
@@ -313,6 +314,29 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     }
   };
 
+  // Grayscale color palette - distinct steps from light to dark
+  const GRAYSCALE_COLORS = [
+    '#f5f5f5', // Very light gray
+    '#e0e0e0', // Light gray
+    '#bdbdbd', // Medium light gray
+    '#9e9e9e', // Medium gray (matches original gray)
+    '#757575', // Medium dark gray
+    '#616161', // Dark gray
+    '#424242', // Very dark gray
+  ];
+
+  // Get the current color palette (grayscale or color)
+  const getCurrentColors = (): string[] => {
+    if (isGrayscale) {
+      return GRAYSCALE_COLORS;
+    }
+    return COLORS;
+  };
+
+  const handleGrayscaleToggle = () => {
+    setIsGrayscale(prev => !prev);
+  };
+
   const evaluateSlab = (slab: SlabData): boolean => {
     if (!puzzle.evaluate_fn.trim()) {
       return false;
@@ -464,8 +488,21 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
             )}
           </h2>
         </div>
-        <div className="text-sm text-gray-600">
-          {formatDate(puzzle.publish_date)}
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-gray-600">
+            {formatDate(puzzle.publish_date)}
+          </div>
+          <button
+            className="px-2 py-1 rounded text-sm hover:bg-gray-200 transition-colors"
+            onClick={handleGrayscaleToggle}
+            title={isGrayscale ? "Switch to color mode" : "Switch to grayscale mode"}
+            aria-label={isGrayscale ? "Switch to color mode" : "Switch to grayscale mode"}
+          >
+            <FiMonitor 
+              size={20} 
+              className={isGrayscale ? "text-gray-500" : "text-blue-500"} 
+            />
+          </button>
         </div>
       </div>
       
@@ -480,6 +517,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         initialSlab={selectedSlabForMaker || undefined}
         onShuffle={handleShuffle}
         onSort={handleSort}
+        colors={getCurrentColors()}
       />
 
       {/* All Slabs */}
@@ -537,7 +575,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                       }}
                       title="Click to edit in SlabMaker"
                     >
-                      <Slab slab={slab} size="small" className="w-full h-full" />
+                      <Slab slab={slab} size="small" className="w-full h-full" colors={getCurrentColors()} />
                       {/* Evaluation indicator circle */}
                       <div 
                         className="absolute w-3 h-3 rounded-full"
@@ -617,7 +655,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                       
                       {/* Slab */}
                       <div className="w-32 h-32">
-                        <Slab slab={slab} size="small" className="w-full h-full" />
+                        <Slab slab={slab} size="small" className="w-full h-full" colors={getCurrentColors()} />
                       </div>
                       
                       {/* Black Guess Button (Right) */}
