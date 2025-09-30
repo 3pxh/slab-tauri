@@ -27,6 +27,7 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onCreatePuzzle }) =
         const response = await getAllDates();
         if (response.success) {
           // Convert date strings to YYYY-MM-DD format for consistent comparison
+          // Use UTC to ensure all users see the same puzzles regardless of timezone
           const dateSet = new Set(response.dates.map(dateStr => {
             const date = new Date(dateStr);
             return date.toISOString().split('T')[0];
@@ -78,7 +79,12 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onCreatePuzzle }) =
   };
 
   const isDateAvailable = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    // Create date string directly from calendar date components to avoid timezone issues
+    // This ensures all users see the same puzzles regardless of their timezone
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     return availableDates.has(dateStr);
   };
 
@@ -140,6 +146,7 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onCreatePuzzle }) =
               const classDisabled = date
                 ? "bg-gray-50 text-gray-300 cursor-not-allowed border-gray-200"
                 : "bg-transparent cursor-default border-transparent";
+              
               return (
                 <button
                   key={idx}
