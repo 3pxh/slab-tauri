@@ -611,11 +611,11 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                 <span className="text-lg font-semibold">{remainingGuesses}/3</span>
               </div>
               <button
-                className="px-3 py-1 rounded text-sm bg-gray-200 hover:bg-gray-300"
+                className="p-2 rounded text-sm hover:bg-gray-100"
                 onClick={handleCloseOverlay}
                 title="Close"
               >
-                <FiX size={16} />
+                <FiX size={20} />
               </button>
             </div>
             
@@ -704,47 +704,47 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                   </div>
                 )}
               </div>
-            </div>
-            
-            {/* Submit/Close Button */}
-            {getSlabsForOverlay().length > 0 && (
-              <div className="p-6 border-t">
-                <div className="flex justify-center">
-                {guessesSubmitted ? (
-                  <button
-                    className="px-6 py-3 rounded-lg bg-gray-500 text-white hover:bg-gray-600 flex items-center gap-2"
-                    onClick={handleCloseOverlay}
-                    title="Close"
-                  >
-                    <FiArrowRight size={20} />
-                  </button>
-                ) : (
-                  <button
-                    className={`px-6 py-3 rounded-lg flex items-center gap-2 ${
-                      getSlabsForOverlay().length > 0
-                        ? 'bg-blue-500 text-white hover:bg-blue-600'
-                        : 'bg-gray-400 text-white cursor-not-allowed'
-                    }`}
-                    onClick={handleSubmitGuesses}
-                    disabled={getSlabsForOverlay().length === 0}
-                    title={
-                      getSlabsForOverlay().length > 0
-                        ? "Submit your guesses"
-                        : "No slabs to guess"
-                    }
-                  >
-                    {getSlabsForOverlay().length > 0 ? (
-                      <FiCheck size={20} />
-                    ) : (
-                      <span>
-                        No slabs to guess
-                      </span>
-                    )}
-                  </button>
-                )}
+              
+              {/* Submit/Close Button - now inside scrollable area */}
+              {getSlabsForOverlay().length > 0 && (
+                <div className="p-6 border-t">
+                  <div className="flex justify-center">
+                  {guessesSubmitted ? (
+                    <button
+                      className="px-6 py-3 rounded-lg bg-gray-500 text-white hover:bg-gray-600 flex items-center gap-2"
+                      onClick={handleCloseOverlay}
+                      title="Close"
+                    >
+                      <FiArrowRight size={20} />
+                    </button>
+                  ) : (
+                    <button
+                      className={`px-6 py-3 rounded-lg flex items-center gap-2 ${
+                        getSlabsForOverlay().length > 0
+                          ? 'bg-blue-500 text-white hover:bg-blue-600'
+                          : 'bg-gray-400 text-white cursor-not-allowed'
+                      }`}
+                      onClick={handleSubmitGuesses}
+                      disabled={getSlabsForOverlay().length === 0}
+                      title={
+                        getSlabsForOverlay().length > 0
+                          ? "Submit your guesses"
+                          : "No slabs to guess"
+                      }
+                    >
+                      {getSlabsForOverlay().length > 0 ? (
+                        <FiCheck size={20} />
+                      ) : (
+                        <span>
+                          No slabs to guess
+                        </span>
+                      )}
+                    </button>
+                  )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}
