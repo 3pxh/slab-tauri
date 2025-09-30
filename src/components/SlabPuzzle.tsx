@@ -1,5 +1,7 @@
 import React from 'react';
-import { FiArrowLeft, FiArrowRight, FiCheck, FiChevronLeft, FiChevronRight, FiStar, FiX, FiTarget, FiMonitor } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight, FiCheck, FiStar, FiX, FiMonitor } from 'react-icons/fi';
+import { FaLightbulb } from 'react-icons/fa6';
+import { GiPlasticDuck } from 'react-icons/gi';
 import { Puzzle } from '../lib/supabase';
 import Slab, { SlabData, deserializeSlabData, areSlabsEqual, COLORS } from './Slab';
 import SlabMaker from './SlabMaker';
@@ -415,10 +417,10 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     }
   };
 
-  const handleGuessSelect = (index: number, guess: 'white' | 'black') => {
+  const handleGuessSelect = (index: number) => {
     setGuesses(prev => ({
       ...prev,
-      [index]: prev[index] === guess ? null : guess
+      [index]: prev[index] === 'black' ? 'white' : 'black'
     }));
     // Clear any previous results when making a new guess
     setGuessResults(prev => ({
@@ -436,14 +438,14 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
 
     filteredHidden.forEach((slab, index) => {
       const guess = guesses[index];
-      if (guess !== null) {
-        hasAnyGuess = true;
-        const actualResult = evaluateSlab(slab);
-        const isCorrect = (guess === 'black' && actualResult) || (guess === 'white' && !actualResult);
-        results[index] = isCorrect;
-        if (!isCorrect) {
-          allCorrect = false;
-        }
+      // Default to 'white' (not duck) if no guess is made
+      const actualGuess = guess || 'white';
+      hasAnyGuess = true;
+      const actualResult = evaluateSlab(slab);
+      const isCorrect = (actualGuess === 'black' && actualResult) || (actualGuess === 'white' && !actualResult);
+      results[index] = isCorrect;
+      if (!isCorrect) {
+        allCorrect = false;
       }
     });
 
@@ -576,16 +578,20 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                       title="Click to edit in SlabMaker"
                     >
                       <Slab slab={slab} size="small" className="w-full h-full" colors={getCurrentColors()} />
-                      {/* Evaluation indicator circle */}
-                      <div 
-                        className="absolute w-3 h-3 rounded-full"
-                        style={{
-                          backgroundColor: evaluationResult ? '#000000' : '#ffffff',
-                          bottom: '-2px',
-                          right: '-2px',
-                          boxShadow: '1px 1px 2px rgba(0,0,0,0.25)'
-                        }}
-                      />
+                      {/* Duck annotation directly on slab */}
+                      {evaluationResult && (
+                        <div 
+                          className="absolute"
+                          style={{
+                            top: '-4px',
+                            right: '-4px',
+                            color: '#000000',
+                            filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
+                          }}
+                        >
+                          <GiPlasticDuck size={16} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -597,11 +603,11 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
 
       {/* Guess Overlay */}
       {showGuessOverlay && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
+        <div className="fixed inset-0 bg-white z-50">
+          <div className="h-full flex flex-col">
+            <div className="flex justify-between items-center p-6 border-b">
               <div className="flex items-center gap-2">
-                <FiTarget size={20} />
+                <FaLightbulb size={20} />
                 <span className="text-lg font-semibold">{remainingGuesses}/3</span>
               </div>
               <button
@@ -614,93 +620,96 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
             </div>
             
             {showSuccess && (
-              <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+              <div className="mx-6 mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
                 🎉 Congratulations! All your guesses are correct!
               </div>
             )}
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {getSlabsForOverlay().map((slab, index) => {
-                const currentGuess = guesses[index];
-                const result = guessResults[index];
-                const isIncorrect = result === false;
-                const hasBeenSubmitted = result !== null && result !== undefined;
-                
-                return (
-                  <div 
-                    key={index} 
-                    className={`relative flex flex-col items-center p-4 rounded-lg border-2 ${
-                      hasBeenSubmitted && isIncorrect ? 'border-red-500 bg-red-50' : 
-                      hasBeenSubmitted && !isIncorrect ? 'border-green-500 bg-green-50' :
-                      currentGuess ? 'border-blue-300 bg-blue-50' : 
-                      'border-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      {/* White Guess Button (Left) */}
-                      <button
-                        className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          currentGuess === 'white' 
-                            ? 'bg-white border-4 border-yellow-500 shadow-xl' 
-                            : 'bg-white border-2 border-gray-400 hover:border-gray-500'
-                        }`}
-                        onClick={() => handleGuessSelect(index, 'white')}
-                        title="Guess: White (False)"
-                      >
-                        <FiChevronLeft 
-                          size={16} 
-                          className="text-gray-800" 
-                        />
-                      </button>
-                      
-                      {/* Slab */}
-                      <div className="w-32 h-32">
-                        <Slab slab={slab} size="small" className="w-full h-full" colors={getCurrentColors()} />
+            <div className="flex-1 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-0">
+                {getSlabsForOverlay().map((slab, index) => {
+                  const currentGuess = guesses[index] || 'white'; // Default to 'white' (not duck)
+                  const result = guessResults[index];
+                  const isIncorrect = result === false;
+                  const hasBeenSubmitted = result !== null && result !== undefined;
+                  const totalSlabs = getSlabsForOverlay().length;
+                  const isLastItem = index === totalSlabs - 1;
+                  const isOddTotal = totalSlabs % 2 === 1;
+                  const shouldSpanFullWidth = isLastItem && isOddTotal;
+                  
+                  return (
+                    <div 
+                      key={index} 
+                      className={`border-r border-gray-200 ${!isLastItem ? 'border-b' : ''} ${shouldSpanFullWidth ? 'col-span-2' : ''} ${isLastItem && !shouldSpanFullWidth ? 'last:border-r-0' : ''}`}
+                    >
+                      <div className="relative flex flex-col items-center justify-center p-6 h-full">
+                        <div className="flex flex-col items-center gap-4">
+                          {/* Slab */}
+                          <div className="w-32 h-32 relative">
+                            <Slab slab={slab} size="small" className="w-full h-full" colors={getCurrentColors()} />
+                            {/* Duck annotation directly on slab */}
+                            {hasBeenSubmitted && evaluateSlab(slab) && (
+                              <div 
+                                className="absolute"
+                                style={{
+                                  top: '-4px',
+                                  right: '-4px',
+                                  color: '#000000',
+                                  filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
+                                }}
+                              >
+                                <GiPlasticDuck size={16} />
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Duck Guess Button */}
+                          <div className="relative">
+                            <button
+                              className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                currentGuess === 'black' 
+                                  ? 'bg-yellow-300 border-4 border-yellow-300 shadow-xl' 
+                                  : 'bg-gray-200 border-2 border-gray-300 hover:border-gray-400'
+                              }`}
+                              onClick={() => handleGuessSelect(index)}
+                              title={currentGuess === 'black' ? "Guess: Duck (True)" : "Guess: Not Duck (False)"}
+                            >
+                              <GiPlasticDuck 
+                                size={20} 
+                                className={currentGuess === 'black' ? 'text-black' : 'text-gray-500'} 
+                              />
+                            </button>
+                            {/* Red X for wrong guesses */}
+                            {hasBeenSubmitted && isIncorrect && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <FiX 
+                                  size={32} 
+                                  className="text-red-600 font-bold stroke-2" 
+                                  style={{
+                                    filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      
-                      {/* Black Guess Button (Right) */}
-                      <button
-                        className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          currentGuess === 'black' 
-                            ? 'bg-black border-4 border-yellow-500 shadow-xl' 
-                            : 'bg-black border-2 border-gray-400 hover:border-gray-500'
-                        }`}
-                        onClick={() => handleGuessSelect(index, 'black')}
-                        title="Guess: Black (True)"
-                      >
-                        <FiChevronRight 
-                          size={16} 
-                          className="text-white" 
-                        />
-                      </button>
                     </div>
-                    
-                      {/* Evaluation result dot - only show after submission */}
-                      {hasBeenSubmitted && (
-                        <div 
-                          className="absolute w-3 h-3 rounded-full"
-                          style={{
-                            backgroundColor: evaluateSlab(slab) ? '#000000' : '#ffffff',
-                            bottom: '8px',
-                            right: '8px',
-                            boxShadow: '1px 1px 2px rgba(0,0,0,0.25)'
-                          }}
-                        />
-                      )}
+                  );
+                })}
+                
+                {getSlabsForOverlay().length === 0 && (
+                  <div className="col-span-2 text-center text-gray-500 py-8">
+                    No hidden examples available or all have been revealed.
                   </div>
-                );
-              })}
-            </div>
-            
-            {getSlabsForOverlay().length === 0 && (
-              <div className="text-center text-gray-500 py-8">
-                No hidden examples available or all have been revealed.
+                )}
               </div>
-            )}
+            </div>
             
             {/* Submit/Close Button */}
             {getSlabsForOverlay().length > 0 && (
-              <div className="mt-6 flex justify-center">
+              <div className="p-6 border-t">
+                <div className="flex justify-center">
                 {guessesSubmitted ? (
                   <button
                     className="px-6 py-3 rounded-lg bg-gray-500 text-white hover:bg-gray-600 flex items-center gap-2"
@@ -712,27 +721,28 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                 ) : (
                   <button
                     className={`px-6 py-3 rounded-lg flex items-center gap-2 ${
-                      getSlabsForOverlay().length > 0 && getSlabsForOverlay().every((_, index) => guesses[index] !== null && guesses[index] !== undefined)
+                      getSlabsForOverlay().length > 0
                         ? 'bg-blue-500 text-white hover:bg-blue-600'
                         : 'bg-gray-400 text-white cursor-not-allowed'
                     }`}
                     onClick={handleSubmitGuesses}
-                    disabled={getSlabsForOverlay().length === 0 || !getSlabsForOverlay().every((_, index) => guesses[index] !== null && guesses[index] !== undefined)}
+                    disabled={getSlabsForOverlay().length === 0}
                     title={
-                      getSlabsForOverlay().length > 0 && getSlabsForOverlay().every((_, index) => guesses[index] !== null && guesses[index] !== undefined)
+                      getSlabsForOverlay().length > 0
                         ? "Submit your guesses"
-                        : "Please guess all slabs before submitting"
+                        : "No slabs to guess"
                     }
                   >
-                    {getSlabsForOverlay().length > 0 && getSlabsForOverlay().every((_, index) => guesses[index] !== null && guesses[index] !== undefined) ? (
+                    {getSlabsForOverlay().length > 0 ? (
                       <FiCheck size={20} />
                     ) : (
                       <span>
-                        Guess {getSlabsForOverlay().filter((_, index) => guesses[index] === null || guesses[index] === undefined).length} more
+                        No slabs to guess
                       </span>
                     )}
                   </button>
                 )}
+                </div>
               </div>
             )}
           </div>
