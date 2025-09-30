@@ -15,16 +15,16 @@ export interface SlabData {
   groups: Map<number, Group>;
 }
 
-// Color palette: gray + primaries (red, blue, yellow) + secondaries (orange, purple, green)
+// Color palette: gray + rainbow order (red, orange, yellow, green, blue, purple)
 // Shades chosen to be similar to MUI 600 hues for a rich, modern look
 export const COLORS = [
   '#9e9e9e', // gray 600
   '#e53935', // red 600
-  '#1e88e5', // blue 600
-  '#fdd835', // yellow 600
   '#fb8c00', // orange 600
-  '#8e24aa', // purple 600
+  '#fdd835', // yellow 600
   '#43a047', // green 600
+  '#1e88e5', // blue 600
+  '#8e24aa', // purple 600
 ];
 
 // Helper function to safely get group data (handles both Map and plain object)
