@@ -14,7 +14,7 @@ const Instructions: React.FC = () => {
               <div className="absolute w-4 h-4 bg-black rounded-full" style={{ left: '8px', top: '8px' }}></div>
             </div>
           </div>
-          <p>There is a hidden rule which marks slabs as black or white (for example, "no red squares").</p>
+          <p>There is a hidden rule which marks slabs as a duck (for example, "no red squares").</p>
         </div>
         
         <div className="flex items-start space-x-3">
@@ -23,7 +23,7 @@ const Instructions: React.FC = () => {
               <span className="text-white text-sm font-bold">+</span>
             </div>
           </div>
-          <p>Make your own slabs to see how they follow the rule.</p>
+          <p>Make your own slabs to see which ones are ducks.</p>
         </div>
         
         <div className="flex items-start space-x-3">
