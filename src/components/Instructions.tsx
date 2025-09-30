@@ -14,7 +14,7 @@ const Instructions: React.FC = () => {
               <GiPlasticDuck className="w-4 h-4 text-black" />
             </div>
           </div>
-          <p>There is a hidden rule which marks slabs as a duck (for example, "no red squares").</p>
+          <p>There is a hidden rule which marks slabs as a duck. You get two examples to start.</p>
         </div>
         
         <div className="flex items-center space-x-3">
