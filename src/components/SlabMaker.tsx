@@ -2,6 +2,7 @@ import React from 'react';
 import { FiRotateCcw, FiRefreshCw, FiPlus, FiStar } from 'react-icons/fi';
 import { FaArrowDownUpAcrossLine, FaLightbulb } from 'react-icons/fa6';
 import { PiShuffleBold } from 'react-icons/pi';
+import { useGesture } from '@use-gesture/react';
 import { SlabData, createSlab, Cell, COLORS, getGroup } from './Slab';
 import { deepCopy } from '../utils';
 
@@ -24,13 +25,11 @@ type SlabMakerProps = {
 const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0, maxGuesses = 3, hasWon = false, flashGuessButton = false, isInGuessSession = false, initialSlab, onShuffle, onSort, colors = COLORS }) => {
   const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
   const [history, setHistory] = React.useState<SlabData[]>([]);
-  const [isDragging, setIsDragging] = React.useState(false);
+  const [, setIsDragging] = React.useState(false);
   const [encounteredCells, setEncounteredCells] = React.useState<Set<string>>(new Set());
   const [firstGroup, setFirstGroup] = React.useState<number | null>(null);
   const [dragStartCell, setDragStartCell] = React.useState<{row: number, col: number} | null>(null);
   const [selectedGroup, setSelectedGroup] = React.useState<number | null>(null);
-  const [lastTapTime, setLastTapTime] = React.useState<number>(0);
-  const [lastTapCell, setLastTapCell] = React.useState<{row: number, col: number} | null>(null);
 
   // Keep a snapshot from drag start to push at drag end
   const preDragSnapshotRef = React.useRef<SlabData | null>(null);
@@ -187,20 +186,6 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
     preDragSnapshotRef.current = null;
   };
 
-  // Helper function to get coordinates from event
-  const getEventCoordinates = (event: React.MouseEvent | React.TouchEvent) => {
-    if ('touches' in event) {
-      return {
-        clientX: event.touches[0].clientX,
-        clientY: event.touches[0].clientY
-      };
-    }
-    return {
-      clientX: event.clientX,
-      clientY: event.clientY
-    };
-  };
-
   // Helper function to get cell coordinates from mouse/touch position
   const getCellFromCoordinates = (clientX: number, clientY: number) => {
     const element = document.elementFromPoint(clientX, clientY);
@@ -216,208 +201,198 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
     return { row, col };
   };
 
-  // Start drag operation
-  const handleDragStart = (event: React.MouseEvent | React.TouchEvent, row: number, col: number) => {
-    event.preventDefault();
-    const groupId = slab.cells[row][col].groupId;
-    
-    setIsDragging(true);
-    setFirstGroup(groupId);
-    setEncounteredCells(new Set([`${row},${col}`]));
-    setDragStartCell({ row, col });
-    // Capture snapshot now; push to history at drag end if there was a change
-    preDragSnapshotRef.current = cloneSlab(slab);
-    lastDragCellRef.current = { row, col };
-  };
-
-  // Continue drag operation
-  const handleDragMove = (event: React.MouseEvent | React.TouchEvent) => {
-    if (!isDragging) return;
-    
-    const { clientX, clientY } = getEventCoordinates(event);
-    const cellCoords = getCellFromCoordinates(clientX, clientY);
-    
-    if (cellCoords) {
-      const { row, col } = cellCoords;
-      const groupId = slab.cells[row][col].groupId;
-
-      // Only handle dragging if we've left the starting cell
-      if (dragStartCell && row === dragStartCell.row && col === dragStartCell.col) {
-        return;
+  // Universal gesture handler using react-use-gesture
+  const bindCellGestures = useGesture({
+    onDrag: ({ first, last, event, args }) => {
+      const [row, col] = args as [number, number];
+      if (first) {
+        const groupId = slab.cells[row][col].groupId;
+        setIsDragging(true);
+        setFirstGroup(groupId);
+        setEncounteredCells(new Set([`${row},${col}`]));
+        setDragStartCell({ row, col });
+        preDragSnapshotRef.current = cloneSlab(slab);
+        lastDragCellRef.current = { row, col };
+        // Select the group we're dragging from
+        setSelectedGroup(groupId);
       }
+      
+      // Handle drag movement - merge cells as we drag over them
+      if (!first && !last) {
+        const clientX = 'clientX' in event ? event.clientX : ('touches' in event ? event.touches?.[0]?.clientX : undefined);
+        const clientY = 'clientY' in event ? event.clientY : ('touches' in event ? event.touches?.[0]?.clientY : undefined);
+        
+        if (clientX !== undefined && clientY !== undefined) {
+          const cellCoords = getCellFromCoordinates(clientX, clientY);
+          
+          if (cellCoords) {
+            const { row: currentRow, col: currentCol } = cellCoords;
+            const groupId = slab.cells[currentRow][currentCol].groupId;
 
-      // If moving diagonally from the last visited cell, also merge an adjacent intermediate cell (prefer lower)
-      const prevCell = lastDragCellRef.current;
-      if (prevCell && (prevCell.row !== row || prevCell.col !== col)) {
-        const dRow = Math.abs(row - prevCell.row);
-        const dCol = Math.abs(col - prevCell.col);
-        if (dRow === 1 && dCol === 1) {
-          const candidateA = { row: row, col: prevCell.col }; // vertical then horizontal
-          const candidateB = { row: prevCell.row, col: col }; // horizontal then vertical
-          const lowerCandidate = candidateA.row >= candidateB.row ? candidateA : candidateB;
-          const adjGroupId = slab.cells[lowerCandidate.row][lowerCandidate.col].groupId;
-          if (firstGroup !== null && adjGroupId !== firstGroup) {
-            const cellKey = `${lowerCandidate.row},${lowerCandidate.col}`;
-            setEncounteredCells(prev => {
-              if (prev.has(cellKey)) return new Set(prev);
-              setSlab(prevSlab => {
-                const newSlab = { ...prevSlab };
-                const newGroups = { ...prevSlab.groups };
-                // Only merge the individual cell, not the entire group
-                newSlab.cells[lowerCandidate.row][lowerCandidate.col] = {
-                  ...newSlab.cells[lowerCandidate.row][lowerCandidate.col],
-                  groupId: firstGroup
-                };
-                // Check if the original group still has any cells
-                const hasRemainingCells = newSlab.cells.some(rowArr => 
-                  rowArr.some(cell => cell.groupId === adjGroupId)
-                );
-                if (!hasRemainingCells) {
-                  delete newGroups[adjGroupId];
+            // Only handle dragging if we've left the starting cell
+            if (dragStartCell && currentRow === dragStartCell.row && currentCol === dragStartCell.col) {
+              return;
+            }
+
+            // If moving diagonally from the last visited cell, also merge an adjacent intermediate cell (prefer lower)
+            const prevCell = lastDragCellRef.current;
+            if (prevCell && (prevCell.row !== currentRow || prevCell.col !== currentCol)) {
+              const dRow = Math.abs(currentRow - prevCell.row);
+              const dCol = Math.abs(currentCol - prevCell.col);
+              if (dRow === 1 && dCol === 1) {
+                const candidateA = { row: currentRow, col: prevCell.col }; // vertical then horizontal
+                const candidateB = { row: prevCell.row, col: currentCol }; // horizontal then vertical
+                const lowerCandidate = candidateA.row >= candidateB.row ? candidateA : candidateB;
+                const adjGroupId = slab.cells[lowerCandidate.row][lowerCandidate.col].groupId;
+                if (firstGroup !== null && adjGroupId !== firstGroup) {
+                  const cellKey = `${lowerCandidate.row},${lowerCandidate.col}`;
+                  setEncounteredCells(prev => {
+                    if (prev.has(cellKey)) return new Set(prev);
+                    setSlab(prevSlab => {
+                      const newSlab = { ...prevSlab };
+                      const newGroups = { ...prevSlab.groups };
+                      // Only merge the individual cell, not the entire group
+                      newSlab.cells[lowerCandidate.row][lowerCandidate.col] = {
+                        ...newSlab.cells[lowerCandidate.row][lowerCandidate.col],
+                        groupId: firstGroup
+                      };
+                      // Check if the original group still has any cells
+                      const hasRemainingCells = newSlab.cells.some(rowArr => 
+                        rowArr.some(cell => cell.groupId === adjGroupId)
+                      );
+                      if (!hasRemainingCells) {
+                        delete newGroups[adjGroupId];
+                      }
+                      newSlab.groups = newGroups;
+                      // Immediately check for and split disconnected groups
+                      return splitDisconnectedGroups(newSlab);
+                    });
+                    const next = new Set(prev);
+                    next.add(cellKey);
+                    return next;
+                  });
                 }
-                newSlab.groups = newGroups;
-                // Immediately check for and split disconnected groups
-                return splitDisconnectedGroups(newSlab);
+              }
+            }
+
+            // As we drag, merge only the individual cell we're dragging over
+            if (firstGroup !== null && groupId !== firstGroup) {
+              const cellKey = `${currentRow},${currentCol}`;
+              setEncounteredCells(prev => {
+                if (prev.has(cellKey)) return new Set(prev);
+
+                setSlab(prevSlab => {
+                  const newSlab = { ...prevSlab };
+                  const newGroups = { ...prevSlab.groups };
+                  // Only merge the individual cell, not the entire group
+                  newSlab.cells[currentRow][currentCol] = {
+                    ...newSlab.cells[currentRow][currentCol],
+                    groupId: firstGroup
+                  };
+                  // Check if the original group still has any cells
+                  const hasRemainingCells = newSlab.cells.some(rowArr => 
+                    rowArr.some(cell => cell.groupId === groupId)
+                  );
+                  if (!hasRemainingCells) {
+                    delete newGroups[groupId];
+                  }
+                  newSlab.groups = newGroups;
+                  // Immediately check for and split disconnected groups
+                  return splitDisconnectedGroups(newSlab);
+                });
+
+                const next = new Set(prev);
+                next.add(cellKey);
+                return next;
               });
-              const next = new Set(prev);
-              next.add(cellKey);
-              return next;
-            });
+            }
+
+            // Update last visited cell
+            lastDragCellRef.current = { row: currentRow, col: currentCol };
           }
         }
       }
-
-      // As we drag, merge only the individual cell we're dragging over
-      if (firstGroup !== null && groupId !== firstGroup) {
-        const cellKey = `${row},${col}`;
-        setEncounteredCells(prev => {
-          if (prev.has(cellKey)) return new Set(prev);
-
-          setSlab(prevSlab => {
-            const newSlab = { ...prevSlab };
-            const newGroups = { ...prevSlab.groups };
-            // Only merge the individual cell, not the entire group
-            newSlab.cells[row][col] = {
-              ...newSlab.cells[row][col],
-              groupId: firstGroup
-            };
-            // Check if the original group still has any cells
-            const hasRemainingCells = newSlab.cells.some(rowArr => 
-              rowArr.some(cell => cell.groupId === groupId)
-            );
-            if (!hasRemainingCells) {
-              delete newGroups[groupId];
-            }
-            newSlab.groups = newGroups;
-            // Immediately check for and split disconnected groups
-            return splitDisconnectedGroups(newSlab);
-          });
-
-          const next = new Set(prev);
-          next.add(cellKey);
-          return next;
-        });
-      }
-
-      // Update last visited cell
-      lastDragCellRef.current = { row, col };
-    }
-  };
-
-  // End drag operation and merge groups
-  const handleDragEnd = () => {
-    if (!isDragging) return;
-
-    // If anything merged during drag, persist the pre-drag snapshot
-    if (preDragSnapshotRef.current && encounteredCells.size > 1) {
-      pushHistory(preDragSnapshotRef.current);
-    }
-
-    // Reset drag state (cells have already been updated during drag)
-    setIsDragging(false);
-    setEncounteredCells(new Set());
-    setFirstGroup(null);
-    setDragStartCell(null);
-    preDragSnapshotRef.current = null;
-    lastDragCellRef.current = null;
-  };
-
-  // Handle double-tap to split group into unique IDs
-  const handleDoubleTap = (row: number, col: number) => {
-    // Persist snapshot before breaking apart
-    pushHistory(cloneSlab(slab));
-    const targetGroupId = slab.cells[row][col].groupId;
-    
-    // Find all cells in the same group
-    const cellsInGroup: {row: number, col: number}[] = [];
-    for (let r = 0; r < 6; r++) {
-      for (let c = 0; c < 6; c++) {
-        if (slab.cells[r][c].groupId === targetGroupId) {
-          cellsInGroup.push({row: r, col: c});
+      
+      if (last) {
+        // If anything merged during drag, persist the pre-drag snapshot
+        if (preDragSnapshotRef.current && encounteredCells.size > 1) {
+          pushHistory(preDragSnapshotRef.current);
         }
-      }
-    }
-    
-    // Assign unique group IDs to each cell in the group
-    setSlab(prevSlab => {
-      const newSlab = { ...prevSlab };
-      const newGroups = { ...prevSlab.groups };
-      const originalGroup = prevSlab.groups[targetGroupId];
-      
-      if (!originalGroup) return newSlab; // Safety check
-      
-      cellsInGroup.forEach((cell) => {
-        const newGroupId = 6 * cell.row + cell.col; // Use cell position as unique ID
-        
-        // Update cell to point to new group
-        newSlab.cells[cell.row][cell.col] = {
-          ...newSlab.cells[cell.row][cell.col],
-          groupId: newGroupId
-        };
-        
-        // Create new group with same color as original
-        newGroups[newGroupId] = {
-          id: newGroupId,
-          color: originalGroup.color
-        };
-      });
-      
-      newSlab.groups = newGroups;
-      return newSlab;
-    });
-    
-    // After breaking apart, check for and split any disconnected groups
-    setSlab(prevSlab => splitDisconnectedGroups(prevSlab));
-  };
 
-  // Handle single tap/click
-  const handleTap = (event: React.MouseEvent | React.TouchEvent, row: number, col: number) => {
-    const currentTime = Date.now();
-    const timeDiff = currentTime - lastTapTime;
-    const isDoubleTap = timeDiff < 300 && // Within 300ms
-                       lastTapCell && 
-                       lastTapCell.row === row && 
-                       lastTapCell.col === col;
-    
-    if (isDoubleTap) {
-      event.preventDefault();
-      handleDoubleTap(row, col);
-      setLastTapTime(0); // Reset to prevent triple-tap
-      setLastTapCell(null);
-    } else {
-      setLastTapTime(currentTime);
-      setLastTapCell({row, col});
-      
-      // Select the group on single tap
+        // Reset drag state (cells have already been updated during drag)
+        setIsDragging(false);
+        setEncounteredCells(new Set());
+        setFirstGroup(null);
+        setDragStartCell(null);
+        preDragSnapshotRef.current = null;
+        lastDragCellRef.current = null;
+      }
+    },
+    onClick: ({ args }) => {
+      const [row, col] = args as [number, number];
+      // Single tap - select/deselect group
       const groupId = slab.cells[row][col].groupId;
       if (selectedGroup === groupId) {
         // Tapping the selected group again deselects it
         setSelectedGroup(null);
-        return;
+      } else {
+        setSelectedGroup(groupId);
       }
-      setSelectedGroup(groupId);
+    },
+    onDoubleClick: ({ event, args }) => {
+      const [row, col] = args as [number, number];
+      // Double tap - split group into unique IDs
+      event.preventDefault();
+      pushHistory(cloneSlab(slab));
+      const targetGroupId = slab.cells[row][col].groupId;
+      
+      // Find all cells in the same group
+      const cellsInGroup: {row: number, col: number}[] = [];
+      for (let r = 0; r < 6; r++) {
+        for (let c = 0; c < 6; c++) {
+          if (slab.cells[r][c].groupId === targetGroupId) {
+            cellsInGroup.push({row: r, col: c});
+          }
+        }
+      }
+      
+      // Assign unique group IDs to each cell in the group
+      setSlab(prevSlab => {
+        const newSlab = { ...prevSlab };
+        const newGroups = { ...prevSlab.groups };
+        const originalGroup = prevSlab.groups[targetGroupId];
+        
+        if (!originalGroup) return newSlab; // Safety check
+        
+        cellsInGroup.forEach((cell) => {
+          const newGroupId = 6 * cell.row + cell.col; // Use cell position as unique ID
+          
+          // Update cell to point to new group
+          newSlab.cells[cell.row][cell.col] = {
+            ...newSlab.cells[cell.row][cell.col],
+            groupId: newGroupId
+          };
+          
+          // Create new group with same color as original
+          newGroups[newGroupId] = {
+            id: newGroupId,
+            color: originalGroup.color
+          };
+        });
+        
+        newSlab.groups = newGroups;
+        return newSlab;
+      });
+      
+      // After breaking apart, check for and split any disconnected groups
+      setSlab(prevSlab => splitDisconnectedGroups(prevSlab));
     }
-  };
+  }, {
+    drag: {
+      filterTaps: true, // Prevent tap events when dragging
+      threshold: 5, // Minimum movement to start drag
+    }
+  });
 
   // Helper function to get border styles and corner radii based on neighbors
   const getBorderStyles = (row: number, col: number) => {
@@ -517,46 +492,6 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
     setSelectedGroup(null);
   };
 
-  // Add global event listeners for drag operations
-  React.useEffect(() => {
-    const handleGlobalMouseMove = (event: MouseEvent) => {
-      handleDragMove(event as any);
-    };
-
-    const handleGlobalMouseUp = () => {
-      handleDragEnd();
-    };
-
-    const handleGlobalTouchMove = (event: TouchEvent) => {
-      // Prevent scrolling during drag
-      event.preventDefault();
-      handleDragMove(event as any);
-    };
-
-    const handleGlobalTouchEnd = () => {
-      handleDragEnd();
-    };
-
-    if (isDragging) {
-      document.addEventListener('mousemove', handleGlobalMouseMove);
-      document.addEventListener('mouseup', handleGlobalMouseUp);
-      document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
-      document.addEventListener('touchend', handleGlobalTouchEnd);
-      
-      // Prevent body scrolling during drag
-      document.body.style.overflow = 'hidden';
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleGlobalMouseMove);
-      document.removeEventListener('mouseup', handleGlobalMouseUp);
-      document.removeEventListener('touchmove', handleGlobalTouchMove);
-      document.removeEventListener('touchend', handleGlobalTouchEnd);
-      
-      // Restore body scrolling
-      document.body.style.overflow = '';
-    };
-  }, [isDragging, encounteredCells, firstGroup]);
 
   return (
     <div className="p-4 w-full">
@@ -592,18 +527,12 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
                 style={{
                   backgroundColor: colors[getGroup(slab.groups, cell.groupId)?.color || 0],
                   color: (getGroup(slab.groups, cell.groupId)?.color || 0) === 0 ? '#000' : '#fff',
-                  ...getBorderStyles(rowIndex, colIndex)
+                  ...getBorderStyles(rowIndex, colIndex),
+                  touchAction: 'none'
                 }}
                 title={`Group: ${cell.groupId}, Color: ${getGroup(slab.groups, cell.groupId)?.color || 0}`}
                 data-cell-coords={`${rowIndex},${colIndex}`}
-                onMouseDown={(e) => {
-                  handleTap(e, rowIndex, colIndex);
-                  handleDragStart(e, rowIndex, colIndex);
-                }}
-                onTouchStart={(e) => {
-                  handleTap(e, rowIndex, colIndex);
-                  handleDragStart(e, rowIndex, colIndex);
-                }}
+                {...bindCellGestures(rowIndex, colIndex)}
               >
                 {(() => {
                   const concave = getConcaveCorners(rowIndex, colIndex);
