@@ -1,6 +1,7 @@
 import React from 'react';
 import { FiArrowLeft, FiStar, FiMonitor } from 'react-icons/fi';
 import { GiPlasticDuck } from 'react-icons/gi';
+import { useGesture } from '@use-gesture/react';
 import { Puzzle } from '../lib/supabase';
 import Slab, { SlabData, areSlabsEqual, COLORS } from './Slab';
 import { deepCopy } from '../utils';
@@ -17,8 +18,6 @@ type SlabPuzzleProps = {
 const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   const [allSlabs, setAllSlabs] = React.useState<SlabData[]>([]);
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
-  const [isMouseDragging, setIsMouseDragging] = React.useState(false);
-  const [mouseStartPos, setMouseStartPos] = React.useState<{x: number, y: number} | null>(null);
   const [showGuessOverlay, setShowGuessOverlay] = React.useState(false);
   const [remainingGuesses, setRemainingGuesses] = React.useState(3);
   const [hasWon, setHasWon] = React.useState(false);
@@ -91,193 +90,60 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     });
   };
 
-  // Mouse-based drag and drop
-  const handleMouseDown = (event: React.MouseEvent, index: number) => {
-    console.log('Mouse down:', index);
-    setMouseStartPos({ x: event.clientX, y: event.clientY });
-    setDraggedIndex(index);
-  };
-
-  // Touch support for mobile devices
-  const [touchStartPos, setTouchStartPos] = React.useState<{x: number, y: number} | null>(null);
-  const [touchDraggedIndex, setTouchDraggedIndex] = React.useState<number | null>(null);
-
-  const handleTouchStart = (event: React.TouchEvent, index: number) => {
-    const touch = event.touches[0];
-    setTouchStartPos({ x: touch.clientX, y: touch.clientY });
-    setTouchDraggedIndex(index);
-  };
-
-  const handleTouchMove = (event: React.TouchEvent) => {
-    if (!touchStartPos || touchDraggedIndex === null) return;
-    
-    const touch = event.touches[0];
-    const deltaX = Math.abs(touch.clientX - touchStartPos.x);
-    const deltaY = Math.abs(touch.clientY - touchStartPos.y);
-    
-    // Only start drag if moved more than 10px
-    if (deltaX > 10 || deltaY > 10) {
-      event.preventDefault();
-    }
-  };
-
-  const handleTouchEnd = (event: React.TouchEvent) => {
-    if (!touchStartPos || touchDraggedIndex === null) {
-      setTouchStartPos(null);
-      setTouchDraggedIndex(null);
-      return;
-    }
-
-    const touch = event.changedTouches[0];
-    const element = document.elementFromPoint(touch.clientX, touch.clientY);
-    
-    if (element) {
-      const dropTarget = element.closest('[data-slab-index]');
-      if (dropTarget) {
-        const dropIndex = parseInt(dropTarget.getAttribute('data-slab-index') || '0');
-        if (dropIndex !== touchDraggedIndex) {
-          setAllSlabs(prev => {
-            const newSlabs = [...prev];
-            const draggedSlab = newSlabs[touchDraggedIndex];
-            
-            // Remove the dragged item
-            newSlabs.splice(touchDraggedIndex, 1);
-            
-            // Insert at the new position
-            newSlabs.splice(dropIndex, 0, draggedSlab);
-            
-            return newSlabs;
-          });
-        }
+  // Universal gesture handler using react-use-gesture
+  const bindGestures = useGesture({
+    onDrag: ({ first, last, event, args }) => {
+      const [index] = args as [number];
+      if (first) {
+        setDraggedIndex(index);
       }
-    }
-
-    setTouchStartPos(null);
-    setTouchDraggedIndex(null);
-  };
-
-  // Add global mouse event listeners for drag operations
-  React.useEffect(() => {
-    const handleGlobalMouseMove = (event: MouseEvent) => {
-      if (mouseStartPos && draggedIndex !== null) {
-        const deltaX = Math.abs(event.clientX - mouseStartPos.x);
-        const deltaY = Math.abs(event.clientY - mouseStartPos.y);
+      
+      if (last) {
+        // Find drop target
+        const clientX = 'clientX' in event ? event.clientX : ('touches' in event ? event.touches?.[0]?.clientX : undefined);
+        const clientY = 'clientY' in event ? event.clientY : ('touches' in event ? event.touches?.[0]?.clientY : undefined);
         
-        if (deltaX > 5 || deltaY > 5) {
-          setIsMouseDragging(true);
-        }
-      }
-    };
-
-    const handleGlobalMouseUp = (event: MouseEvent) => {
-      if (isMouseDragging && draggedIndex !== null) {
-        // Find the element under the mouse
-        const element = document.elementFromPoint(event.clientX, event.clientY);
-        if (element) {
-          const dropTarget = element.closest('[data-slab-index]');
-          if (dropTarget) {
-            const dropIndex = parseInt(dropTarget.getAttribute('data-slab-index') || '0');
-            console.log('Global mouse drop:', { draggedIndex, dropIndex });
-            
-            if (dropIndex !== draggedIndex) {
-              setAllSlabs(prev => {
-                const newSlabs = [...prev];
-                const draggedSlab = newSlabs[draggedIndex];
-                
-                // Remove the dragged item
-                newSlabs.splice(draggedIndex, 1);
-                
-                // Insert at the new position
-                newSlabs.splice(dropIndex, 0, draggedSlab);
-                
-                console.log('Reordered via global mouse');
-                return newSlabs;
-              });
+        if (clientX !== undefined && clientY !== undefined) {
+          const element = document.elementFromPoint(clientX, clientY);
+          if (element) {
+            const dropTarget = element.closest('[data-slab-index]');
+            if (dropTarget) {
+              const dropIndex = parseInt(dropTarget.getAttribute('data-slab-index') || '0');
+              if (dropIndex !== index) {
+                setAllSlabs(prev => {
+                  const newSlabs = [...prev];
+                  const draggedSlab = newSlabs[index];
+                  
+                  // Remove the dragged item
+                  newSlabs.splice(index, 1);
+                  
+                  // Insert at the new position
+                  newSlabs.splice(dropIndex, 0, draggedSlab);
+                  
+                  return newSlabs;
+                });
+              }
             }
           }
         }
+        setDraggedIndex(null);
       }
-
-      setMouseStartPos(null);
-      setDraggedIndex(null);
-      setIsMouseDragging(false);
-    };
-
-    if (mouseStartPos !== null) {
-      document.addEventListener('mousemove', handleGlobalMouseMove);
-      document.addEventListener('mouseup', handleGlobalMouseUp);
-      // Prevent body scrolling during drag
-      document.body.style.overflow = 'hidden';
+    },
+    onClick: ({ event, args }) => {
+      const [, slab] = args as [number, SlabData];
+      // Only handle click if not dragging
+      if (draggedIndex === null) {
+        event.stopPropagation();
+        handleSlabClick(slab);
+      }
     }
-
-    return () => {
-      document.removeEventListener('mousemove', handleGlobalMouseMove);
-      document.removeEventListener('mouseup', handleGlobalMouseUp);
-      // Restore body scrolling
-      document.body.style.overflow = '';
-    };
-  }, [mouseStartPos, draggedIndex, isMouseDragging]);
-
-  // Add global touch event listeners for drag operations
-  React.useEffect(() => {
-    const handleGlobalTouchMove = (event: TouchEvent) => {
-      if (touchStartPos && touchDraggedIndex !== null) {
-        const touch = event.touches[0];
-        const deltaX = Math.abs(touch.clientX - touchStartPos.x);
-        const deltaY = Math.abs(touch.clientY - touchStartPos.y);
-        
-        // Prevent scrolling during drag
-        if (deltaX > 10 || deltaY > 10) {
-          event.preventDefault();
-        }
-      }
-    };
-
-    const handleGlobalTouchEnd = (event: TouchEvent) => {
-      if (touchStartPos && touchDraggedIndex !== null) {
-        const touch = event.changedTouches[0];
-        const element = document.elementFromPoint(touch.clientX, touch.clientY);
-        
-        if (element) {
-          const dropTarget = element.closest('[data-slab-index]');
-          if (dropTarget) {
-            const dropIndex = parseInt(dropTarget.getAttribute('data-slab-index') || '0');
-            if (dropIndex !== touchDraggedIndex) {
-              setAllSlabs(prev => {
-                const newSlabs = [...prev];
-                const draggedSlab = newSlabs[touchDraggedIndex];
-                
-                // Remove the dragged item
-                newSlabs.splice(touchDraggedIndex, 1);
-                
-                // Insert at the new position
-                newSlabs.splice(dropIndex, 0, draggedSlab);
-                
-                return newSlabs;
-              });
-            }
-          }
-        }
-      }
-
-      setTouchStartPos(null);
-      setTouchDraggedIndex(null);
-    };
-
-    if (touchStartPos !== null) {
-      document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
-      document.addEventListener('touchend', handleGlobalTouchEnd);
-      // Prevent body scrolling during drag
-      document.body.style.overflow = 'hidden';
+  }, {
+    drag: {
+      filterTaps: true, // Prevent tap events when dragging
+      threshold: 5, // Minimum movement to start drag
     }
+  });
 
-    return () => {
-      document.removeEventListener('touchmove', handleGlobalTouchMove);
-      document.removeEventListener('touchend', handleGlobalTouchEnd);
-      // Restore body scrolling
-      document.body.style.overflow = '';
-    };
-  }, [touchStartPos, touchDraggedIndex]);
 
   const formatDate = (dateString: string): string => {
     try {
@@ -495,42 +361,26 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
             >
               {allSlabs.map((slab, index) => {
                 const evaluationResult = evaluateSlab(slab);
-                const isMouseDraggingThis = isMouseDragging && draggedIndex === index;
+                const isDraggingThis = draggedIndex === index;
                 
                 return (
                   <div 
                     key={index} 
                     className="flex flex-col relative"
                     data-slab-index={index}
-                    onTouchStart={(e) => handleTouchStart(e, index)}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
-                    onMouseDown={(e) => handleMouseDown(e, index)}
+                    {...bindGestures(index, slab)}
                     style={{
                       width: 'calc(30% - 2px)',
                       height: 'calc(30% - 2px)',
-                      opacity: touchDraggedIndex === index || isMouseDraggingThis ? 0.5 : 1,
-                      transform: touchDraggedIndex === index || isMouseDraggingThis ? 'scale(0.95)' : 'scale(1)',
+                      opacity: isDraggingThis ? 0.5 : 1,
+                      transform: isDraggingThis ? 'scale(0.95)' : 'scale(1)',
                       transition: 'all 0.2s ease',
-                      cursor: 'grab'
+                      cursor: 'grab',
+                      touchAction: 'none'
                     }}
                   >
                     <div 
                       className="rounded-sm cursor-move relative w-full h-full hover:ring-2 hover:ring-blue-400 hover:ring-opacity-50"
-                      onClick={(e) => {
-                        // Only handle click if not dragging
-                        if (!isMouseDragging && touchDraggedIndex === null) {
-                          e.stopPropagation();
-                          handleSlabClick(slab);
-                        }
-                      }}
-                      onTouchEnd={(e) => {
-                        // Only handle tap if not dragging
-                        if (touchDraggedIndex === null) {
-                          e.stopPropagation();
-                          handleSlabClick(slab);
-                        }
-                      }}
                       title="Click to edit in SlabMaker"
                     >
                       <Slab slab={slab} size="small" className="w-full h-full" colors={getCurrentColors()} />
