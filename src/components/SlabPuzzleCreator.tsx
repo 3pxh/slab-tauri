@@ -1,7 +1,8 @@
 import React from 'react';
 import { Puzzle, createPuzzle, getAllDates, getPuzzle } from '../lib/supabase';
 import SlabMaker from './SlabMaker';
-import Slab, { SlabData, serializeSlabData, deserializeSlabData } from './Slab';
+import Slab, { SlabData } from './Slab';
+import { deepCopy } from '../utils';
 
 type SlabWithId = SlabData & { id: number };
 
@@ -73,7 +74,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
             // Add shown examples
             if (puzzleData.shown_examples && puzzleData.shown_examples.length > 0) {
               puzzleData.shown_examples.forEach((example: any, index: number) => {
-                const deserializedSlab = deserializeSlabData(example);
+                const deserializedSlab = example;
                 allExamples.push({
                   ...deserializedSlab,
                   id: Date.now() + Math.random() + index // Ensure unique IDs
@@ -84,7 +85,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
             // Add hidden examples
             if (puzzleData.hidden_examples && puzzleData.hidden_examples.length > 0) {
               puzzleData.hidden_examples.forEach((example: any, index: number) => {
-                const deserializedSlab = deserializeSlabData(example);
+                const deserializedSlab = example;
                 allExamples.push({
                   ...deserializedSlab,
                   id: Date.now() + Math.random() + index + 1000 // Ensure unique IDs
@@ -142,15 +143,8 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
 
   const handleSlabCreate = (slab: SlabData) => {
     // Deep clone the slab to prevent reference sharing
-    const clonedCells: SlabData['cells'] = slab.cells.map(row => row.map(cell => ({ ...cell })));
-    const clonedGroups = new Map<number, { id: number; color: number }>();
-    slab.groups.forEach((group, id) => {
-      clonedGroups.set(id, { ...group });
-    });
-    
-    const slabWithId = { 
-      cells: clonedCells, 
-      groups: clonedGroups, 
+    const slabWithId: SlabWithId = { 
+      ...deepCopy(slab),
       id: Date.now() + Math.random() 
     };
     
@@ -251,9 +245,9 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       const shownSlabs = createdSlabs.filter((_, index) => shownExamples[index]);
       const hiddenSlabs = createdSlabs.filter((_, index) => hiddenExamples[index]);
 
-      // Serialize the slabs to convert Map objects to plain objects for JSON storage
-      const serializedShownSlabs = shownSlabs.map(slab => serializeSlabData(slab));
-      const serializedHiddenSlabs = hiddenSlabs.map(slab => serializeSlabData(slab));
+      // Slabs are now natively serializable (no conversion needed)
+      const serializedShownSlabs = shownSlabs;
+      const serializedHiddenSlabs = hiddenSlabs;
 
       const result = await createPuzzle({
         name: puzzleName.trim(),

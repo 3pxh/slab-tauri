@@ -1,4 +1,5 @@
 import React from 'react';
+import { deepEqual } from '../utils';
 
 // Define the Slab data structure
 export interface Group {
@@ -12,7 +13,7 @@ export interface Cell {
 
 export interface SlabData {
   cells: Cell[][];
-  groups: Map<number, Group>;
+  groups: Record<number, Group>;
 }
 
 // Color palette: gray + rainbow order (red, orange, yellow, green, blue, purple)
@@ -27,81 +28,29 @@ export const COLORS = [
   '#8e24aa', // purple 600
 ];
 
-// Helper function to safely get group data (handles both Map and plain object)
-export const getGroup = (groups: Map<number, Group> | Record<number, Group>, groupId: number): Group | undefined => {
-  if (groups instanceof Map) {
-    return groups.get(groupId);
-  } else {
-    return groups[groupId];
-  }
+// Helper function to get group data
+export const getGroup = (groups: Record<number, Group>, groupId: number): Group | undefined => {
+  return groups[groupId];
 };
 
-// Helper function to convert Map to plain object for JSON serialization
-export const mapToObject = (map: Map<number, Group>): Record<number, Group> => {
-  const obj: Record<number, Group> = {};
-  map.forEach((value, key) => {
-    obj[key] = value;
-  });
-  return obj;
-};
-
-// Helper function to convert plain object back to Map after JSON deserialization
-export const objectToMap = (obj: Record<number, Group>): Map<number, Group> => {
-  const map = new Map<number, Group>();
-  Object.entries(obj).forEach(([key, value]) => {
-    map.set(Number(key), value);
-  });
-  return map;
-};
-
-// Helper function to serialize SlabData for database storage
+// Helper functions for serialization (now just pass-through since Record is natively serializable)
 export const serializeSlabData = (slab: SlabData): any => {
-  return {
-    cells: slab.cells,
-    groups: mapToObject(slab.groups)
-  };
+  return slab;
 };
 
-// Helper function to deserialize SlabData from database
 export const deserializeSlabData = (data: any): SlabData => {
-  return {
-    cells: data.cells,
-    groups: objectToMap(data.groups)
-  };
+  return data;
 };
 
 // Helper function to compare if two SlabData objects are equal
 export const areSlabsEqual = (slab1: SlabData, slab2: SlabData): boolean => {
-  // Compare cells structure
-  if (slab1.cells.length !== slab2.cells.length) return false;
-  
-  for (let row = 0; row < slab1.cells.length; row++) {
-    if (slab1.cells[row].length !== slab2.cells[row].length) return false;
-    
-    for (let col = 0; col < slab1.cells[row].length; col++) {
-      if (slab1.cells[row][col].groupId !== slab2.cells[row][col].groupId) {
-        return false;
-      }
-    }
-  }
-  
-  // Compare groups
-  if (slab1.groups.size !== slab2.groups.size) return false;
-  
-  for (const [id, group1] of slab1.groups) {
-    const group2 = slab2.groups.get(id);
-    if (!group2 || group1.id !== group2.id || group1.color !== group2.color) {
-      return false;
-    }
-  }
-  
-  return true;
+  return deepEqual(slab1, slab2);
 };
 
 // Initialize a new Slab with 6x6 grid
 export const createSlab = (): SlabData => {
   const cells: Cell[][] = [];
-  const groups = new Map<number, Group>();
+  const groups: Record<number, Group> = {};
   
   for (let row = 0; row < 6; row++) {
     cells[row] = [];
@@ -112,11 +61,11 @@ export const createSlab = (): SlabData => {
       };
       
       // Create group if it doesn't exist
-      if (!groups.has(groupId)) {
-        groups.set(groupId, {
+      if (!(groupId in groups)) {
+        groups[groupId] = {
           id: groupId,
           color: 0 // Initialize to gray
-        });
+        };
       }
     }
   }

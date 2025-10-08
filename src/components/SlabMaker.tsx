@@ -2,7 +2,8 @@ import React from 'react';
 import { FiRotateCcw, FiRefreshCw, FiPlus, FiStar } from 'react-icons/fi';
 import { FaArrowDownUpAcrossLine, FaLightbulb } from 'react-icons/fa6';
 import { PiShuffleBold } from 'react-icons/pi';
-import { SlabData, createSlab, Group, Cell, COLORS, getGroup } from './Slab';
+import { SlabData, createSlab, Cell, COLORS, getGroup } from './Slab';
+import { deepCopy } from '../utils';
 
 
 
@@ -53,12 +54,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
 
   // Helper: deep clone a slab snapshot
   const cloneSlab = (source: SlabData): SlabData => {
-    const clonedCells: Cell[][] = source.cells.map(row => row.map(cell => ({ ...cell })));
-    const clonedGroups = new Map<number, Group>();
-    source.groups.forEach((group, id) => {
-      clonedGroups.set(id, { ...group });
-    });
-    return { cells: clonedCells, groups: clonedGroups };
+    return deepCopy(source);
   };
 
   // Helper: find all connected components of a group using flood fill
@@ -121,14 +117,14 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
   // Helper: split disconnected groups into separate groups
   const splitDisconnectedGroups = (slab: SlabData): SlabData => {
     const newSlab = cloneSlab(slab);
-    const groupsToCheck = Array.from(slab.groups.keys());
+    const groupsToCheck = Object.keys(slab.groups).map(Number);
     
     for (const groupId of groupsToCheck) {
       const components = findConnectedComponents(groupId, newSlab.cells);
       
       // If there are multiple components, split them into separate groups
       if (components.length > 1) {
-        const originalGroup = newSlab.groups.get(groupId);
+        const originalGroup = newSlab.groups[groupId];
         if (!originalGroup) continue;
         
         // Keep the first component with the original group ID
@@ -146,10 +142,10 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
           }
           
           // Create new group with same color as original
-          newSlab.groups.set(newGroupId, {
+          newSlab.groups[newGroupId] = {
             id: newGroupId,
             color: originalGroup.color
-          });
+          };
         }
       }
     }
@@ -266,7 +262,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
               if (prev.has(cellKey)) return new Set(prev);
               setSlab(prevSlab => {
                 const newSlab = { ...prevSlab };
-                const newGroups = new Map(prevSlab.groups);
+                const newGroups = { ...prevSlab.groups };
                 // Only merge the individual cell, not the entire group
                 newSlab.cells[lowerCandidate.row][lowerCandidate.col] = {
                   ...newSlab.cells[lowerCandidate.row][lowerCandidate.col],
@@ -277,7 +273,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
                   rowArr.some(cell => cell.groupId === adjGroupId)
                 );
                 if (!hasRemainingCells) {
-                  newGroups.delete(adjGroupId);
+                  delete newGroups[adjGroupId];
                 }
                 newSlab.groups = newGroups;
                 // Immediately check for and split disconnected groups
@@ -299,7 +295,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
 
           setSlab(prevSlab => {
             const newSlab = { ...prevSlab };
-            const newGroups = new Map(prevSlab.groups);
+            const newGroups = { ...prevSlab.groups };
             // Only merge the individual cell, not the entire group
             newSlab.cells[row][col] = {
               ...newSlab.cells[row][col],
@@ -310,7 +306,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
               rowArr.some(cell => cell.groupId === groupId)
             );
             if (!hasRemainingCells) {
-              newGroups.delete(groupId);
+              delete newGroups[groupId];
             }
             newSlab.groups = newGroups;
             // Immediately check for and split disconnected groups
@@ -365,8 +361,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
     // Assign unique group IDs to each cell in the group
     setSlab(prevSlab => {
       const newSlab = { ...prevSlab };
-      const newGroups = new Map(prevSlab.groups);
-      const originalGroup = prevSlab.groups.get(targetGroupId);
+      const newGroups = { ...prevSlab.groups };
+      const originalGroup = prevSlab.groups[targetGroupId];
       
       if (!originalGroup) return newSlab; // Safety check
       
@@ -380,10 +376,10 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
         };
         
         // Create new group with same color as original
-        newGroups.set(newGroupId, {
+        newGroups[newGroupId] = {
           id: newGroupId,
           color: originalGroup.color
-        });
+        };
       });
       
       newSlab.groups = newGroups;
@@ -502,15 +498,15 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
     
     setSlab(prevSlab => {
       const newSlab = { ...prevSlab };
-      const newGroups = new Map(prevSlab.groups);
+      const newGroups = { ...prevSlab.groups };
       
       // Update the group's color
-      const group = newGroups.get(selectedGroup);
+      const group = newGroups[selectedGroup];
       if (group) {
-        newGroups.set(selectedGroup, {
+        newGroups[selectedGroup] = {
           ...group,
           color: colorIndex
-        });
+        };
       }
       
       newSlab.groups = newGroups;

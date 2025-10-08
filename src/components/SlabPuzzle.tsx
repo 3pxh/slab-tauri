@@ -3,7 +3,8 @@ import { FiArrowLeft, FiArrowRight, FiCheck, FiStar, FiX, FiMonitor } from 'reac
 import { FaLightbulb } from 'react-icons/fa6';
 import { GiPlasticDuck } from 'react-icons/gi';
 import { Puzzle } from '../lib/supabase';
-import Slab, { SlabData, deserializeSlabData, areSlabsEqual, COLORS } from './Slab';
+import Slab, { SlabData, areSlabsEqual, COLORS } from './Slab';
+import { deepCopy } from '../utils';
 import SlabMaker from './SlabMaker';
 
 
@@ -34,9 +35,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   // Load shown examples into state when component mounts
   React.useEffect(() => {
     if (puzzle.shown_examples && puzzle.shown_examples.length > 0) {
-      const deserializedExamples = puzzle.shown_examples.map(example => 
-        deserializeSlabData(example)
-      );
+      const deserializedExamples = puzzle.shown_examples;
       setAllSlabs(deserializedExamples);
     }
   }, [puzzle.shown_examples]);
@@ -50,16 +49,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     }
     
     // Deep clone the slab to prevent reference sharing with SlabMaker
-    const clonedCells: SlabData['cells'] = newSlab.cells.map(row => row.map(cell => ({ ...cell })));
-    const clonedGroups = new Map<number, { id: number; color: number }>();
-    newSlab.groups.forEach((group, id) => {
-      clonedGroups.set(id, { ...group });
-    });
-    
-    const clonedSlab: SlabData = {
-      cells: clonedCells,
-      groups: clonedGroups
-    };
+    const clonedSlab: SlabData = deepCopy(newSlab);
     
     setAllSlabs(prev => {
       // Remove any existing slabs that are identical to the new one
@@ -74,16 +64,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
 
   const handleSlabClick = (clickedSlab: SlabData) => {
     // Deep clone the slab to prevent reference sharing
-    const clonedCells: SlabData['cells'] = clickedSlab.cells.map(row => row.map(cell => ({ ...cell })));
-    const clonedGroups = new Map<number, { id: number; color: number }>();
-    clickedSlab.groups.forEach((group, id) => {
-      clonedGroups.set(id, { ...group });
-    });
-    
-    const clonedSlab: SlabData = {
-      cells: clonedCells,
-      groups: clonedGroups
-    };
+    const clonedSlab: SlabData = deepCopy(clickedSlab);
     
     setSelectedSlabForMaker(clonedSlab);
   };
@@ -360,7 +341,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       return [];
     }
 
-    const hiddenSlabs = puzzle.hidden_examples.map(example => deserializeSlabData(example));
+    const hiddenSlabs = puzzle.hidden_examples;
     
     // Filter out hidden examples that are already in allSlabs
     const filteredHidden = hiddenSlabs.filter(hiddenSlab => 
