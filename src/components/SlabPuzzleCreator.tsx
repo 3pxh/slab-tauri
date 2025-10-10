@@ -6,6 +6,55 @@ import SlabComponent, { SlabData, areSlabsEqual } from './Slab';
 import { deepCopy, formatDateUTC } from '../utils';
 import { executeCodeSafely } from '../utils/sandbox';
 
+// Global rule creation guide text
+const RULE_CREATION_GUIDE = `SLAB RULE CREATION GUIDE FOR LLMs
+=====================================
+
+This guide explains how to create evaluation rules for the SLAB puzzle game. These rules are JavaScript functions that determine whether a given slab configuration should return true (marked with a duck) or false.
+
+SLAB DATA STRUCTURE
+-------------------
+\`\`\`typescript
+interface Cell {
+  groupId: number;
+}
+
+interface Group {
+  id: number;
+  color: number; // 0-6: Gray, Red, Orange, Yellow, Green, Blue, Purple
+}
+
+interface SlabData {
+  cells: Cell[][]; // 6x6 grid
+  groups: Record<number, Group>;
+}
+\`\`\`
+
+COLOR INDICES
+-------------
+- 0 = Gray (#9e9e9e)
+- 1 = Red (#e53935)
+- 2 = Orange (#fb8c00)
+- 3 = Yellow (#fdd835)
+- 4 = Green (#43a047)
+- 5 = Blue (#1e88e5)
+- 6 = Purple (#8e24aa)
+
+RULE CODE REQUIREMENTS
+----------------------
+Your rule code should:
+1. Be a block of JavaScript code (NOT a function definition)
+2. Have access to a \`slab\` parameter (automatically provided)
+3. Return \`true\` or \`false\`
+4. Be written as JavaScript code that will be passed to \`new Function('slab', yourCode)\`
+5. Not use any external libraries or APIs
+6. Complete execution within 5 seconds
+
+IMPORTANT: Do NOT write \`function(slab) { ... }\` or \`(slab) => { ... }\`
+The code you provide will be wrapped in a function automatically.
+
+Output the code for a rule that returns true if`;
+
 type SlabWithId = SlabData & { id: number };
 
 type SlabPuzzleCreatorProps = {
@@ -564,19 +613,12 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
     }
   };
 
-  const handleCopyRulePrompt = async () => {
+  const handleCopyRulePrompt = () => {
     try {
-      // Fetch the rule creation guide from the assets
-      const response = await fetch('/src/assets/rule-creation-guide.txt');
-      if (!response.ok) {
-        throw new Error('Failed to fetch rule guide');
-      }
-      const ruleGuide = await response.text();
-      
       // Try modern clipboard API first
       if (navigator.clipboard && window.isSecureContext) {
         try {
-          await navigator.clipboard.writeText(ruleGuide);
+          navigator.clipboard.writeText(RULE_CREATION_GUIDE);
           alert('Rule creation guide copied to clipboard!');
           return;
         } catch (clipboardError) {
@@ -586,7 +628,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       
       // Fallback for mobile and non-secure contexts
       const textArea = document.createElement('textarea');
-      textArea.value = ruleGuide;
+      textArea.value = RULE_CREATION_GUIDE;
       textArea.style.position = 'fixed';
       textArea.style.left = '-999999px';
       textArea.style.top = '-999999px';
@@ -605,7 +647,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
         console.error('execCommand failed:', execError);
         // Last resort: show the text in a modal for manual copying
         setShowRuleGuideModal(true);
-        setRuleGuideText(ruleGuide);
+        setRuleGuideText(RULE_CREATION_GUIDE);
       } finally {
         document.body.removeChild(textArea);
       }
