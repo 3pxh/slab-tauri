@@ -7,6 +7,7 @@ import Slab, { SlabData, areSlabsEqual, COLORS } from './Slab';
 import { deepCopy } from '../utils';
 import SlabMaker from './SlabMaker';
 import GuessPanel, { GuessResult } from './GuessPanel';
+import { executeCodeSafely } from '../utils/sandbox';
 
 
 type SlabPuzzleProps = {
@@ -21,6 +22,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   const [showGuessOverlay, setShowGuessOverlay] = React.useState(false);
   const [remainingGuesses, setRemainingGuesses] = React.useState(3);
   const [hasWon, setHasWon] = React.useState(false);
+  const [evaluationResults, setEvaluationResults] = React.useState<Map<string, boolean>>(new Map());
   const [pendingGuessedSlabs, setPendingGuessedSlabs] = React.useState<SlabData[]>([]);
   const [isInGuessSession, setIsInGuessSession] = React.useState(false);
   const [flashGuessButton, setFlashGuessButton] = React.useState(false);
@@ -53,6 +55,9 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       return [clonedSlab, ...filteredSlabs];
     });
     
+    // Immediately evaluate the new slab for instant feedback
+    evaluateSingleSlab(clonedSlab);
+    
     // Clear the selected slab after creating
     setSelectedSlabForMaker(null);
   };
@@ -77,17 +82,20 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   };
 
   const handleSort = () => {
-    setAllSlabs(prev => {
-      const sorted = [...prev].sort((a, b) => {
-        const aResult = evaluateSlab(a);
-        const bResult = evaluateSlab(b);
-        // Black (true) comes first, then white (false)
-        if (aResult && !bResult) return -1;
-        if (!aResult && bResult) return 1;
-        return 0;
-      });
-      return sorted;
+    // Use cached evaluation results for sorting
+    const sortedSlabs = [...allSlabs].sort((a, b) => {
+      const keyA = getSlabKey(a);
+      const keyB = getSlabKey(b);
+      const resultA = evaluationResults.get(keyA) || false;
+      const resultB = evaluationResults.get(keyB) || false;
+      
+      // Black (true) comes first, then white (false)
+      if (resultA && !resultB) return -1;
+      if (!resultA && resultB) return 1;
+      return 0;
     });
+    
+    setAllSlabs(sortedSlabs);
   };
 
   // Universal gesture handler using react-use-gesture
@@ -182,20 +190,102 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     setIsGrayscale(prev => !prev);
   };
 
-  const evaluateSlab = (slab: SlabData): boolean => {
+  // Generate a unique key for a slab based on its content
+  const getSlabKey = (slab: SlabData): string => {
+    return JSON.stringify(slab);
+  };
+
+
+  const evaluateSlab = async (slab: SlabData): Promise<boolean> => {
     if (!puzzle.evaluate_fn.trim()) {
       return false;
     }
 
     try {
-      // Create the evaluation function
-      const evalFunction = new Function('slab', puzzle.evaluate_fn);
-      return evalFunction(slab);
+      // Execute the evaluation function in a secure sandbox
+      const result = await executeCodeSafely(puzzle.evaluate_fn, slab, 5000);
+      if (result.success) {
+        return result.result;
+      } else {
+        console.error('Error evaluating slab:', result.error);
+        return false;
+      }
     } catch (error) {
       console.error('Error evaluating slab:', error);
       return false;
     }
   };
+
+  // Function to immediately evaluate a single slab
+  const evaluateSingleSlab = async (slab: SlabData) => {
+    if (!puzzle.evaluate_fn.trim()) {
+      return;
+    }
+
+    const key = getSlabKey(slab);
+    
+    // Skip if already evaluated
+    if (evaluationResults.has(key)) {
+      return;
+    }
+
+    try {
+      const result = await evaluateSlab(slab);
+      setEvaluationResults(prev => {
+        const newMap = new Map(prev);
+        newMap.set(key, result);
+        return newMap;
+      });
+    } catch (error) {
+      console.error('Error evaluating single slab:', error);
+    }
+  };
+
+  // Function to update evaluation results for all slabs
+  const updateEvaluationResults = async () => {
+    if (!puzzle.evaluate_fn.trim()) {
+      setEvaluationResults(new Map());
+      return;
+    }
+
+    try {
+      const newResults = new Map<string, boolean>();
+      
+      // Only evaluate slabs that don't already have results
+      const slabsToEvaluate = allSlabs.filter(slab => {
+        const key = getSlabKey(slab);
+        return !evaluationResults.has(key);
+      });
+
+      if (slabsToEvaluate.length > 0) {
+        const results = await Promise.all(
+          slabsToEvaluate.map(slab => evaluateSlab(slab))
+        );
+
+        // Add new results to the map
+        slabsToEvaluate.forEach((slab, index) => {
+          const key = getSlabKey(slab);
+          newResults.set(key, results[index]);
+        });
+      }
+
+      // Merge with existing results
+      setEvaluationResults(prev => {
+        const merged = new Map(prev);
+        newResults.forEach((value, key) => {
+          merged.set(key, value);
+        });
+        return merged;
+      });
+    } catch (error) {
+      console.error('Error updating evaluation results:', error);
+    }
+  };
+
+  // Update evaluation results when slabs change
+  React.useEffect(() => {
+    updateEvaluationResults();
+  }, [allSlabs, puzzle.evaluate_fn]);
 
   // Get hidden examples that are not already in the current slabs list
   const getFilteredHiddenExamples = (): SlabData[] => {
@@ -248,6 +338,12 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     // Add pending guessed slabs to the main list
     if (pendingGuessedSlabs.length > 0) {
       setAllSlabs(prev => [...pendingGuessedSlabs, ...prev]);
+      
+      // Immediately evaluate the newly added slabs
+      pendingGuessedSlabs.forEach(slab => {
+        evaluateSingleSlab(slab);
+      });
+      
       setPendingGuessedSlabs([]);
     }
   };
@@ -289,7 +385,11 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
 
   // Get ground truth for the slabs in the overlay
   const getGroundTruth = (): boolean[] => {
-    return getSlabsForOverlay().map(slab => evaluateSlab(slab));
+    const slabsForOverlay = getSlabsForOverlay();
+    return slabsForOverlay.map(slab => {
+      const key = getSlabKey(slab);
+      return evaluationResults.get(key) || false;
+    });
   };
 
   return (
@@ -360,7 +460,8 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
               }}
             >
               {allSlabs.map((slab, index) => {
-                const evaluationResult = evaluateSlab(slab);
+                const key = getSlabKey(slab);
+                const evaluationResult = evaluationResults.get(key) || false;
                 const isDraggingThis = draggedIndex === index;
                 
                 return (

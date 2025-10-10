@@ -6,6 +6,21 @@ import LevelSelect from './components/LevelSelect';
 import { getPuzzle, Puzzle } from './lib/supabase';
 import { SlabData, createSlab } from './components/Slab';
 
+// Automatically run sandbox tests in development
+if (process.env.NODE_ENV === 'development') {
+  import('./utils/runSandboxTests').then(({ runSandboxTests }) => {
+    // Make test functions available globally for manual testing
+    (globalThis as any).runSandboxTests = runSandboxTests;
+    
+    // Auto-run tests and report results
+    runSandboxTests().then(() => {
+      console.log('✅ Sandbox security tests passed - your app is secure!');
+    }).catch((error) => {
+      console.error('❌ Sandbox security tests failed:', error);
+    });
+  });
+}
+
 function App() {
   const [mode, setMode] = React.useState<'select' | 'create' | 'solve'>('select');
   const [puzzle, setPuzzle] = React.useState<Puzzle | null>(null);

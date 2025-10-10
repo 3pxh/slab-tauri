@@ -3,6 +3,7 @@ import { Puzzle, createPuzzle, getAllDates, getPuzzle } from '../lib/supabase';
 import SlabMaker from './SlabMaker';
 import Slab, { SlabData } from './Slab';
 import { deepCopy } from '../utils';
+import { executeCodeSafely } from '../utils/sandbox';
 
 type SlabWithId = SlabData & { id: number };
 
@@ -211,23 +212,28 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
 
     setIsRunning(true);
     try {
-      // Create the evaluation function
-      const evalFunction = new Function('slab', evaluationFn);
-      
-      // Run evaluation on each slab
-      const results = createdSlabs.map(slab => {
-        try {
-          return evalFunction(slab);
-        } catch (error) {
-          console.error('Error evaluating slab:', error);
-          return false;
-        }
-      });
+      // Run evaluation on each slab using secure sandbox
+      const results = await Promise.all(
+        createdSlabs.map(async (slab) => {
+          try {
+            const result = await executeCodeSafely(evaluationFn, slab, 5000);
+            if (result.success) {
+              return result.result;
+            } else {
+              console.error('Error evaluating slab:', result.error);
+              return false;
+            }
+          } catch (error) {
+            console.error('Error evaluating slab:', error);
+            return false;
+          }
+        })
+      );
 
       setEvaluationResults(results);
     } catch (error) {
-      console.error('Error creating evaluation function:', error);
-      alert(`Error in evaluation function: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Error running evaluation:', error);
+      alert(`Error in evaluation: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsRunning(false);
     }
