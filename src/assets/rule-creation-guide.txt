@@ -1,0 +1,47 @@
+SLAB RULE CREATION GUIDE FOR LLMs
+=====================================
+
+This guide explains how to create evaluation rules for the SLAB puzzle game. These rules are JavaScript functions that determine whether a given slab configuration should return true (marked with a duck) or false.
+
+SLAB DATA STRUCTURE
+-------------------
+```typescript
+interface Cell {
+  groupId: number;
+}
+
+interface Group {
+  id: number;
+  color: number; // 0-6: Gray, Red, Orange, Yellow, Green, Blue, Purple
+}
+
+interface SlabData {
+  cells: Cell[][]; // 6x6 grid
+  groups: Record<number, Group>;
+}
+```
+
+COLOR INDICES
+-------------
+- 0 = Gray (#9e9e9e)
+- 1 = Red (#e53935)
+- 2 = Orange (#fb8c00)
+- 3 = Yellow (#fdd835)
+- 4 = Green (#43a047)
+- 5 = Blue (#1e88e5)
+- 6 = Purple (#8e24aa)
+
+RULE CODE REQUIREMENTS
+----------------------
+Your rule code should:
+1. Be a block of JavaScript code (NOT a function definition)
+2. Have access to a `slab` parameter (automatically provided)
+3. Return `true` or `false`
+4. Be written as JavaScript code that will be passed to `new Function('slab', yourCode)`
+5. Not use any external libraries or APIs
+6. Complete execution within 5 seconds
+
+IMPORTANT: Do NOT write `function(slab) { ... }` or `(slab) => { ... }`
+The code you provide will be wrapped in a function automatically.
+
+Output the code for a rule that returns true if 

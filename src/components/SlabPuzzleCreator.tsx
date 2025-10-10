@@ -559,6 +559,24 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
     }
   };
 
+  const handleCopyRulePrompt = async () => {
+    try {
+      // Fetch the rule creation guide from the assets
+      const response = await fetch('/src/assets/rule-creation-guide.txt');
+      if (!response.ok) {
+        throw new Error('Failed to fetch rule guide');
+      }
+      const ruleGuide = await response.text();
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(ruleGuide);
+      alert('Rule creation guide copied to clipboard!');
+    } catch (error) {
+      console.error('Failed to copy rule guide:', error);
+      alert('Failed to copy rule guide to clipboard');
+    }
+  };
+
   const handleCreatePuzzle = async () => {
     if (!puzzleName.trim() || !evaluationFn.trim()) {
       alert('Please fill in both puzzle name and evaluation function');
@@ -829,7 +847,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Enter evaluation function code..."
           />
-          <div className="mt-2">
+          <div className="mt-2 flex gap-2">
             <button
               onClick={handleRunEvaluation}
               disabled={isRunning || !evaluationFn.trim() || createdSlabs.length === 0}
@@ -837,7 +855,16 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
             >
               {isRunning ? 'Running...' : 'Run'}
             </button>
+            <button
+              onClick={handleCopyRulePrompt}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+            >
+              Copy Rule Prompt
+            </button>
           </div>
+          <p>
+              Copy the rule prompt to your clipboard and paste it into an AI with whatever rule idea you have. Copy the code it makes into the box. Make slabs and run it.
+          </p>
         </div>
       </div>
       
