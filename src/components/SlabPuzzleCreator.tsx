@@ -43,6 +43,10 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   const [slabMessage, setSlabMessage] = React.useState('');
   const [editingSlab, setEditingSlab] = React.useState<SlabRecord | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = React.useState(false);
+  
+  // Rule guide modal state
+  const [showRuleGuideModal, setShowRuleGuideModal] = React.useState(false);
+  const [ruleGuideText, setRuleGuideText] = React.useState('');
 
   // Function to calculate the next date after the last puzzle date
   const calculateNextDate = (dates: string[]): string => {
@@ -569,9 +573,42 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       }
       const ruleGuide = await response.text();
       
-      // Copy to clipboard
-      await navigator.clipboard.writeText(ruleGuide);
-      alert('Rule creation guide copied to clipboard!');
+      // Try modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(ruleGuide);
+          alert('Rule creation guide copied to clipboard!');
+          return;
+        } catch (clipboardError) {
+          console.warn('Clipboard API failed, trying fallback:', clipboardError);
+        }
+      }
+      
+      // Fallback for mobile and non-secure contexts
+      const textArea = document.createElement('textarea');
+      textArea.value = ruleGuide;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          alert('Rule creation guide copied to clipboard!');
+        } else {
+          throw new Error('execCommand copy failed');
+        }
+      } catch (execError) {
+        console.error('execCommand failed:', execError);
+        // Last resort: show the text in a modal for manual copying
+        setShowRuleGuideModal(true);
+        setRuleGuideText(ruleGuide);
+      } finally {
+        document.body.removeChild(textArea);
+      }
     } catch (error) {
       console.error('Failed to copy rule guide:', error);
       alert('Failed to copy rule guide to clipboard');
@@ -1034,6 +1071,65 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rule Guide Modal - Fallback for when clipboard fails */}
+      {showRuleGuideModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] flex flex-col">
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Rule Creation Guide</h3>
+                <button
+                  onClick={() => setShowRuleGuideModal(false)}
+                  className="text-gray-500 hover:text-gray-700 text-xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+              <p className="text-sm text-gray-600 mt-1">
+                Copy the text below manually since automatic clipboard copy failed
+              </p>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <textarea
+                value={ruleGuideText}
+                readOnly
+                className="w-full h-full min-h-[400px] p-3 border border-gray-300 rounded-md font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onClick={(e) => {
+                  e.currentTarget.select();
+                }}
+              />
+            </div>
+            <div className="p-4 border-t border-gray-200">
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => {
+                    const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
+                    if (textarea) {
+                      textarea.select();
+                      try {
+                        document.execCommand('copy');
+                        alert('Text selected! You can now paste it manually.');
+                      } catch (error) {
+                        alert('Please manually select and copy the text above.');
+                      }
+                    }
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+                >
+                  Select All
+                </button>
+                <button
+                  onClick={() => setShowRuleGuideModal(false)}
+                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
