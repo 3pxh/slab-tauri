@@ -1,5 +1,6 @@
 import React from 'react';
-import { Puzzle, createPuzzle, getAllDates, getPuzzle, supabase, getUserSlabs, createSlab, deleteSlab, Slab as SlabRecord } from '../lib/supabase';
+import { FiArrowLeft } from 'react-icons/fi';
+import { Puzzle, getAllDates, getPuzzle, supabase, getUserSlabs, createSlab, deleteSlab, Slab as SlabRecord } from '../lib/supabase';
 import SlabMaker from './SlabMaker';
 import SlabComponent, { SlabData, areSlabsEqual } from './Slab';
 import { deepCopy, formatDateUTC } from '../utils';
@@ -9,10 +10,13 @@ type SlabWithId = SlabData & { id: number };
 
 type SlabPuzzleCreatorProps = {
   onHome: () => void;
+  onViewPuzzles: () => void;
   puzzle: Puzzle;
 };
 
 const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({ 
+  onHome,
+  onViewPuzzles,
   puzzle
 }) => {
   const [createdSlabs, setCreatedSlabs] = React.useState<SlabWithId[]>([]);
@@ -571,16 +575,25 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       const serializedShownSlabs = shownSlabs;
       const serializedHiddenSlabs = hiddenSlabs;
 
-      const result = await createPuzzle({
-        name: puzzleName.trim(),
-        content_type: puzzle.content_type,
-        evaluate_fn: evaluationFn.trim(),
-        shown_examples: serializedShownSlabs,
-        hidden_examples: serializedHiddenSlabs,
-        publish_date: puzzle.publish_date
-      });
+      const { data, error } = await supabase
+        .from('puzzles')
+        .insert([{
+          name: puzzleName.trim(),
+          content_type: puzzle.content_type,
+          evaluate_fn: evaluationFn.trim(),
+          shown_examples: serializedShownSlabs,
+          hidden_examples: serializedHiddenSlabs,
+          publish_date: puzzle.publish_date || new Date().toISOString(),
+          creator_id: (await supabase.auth.getUser()).data.user?.id
+        }])
+        .select()
+        .single();
 
-      alert(`Puzzle "${result.puzzle.name}" created successfully!`);
+      if (error) {
+        throw new Error(`Failed to create puzzle: ${error.message}`);
+      }
+
+      alert(`Puzzle "${data.name}" created successfully!`);
       // Optionally navigate back to home or show success message
     } catch (error) {
       console.error('Failed to create puzzle:', error);
@@ -590,76 +603,127 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
     }
   };
 
+  // If not authenticated, only show authentication UI
+  if (!isAuthenticated) {
+    return (
+      <div className="p-4 w-full">
+        {/* Back to Home Button */}
+        <div className="mb-4 flex items-center justify-between">
+          <button
+            onClick={onHome}
+            className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors"
+          >
+            <FiArrowLeft size={20} />
+            <span>Back to Home</span>
+          </button>
+          <button
+            onClick={onViewPuzzles}
+            className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          >
+            View My Puzzles
+          </button>
+        </div>
+
+        {/* Authentication Section */}
+        <div className="max-w-md mx-auto">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">Puzzle Creator</h1>
+            <p className="text-gray-600">Sign in to create and manage your puzzles</p>
+          </div>
+          
+          <div className="p-6 bg-blue-50 rounded-lg border border-blue-200">
+            <h3 className="text-lg font-semibold mb-4 text-blue-800 text-center">Authentication Required</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="auth-email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email Address
+                </label>
+                <input
+                  id="auth-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter your email address..."
+                  disabled={isAuthLoading}
+                />
+              </div>
+              
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleSignIn}
+                  disabled={isAuthLoading || !email.trim()}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+                >
+                  {isAuthLoading ? 'Loading...' : 'Sign In'}
+                </button>
+                <button
+                  onClick={handleSignUp}
+                  disabled={isAuthLoading || !email.trim()}
+                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+                >
+                  {isAuthLoading ? 'Loading...' : 'Create Account'}
+                </button>
+              </div>
+              
+              {authMessage && (
+                <div className={`p-3 rounded-md text-sm ${
+                  authMessage.includes('failed') || authMessage.includes('Please enter')
+                    ? 'bg-red-100 text-red-700 border border-red-200'
+                    : 'bg-green-100 text-green-700 border border-green-200'
+                }`}>
+                  {authMessage}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 w-full">
-      {/* Authentication Section */}
+      {/* Back to Home Button */}
+      <div className="mb-4 flex items-center justify-between">
+        <button
+          onClick={onHome}
+          className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors"
+        >
+          <FiArrowLeft size={20} />
+          <span>Back to Home</span>
+        </button>
+        <button
+          onClick={onViewPuzzles}
+          className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+        >
+          View My Puzzles
+        </button>
+      </div>
+
+      {/* Authentication Section - Only show when authenticated */}
       <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
         <h3 className="text-lg font-semibold mb-3 text-blue-800">Authentication</h3>
         
-        {isAuthenticated ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">✓</span>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-700">Signed in as</p>
-                <p className="text-sm text-gray-600">{user?.email}</p>
-              </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-sm font-medium">✓</span>
             </div>
-            <button
-              onClick={handleSignOut}
-              disabled={isAuthLoading}
-              className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
-            >
-              {isAuthLoading ? 'Signing out...' : 'Sign Out'}
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
             <div>
-              <label htmlFor="auth-email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email Address
-              </label>
-              <input
-                id="auth-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter your email address..."
-                disabled={isAuthLoading}
-              />
+              <p className="text-sm font-medium text-gray-700">Signed in as</p>
+              <p className="text-sm text-gray-600">{user?.email}</p>
             </div>
-            
-            <div className="flex space-x-2">
-              <button
-                onClick={handleSignIn}
-                disabled={isAuthLoading || !email.trim()}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
-              >
-                {isAuthLoading ? 'Loading...' : 'Sign In'}
-              </button>
-              <button
-                onClick={handleSignUp}
-                disabled={isAuthLoading || !email.trim()}
-                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
-              >
-                {isAuthLoading ? 'Loading...' : 'Create Account'}
-              </button>
-            </div>
-            
-            {authMessage && (
-              <div className={`p-2 rounded-md text-sm ${
-                authMessage.includes('failed') || authMessage.includes('Please enter')
-                  ? 'bg-red-100 text-red-700 border border-red-200'
-                  : 'bg-green-100 text-green-700 border border-green-200'
-              }`}>
-                {authMessage}
-              </div>
-            )}
           </div>
-        )}
+          <button
+            onClick={handleSignOut}
+            disabled={isAuthLoading}
+            className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+          >
+            {isAuthLoading ? 'Signing out...' : 'Sign Out'}
+          </button>
+        </div>
       </div>
 
       {/* Saved Slabs Management */}

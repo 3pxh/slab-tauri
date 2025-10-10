@@ -6,12 +6,11 @@ import favicon from '../assets/favicon.png';
 
 interface LevelSelectProps {
   onSelect: (date: Date) => void;
-  onCreatePuzzle: () => void;
 }
 
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onCreatePuzzle }) => {
+const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect }) => {
   const [visibleMonth, setVisibleMonth] = React.useState<Date>(() => {
     const now = new Date();
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
@@ -161,17 +160,6 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onCreatePuzzle }) =
       )}
 
       <Instructions />
-
-      {!__HIDE_PUZZLE_CREATOR__ && (
-        <div className="mt-4 text-center">
-          <button
-            onClick={onCreatePuzzle}
-            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
-          >
-            Create New Puzzle
-          </button>
-        </div>
-      )}
     </div>
   );
 };

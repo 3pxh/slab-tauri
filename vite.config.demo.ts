@@ -9,7 +9,6 @@ export default defineConfig(async () => ({
   plugins: [react()],
   define: {
     // Build-time feature flags - these get replaced at build time
-    __HIDE_PUZZLE_CREATOR__: true, // Always true for demo builds
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

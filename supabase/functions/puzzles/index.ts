@@ -10,14 +10,18 @@ interface GetPuzzleRequest {
   timestamp: string
 }
 
+interface GetPuzzleByUuidRequest {
+  uuid: string
+}
+
 
 interface Puzzle {
   id: string
   name: string
   content_type: string
   evaluate_fn: string
-  shown_examples: any[]
-  hidden_examples: any[]
+  shown_examples: unknown[]
+  hidden_examples: unknown[]
   publish_date: string
   created_at: string
   updated_at: string
@@ -40,7 +44,72 @@ serve(async (req) => {
       key
     )
 
-    // Get the user ID for george@hoqqanen.com to restrict queries
+    // Parse request body
+    const body = await req.json()
+    const { action, timestamp, uuid } = body
+
+    // Handle GET_BY_UUID action - retrieve puzzle by UUID (no auth required)
+    if (action === 'get_by_uuid') {
+      if (!uuid) {
+        return new Response(
+          JSON.stringify({ error: 'UUID parameter is required' }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      // Query for the puzzle by UUID
+      // This bypasses RLS by using the service role key
+      const { data, error } = await supabaseClient
+        .from('puzzles')
+        .select('*')
+        .eq('id', uuid)
+        .single()
+
+      if (error) {
+        console.error('Database error:', error)
+        return new Response(
+          JSON.stringify({ error: 'Database query failed' }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      if (!data) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Puzzle not found',
+            uuid: uuid,
+            message: 'No puzzle found with the given UUID'
+          }),
+          { 
+            status: 404, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      const puzzle: Puzzle = data
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          puzzle: puzzle,
+          uuid: uuid,
+          message: `Found puzzle: ${puzzle.name}`
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    // For other actions, we need George's user ID
     const { data: georgeUser, error: userError } = await supabaseClient
       .from('auth.users')
       .select('id')
@@ -59,10 +128,6 @@ serve(async (req) => {
     }
 
     const georgeUserId = georgeUser.id
-
-    // Parse request body
-    const body = await req.json()
-    const { action, timestamp, ...puzzleData } = body
 
     // Handle GET action - retrieve puzzle by timestamp
     if (action === 'get') {
@@ -178,7 +243,7 @@ serve(async (req) => {
 
     // Handle unsupported actions
     return new Response(
-      JSON.stringify({ error: 'Unsupported action. Use "get" or "all_dates".' }),
+      JSON.stringify({ error: 'Unsupported action. Use "get", "get_by_uuid", or "all_dates".' }),
       { 
         status: 400, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

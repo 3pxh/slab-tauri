@@ -63,37 +63,27 @@ export async function getPuzzle(timestamp: string): Promise<GetPuzzleResponse> {
   }
 }
 
-// Function to create a new puzzle (uses RLS to automatically set creator_id)
-export async function createPuzzle(puzzleData: {
-  name: string
-  content_type: string
-  evaluate_fn: string
-  shown_examples?: any[]
-  hidden_examples?: any[]
-  publish_date?: string
-}): Promise<{ success: boolean; puzzle: Puzzle; message: string }> {
-  const { data, error } = await supabase
-    .from('puzzles')
-    .insert([{
-      name: puzzleData.name,
-      content_type: puzzleData.content_type,
-      evaluate_fn: puzzleData.evaluate_fn,
-      shown_examples: puzzleData.shown_examples || [],
-      hidden_examples: puzzleData.hidden_examples || [],
-      publish_date: puzzleData.publish_date || new Date().toISOString()
-    }])
-    .select()
-    .single()
+// Function to get a puzzle by UUID (for sharing)
+export async function getPuzzleByUuid(uuid: string): Promise<{ success: boolean; puzzle: Puzzle; message: string }> {
+  const response = await fetch(`${supabaseUrl}/functions/v1/puzzles`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${supabaseAnonKey}`,
+    },
+    body: JSON.stringify({
+      action: 'get_by_uuid',
+      uuid: uuid
+    })
+  })
 
-  if (error) {
-    throw new Error(`Failed to create puzzle: ${error.message}`)
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(`Failed to get puzzle: ${errorData.error || 'Unknown error'}`)
   }
 
-  return {
-    success: true,
-    puzzle: data,
-    message: 'Puzzle created successfully'
-  }
+  const data = await response.json()
+  return data
 }
 
 // Function to get all puzzle dates for George's puzzles
