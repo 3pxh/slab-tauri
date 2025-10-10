@@ -952,7 +952,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
                           : 'bg-green-600 hover:bg-green-700 text-white'
                       }`}
                     >
-                      {isSlabInDatabase(slab) ? 'Already Saved' : 'Save to DB'}
+                      {isSlabInDatabase(slab) ? 'Already Saved' : 'Save to my slabs'}
                     </button>
                   )}
                 </div>
