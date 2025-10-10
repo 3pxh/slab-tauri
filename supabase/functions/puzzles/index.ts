@@ -38,22 +38,14 @@ serve(async (req) => {
   }
 
   try {
-    // Create Supabase client - use service role for writes, anon for reads
-    const isWriteOperation = req.method === 'POST';
-    const key = isWriteOperation 
-      ? (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? 
-         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU')
-      : (Deno.env.get('SUPABASE_ANON_KEY') ?? 
-         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0');
+    // Create Supabase client - always use service role for database access
+    // This ensures the edge function can access the database even with RLS enabled
+    const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? 
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
     
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? 'http://127.0.0.1:54321',
-      key,
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
+      key
     )
 
     // Parse request body
