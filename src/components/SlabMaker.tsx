@@ -494,10 +494,10 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
 
 
   return (
-    <div className="p-4 w-full">
+    <div className="p-4 w-full max-w-md mx-auto">
       {/* Color Swatches */}
       <div className="mb-2">
-        <div className="flex justify-center gap-1 w-full max-w-md mx-auto">
+        <div className="flex justify-center gap-1 w-full">
           {colors.map((color, index) => (
             <button
               key={index}
@@ -517,7 +517,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
         </div>
       </div>
       
-      <div className="grid grid-cols-6 w-full max-w-screen mx-auto" style={{ gridAutoRows: '1fr' }}>
+      <div className="grid grid-cols-6 w-full" style={{ gridAutoRows: '1fr' }}>
         {slab.cells.map((row, rowIndex) => (
           <React.Fragment key={rowIndex}>
             {row.map((cell, colIndex) => (

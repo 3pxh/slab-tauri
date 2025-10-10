@@ -1,7 +1,7 @@
 // Simple test file to verify sandbox functionality
 // This can be run in the browser console for testing
 
-import { executeCodeSafely, createSandbox } from './sandbox';
+import { executeCodeSafely } from './sandbox';
 
 // Test cases for the sandbox
 export const testSandbox = async () => {

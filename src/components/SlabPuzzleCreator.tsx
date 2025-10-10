@@ -42,6 +42,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   const [isLoadingSlabs, setIsLoadingSlabs] = React.useState(false);
   const [slabMessage, setSlabMessage] = React.useState('');
   const [editingSlab, setEditingSlab] = React.useState<SlabRecord | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = React.useState(false);
 
   // Function to calculate the next date after the last puzzle date
   const calculateNextDate = (dates: string[]): string => {
@@ -624,7 +625,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   // If not authenticated, only show authentication UI
   if (!isAuthenticated) {
     return (
-      <div className="p-4 w-full">
+      <div className="p-4 w-full max-w-7xl mx-auto">
         {/* Back to Home Button */}
         <div className="mb-4 flex items-center justify-between">
           <button
@@ -702,7 +703,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   }
 
   return (
-    <div className="p-4 w-full">
+    <div className="p-4 w-full max-w-7xl mx-auto">
       {/* Back to Home Button */}
       <div className="mb-4 flex items-center justify-between">
         <button
@@ -746,20 +747,36 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
 
       {/* Saved Slabs Management */}
       {isAuthenticated && (
-        <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold text-green-800">My Saved Slabs</h3>
+        <details 
+          className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200"
+          open={isDetailsOpen}
+          onToggle={(e) => setIsDetailsOpen(e.currentTarget.open)}
+        >
+          <summary className="flex items-center justify-between cursor-pointer">
+            <div className="flex items-center space-x-2">
+              <span 
+                className="text-green-600 transition-transform duration-200"
+                style={{ transform: isDetailsOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
+              >
+                ▶
+              </span>
+              <h3 className="text-lg font-semibold text-green-800">My Saved Slabs</h3>
+            </div>
             <button
-              onClick={loadUserSlabs}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                loadUserSlabs();
+              }}
               disabled={isLoadingSlabs}
               className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-1 px-3 rounded-md transition-colors duration-200 text-sm"
             >
               {isLoadingSlabs ? 'Loading...' : 'Refresh'}
             </button>
-          </div>
+          </summary>
           
           {slabMessage && (
-            <div className={`p-2 rounded-md text-sm mb-3 ${
+            <div className={`p-2 rounded-md text-sm mb-3 mt-3 ${
               slabMessage.includes('Failed') || slabMessage.includes('Please sign in')
                 ? 'bg-red-100 text-red-700 border border-red-200'
                 : 'bg-green-100 text-green-700 border border-green-200'
@@ -769,9 +786,9 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
           )}
 
           {savedSlabs.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="flex flex-wrap gap-4 mt-3">
               {savedSlabs.map((slab) => (
-                <div key={slab.id} className="bg-white p-3 rounded-lg border border-green-200">
+                <div key={slab.id} className="bg-white p-4 rounded-lg border border-green-200 flex-shrink-0">
                   <div className="mb-2">
                     <SlabComponent slab={slab.slab_data} size="small" />
                   </div>
@@ -804,11 +821,11 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
               ))}
             </div>
           ) : (
-            <div className="text-center py-4 text-gray-500">
+            <div className="text-center py-4 text-gray-500 mt-3">
               <p>No saved slabs yet. Create some slabs and save them to see them here!</p>
             </div>
           )}
-        </div>
+        </details>
       )}
 
       {/* Puzzle Information */}
@@ -865,6 +882,9 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
           <p>
               Copy the rule prompt to your clipboard and paste it into an AI with whatever rule idea you have. Copy the code it makes into the box. Make slabs and run it.
           </p>
+          <p>
+            Hidden slabs are revealed in the order in which they are presented in the list below.
+          </p>
         </div>
       </div>
       
@@ -875,7 +895,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
           disabled={isLoadingHistory}
           className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
         >
-          {isLoadingHistory ? 'Loading...' : 'Load All Puzzles'}
+          {isLoadingHistory ? 'Loading...' : 'Load All Public Slabs'}
         </button>
       </div>
 
@@ -888,9 +908,9 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       {createdSlabs.length > 0 && (
         <div className="mt-8">
           <h3 className="text-lg font-semibold mb-4">Created Slabs ({createdSlabs.length})</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="flex flex-wrap gap-6">
             {createdSlabs.map((slab, index) => (
-              <div key={slab.id} className="flex flex-col items-center">
+              <div key={slab.id} className="flex flex-col items-center flex-shrink-0 p-2">
                 <div className="mb-2 text-sm font-medium">Slab #{index + 1}</div>
                 <div 
                   onClick={() => handleSlabClick(index)}
@@ -899,7 +919,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
                 >
                   <SlabComponent slab={slab} size="small" />
                 </div>
-                <div className="mt-2 flex flex-col gap-1">
+                <div className="mt-3 flex flex-col gap-1">
                   <div className="flex gap-1">
                     <button
                       onClick={() => handleShownExampleChange(index, !shownExamples[index])}

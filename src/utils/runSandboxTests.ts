@@ -1,7 +1,7 @@
 // Simple test runner for sandbox functionality
 // Run this in your browser's developer console to test the sandbox
 
-import { executeCodeSafely, createSandbox } from './sandbox';
+import { executeCodeSafely } from './sandbox';
 
 // Test cases for the sandbox
 const runSandboxTests = async () => {
@@ -29,7 +29,7 @@ const runSandboxTests = async () => {
 
   // Test 3: Code that tries to access fetch (isolated in worker)
   try {
-    const result3 = await executeCodeSafely('fetch("/api/steal-data"); return true;', { color: 'green' });
+    await executeCodeSafely('fetch("/api/steal-data"); return true;', { color: 'green' });
     // Fetch is allowed in workers but isolated - this test always passes
   } catch (error) {
     // Fetch might be blocked in some environments - this is also acceptable

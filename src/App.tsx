@@ -156,7 +156,7 @@ function App() {
 
   return (
     <div className="w-full h-full relative flex justify-center">
-      <div className="w-full max-w-md mx-auto h-full">
+      <div className={`w-full mx-auto h-full ${mode === 'create' ? 'max-w-7xl' : 'max-w-md'}`}>
         {mode === 'home' ? (
           <Home 
             onTodayPuzzle={handleTodayPuzzle}

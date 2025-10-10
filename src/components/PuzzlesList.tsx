@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiArrowLeft, FiEdit, FiTrash2, FiCalendar, FiShare2 } from 'react-icons/fi';
+import { FiArrowLeft, FiTrash2, FiCalendar, FiShare2 } from 'react-icons/fi';
 import { supabase, Puzzle } from '../lib/supabase';
 import { formatDateUTC } from '../utils';
 
@@ -89,7 +89,7 @@ const PuzzlesList: React.FC<PuzzlesListProps> = ({ onHome }) => {
   const formatPublishDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      return formatDateUTC(date);
+      return formatDateUTC(date.toISOString());
     } catch {
       return 'Invalid date';
     }
