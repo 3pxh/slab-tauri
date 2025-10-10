@@ -57,7 +57,7 @@ export class AuthService {
       
       if (session?.user) {
         // A user is truly anonymous if they have no email AND is_anonymous is true
-        const isTrulyAnonymous = (session.user.is_anonymous && !session.user.email);
+        const isTrulyAnonymous = (session.user.is_anonymous && !session.user.email) ?? true;
         
         // For INITIAL_SESSION, don't override if we already have the correct state
         if (event === 'INITIAL_SESSION' && this.authState.user?.id === session.user.id) {
