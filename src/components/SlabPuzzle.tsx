@@ -319,6 +319,9 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       // Reset pending guessed slabs when starting a new guess session
       setPendingGuessedSlabs([]);
     }
+    
+    // Evaluate hidden examples when the overlay is opened
+    evaluateHiddenExamples();
   };
 
   const handleCloseOverlay = () => {
@@ -380,6 +383,39 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       const key = getSlabKey(slab);
       return evaluationResults.get(key) || false;
     });
+  };
+
+  // Evaluate hidden examples when they are shown in the guess overlay
+  const evaluateHiddenExamples = async () => {
+    if (!puzzle.evaluate_fn.trim()) {
+      return;
+    }
+
+    const slabsForOverlay = getSlabsForOverlay();
+    const slabsToEvaluate = slabsForOverlay.filter(slab => {
+      const key = getSlabKey(slab);
+      return !evaluationResults.has(key);
+    });
+
+    if (slabsToEvaluate.length > 0) {
+      try {
+        const results = await Promise.all(
+          slabsToEvaluate.map(slab => evaluateSlab(slab))
+        );
+
+        // Add new results to the map
+        setEvaluationResults(prev => {
+          const newMap = new Map(prev);
+          slabsToEvaluate.forEach((slab, index) => {
+            const key = getSlabKey(slab);
+            newMap.set(key, results[index]);
+          });
+          return newMap;
+        });
+      } catch (error) {
+        console.error('Error evaluating hidden examples:', error);
+      }
+    }
   };
 
   return (
