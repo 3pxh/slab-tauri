@@ -1,4 +1,4 @@
-import { supabase, PuzzleProgress, PuzzleProgressResponse } from './supabase'
+import { supabase, PuzzleProgress } from './supabase'
 import { authService } from './auth'
 
 export class PuzzleProgressService {
@@ -122,6 +122,7 @@ export class PuzzleProgressService {
       attempts: (existing?.attempts || 0) + 1,
       best_score: existing?.best_score,
       completed_at: existing?.completed_at,
+      last_played_at: new Date().toISOString(),
       custom_data: existing?.custom_data || {}
     }
 
@@ -137,6 +138,7 @@ export class PuzzleProgressService {
       attempts: existing?.attempts || 0,
       best_score: existing?.best_score,
       completed_at: existing?.completed_at,
+      last_played_at: new Date().toISOString(),
       custom_data: existing?.custom_data || {}
     }
 
@@ -152,6 +154,7 @@ export class PuzzleProgressService {
       attempts: existing?.attempts || 0,
       best_score: score && (!existing?.best_score || score > existing.best_score) ? score : existing?.best_score,
       completed_at: new Date().toISOString(),
+      last_played_at: new Date().toISOString(),
       custom_data: existing?.custom_data || {}
     }
 
@@ -167,6 +170,7 @@ export class PuzzleProgressService {
       attempts: existing?.attempts || 0,
       best_score: existing?.best_score,
       completed_at: existing?.completed_at,
+      last_played_at: new Date().toISOString(),
       custom_data: { ...(existing?.custom_data || {}), ...customData }
     }
 
