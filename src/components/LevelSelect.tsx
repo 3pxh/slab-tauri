@@ -1,6 +1,7 @@
 import React from 'react';
 import { getAllDates } from '../lib/supabase';
 import Instructions from './Instructions';
+import { getStandardizedDateString, isTodayUTC } from '../utils';
 import favicon from '../assets/favicon.png';
 
 interface LevelSelectProps {
@@ -13,7 +14,7 @@ const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onCreatePuzzle }) => {
   const [visibleMonth, setVisibleMonth] = React.useState<Date>(() => {
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   });
 
   const [availableDates, setAvailableDates] = React.useState<Set<string>>(new Set());
@@ -29,8 +30,7 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onCreatePuzzle }) =
           // Convert date strings to YYYY-MM-DD format for consistent comparison
           // Use UTC to ensure all users see the same puzzles regardless of timezone
           const dateSet = new Set(response.dates.map(dateStr => {
-            const date = new Date(dateStr);
-            return date.toISOString().split('T')[0];
+            return getStandardizedDateString(dateStr);
           }));
           setAvailableDates(dateSet);
         }
@@ -44,46 +44,41 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onCreatePuzzle }) =
     fetchDates();
   }, []);
 
-  const year = visibleMonth.getFullYear();
-  const month = visibleMonth.getMonth();
+  const year = visibleMonth.getUTCFullYear();
+  const month = visibleMonth.getUTCMonth();
 
-  const firstDayOfMonth = new Date(year, month, 1);
-  const startDayOfWeek = firstDayOfMonth.getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayOfMonth = new Date(Date.UTC(year, month, 1));
+  const startDayOfWeek = firstDayOfMonth.getUTCDay();
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
 
   const days: (Date | null)[] = [];
   for (let i = 0; i < startDayOfWeek; i++) {
     days.push(null);
   }
   for (let d = 1; d <= daysInMonth; d++) {
-    days.push(new Date(year, month, d));
+    days.push(new Date(Date.UTC(year, month, d)));
   }
   while (days.length % 7 !== 0) {
     days.push(null);
   }
 
   const goPrevMonth = () => {
-    setVisibleMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    setVisibleMonth(prev => new Date(Date.UTC(prev.getUTCFullYear(), prev.getUTCMonth() - 1, 1)));
   };
   const goNextMonth = () => {
-    setVisibleMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    setVisibleMonth(prev => new Date(Date.UTC(prev.getUTCFullYear(), prev.getUTCMonth() + 1, 1)));
   };
 
   const isToday = (date: Date) => {
-    const now = new Date();
-    return (
-      date.getFullYear() === now.getFullYear() &&
-      date.getMonth() === now.getMonth() &&
-      date.getDate() === now.getDate()
-    );
+    return isTodayUTC(date);
   };
 
   const isDateAvailable = (date: Date) => {
-    // Create date string directly from calendar date components to avoid timezone issues
+    // Use UTC methods to ensure consistent date comparison
     // This ensures all users see the same puzzles regardless of their timezone
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
     return availableDates.has(dateStr);
   };
@@ -117,7 +112,7 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onCreatePuzzle }) =
               ←
             </button>
             <div className="font-semibold">
-              {visibleMonth.toLocaleString(undefined, { month: 'long' })} {year}
+              {visibleMonth.toLocaleString(undefined, { month: 'long', timeZone: 'UTC' })} {year}
             </div>
             <button className="px-3 py-1 rounded border hover:bg-gray-100" onClick={goNextMonth}>
               →

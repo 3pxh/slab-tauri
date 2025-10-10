@@ -2,7 +2,7 @@ import React from 'react';
 import { Puzzle, createPuzzle, getAllDates, getPuzzle } from '../lib/supabase';
 import SlabMaker from './SlabMaker';
 import Slab, { SlabData } from './Slab';
-import { deepCopy } from '../utils';
+import { deepCopy, formatDateUTC } from '../utils';
 import { executeCodeSafely } from '../utils/sandbox';
 
 type SlabWithId = SlabData & { id: number };
@@ -278,7 +278,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
     <div className="p-4 w-full">
       {/* Puzzle Information */}
       <div className="mb-4 p-3 bg-gray-100 rounded-lg">
-        <h2 className="text-lg font-semibold mb-2">Creating Puzzle for {new Date(displayDate).toLocaleDateString()}</h2>
+        <h2 className="text-lg font-semibold mb-2">Creating Puzzle for {formatDateUTC(displayDate)}</h2>
         <div className="text-sm text-gray-600 mb-4">
           <p><strong>Content Type:</strong> {puzzle.content_type}</p>
           <p><strong>Puzzle ID:</strong> {puzzle.id}</p>

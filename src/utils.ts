@@ -64,3 +64,59 @@ export function deepCopy<T>(obj: T): T {
   
   return copy;
 }
+
+/**
+ * Format a date string to a standardized display format using UTC
+ * This ensures all users see the same date regardless of their timezone
+ */
+export function formatDateUTC(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    // Use UTC methods to avoid timezone conversion
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth();
+    const day = date.getUTCDate();
+    
+    // Create a new date object in UTC for consistent formatting
+    const utcDate = new Date(Date.UTC(year, month, day));
+    
+    return utcDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC'
+    });
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return dateString; // Return original string if formatting fails
+  }
+}
+
+/**
+ * Get a standardized date string in YYYY-MM-DD format using UTC
+ * This ensures consistent date comparison across timezones
+ */
+export function getStandardizedDateString(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } catch (error) {
+    console.error('Error getting standardized date string:', error);
+    return dateString;
+  }
+}
+
+/**
+ * Check if a date is today using UTC to avoid timezone issues
+ */
+export function isTodayUTC(date: Date): boolean {
+  const now = new Date();
+  return (
+    date.getUTCFullYear() === now.getUTCFullYear() &&
+    date.getUTCMonth() === now.getUTCMonth() &&
+    date.getUTCDate() === now.getUTCDate()
+  );
+}

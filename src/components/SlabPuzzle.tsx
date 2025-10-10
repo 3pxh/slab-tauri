@@ -4,7 +4,7 @@ import { GiPlasticDuck } from 'react-icons/gi';
 import { useGesture } from '@use-gesture/react';
 import { Puzzle } from '../lib/supabase';
 import Slab, { SlabData, areSlabsEqual, COLORS } from './Slab';
-import { deepCopy } from '../utils';
+import { deepCopy, formatDateUTC } from '../utils';
 import SlabMaker from './SlabMaker';
 import GuessPanel, { GuessResult } from './GuessPanel';
 import { executeCodeSafely } from '../utils/sandbox';
@@ -154,17 +154,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
 
 
   const formatDate = (dateString: string): string => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return dateString; // Return original string if formatting fails
-    }
+    return formatDateUTC(dateString);
   };
 
   // Grayscale color palette - distinct steps from light to dark

@@ -34,14 +34,14 @@ function App() {
     setError(null);
     
     try {
-      // Create a timestamp for the end of the selected day to ensure we get the puzzle for that date
-      // This avoids timezone issues by using the end of the day
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      const day = date.getDate();
+      // Create a timestamp for the end of the selected day using UTC to ensure consistency
+      // This matches the UTC-based date comparison used in the calendar
+      const year = date.getUTCFullYear();
+      const month = date.getUTCMonth();
+      const day = date.getUTCDate();
       
-      // Create timestamp for end of the selected day (23:59:59.999)
-      const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
+      // Create timestamp for end of the selected day (23:59:59.999) in UTC
+      const endOfDay = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
       const timestamp = endOfDay.toISOString();
       
       const response = await getPuzzle(timestamp);
