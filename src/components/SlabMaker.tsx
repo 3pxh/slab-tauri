@@ -20,9 +20,10 @@ type SlabMakerProps = {
   onShuffle?: () => void;
   onSort?: () => void;
   colors?: string[];
+  onUpdateSlab?: (slab: SlabData) => void;
 };
 
-const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0, maxGuesses = 3, hasWon = false, flashGuessButton = false, isInGuessSession = false, initialSlab, onShuffle, onSort, colors = COLORS }) => {
+const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0, maxGuesses = 3, hasWon = false, flashGuessButton = false, isInGuessSession = false, initialSlab, onShuffle, onSort, colors = COLORS, onUpdateSlab }) => {
   const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
   const [history, setHistory] = React.useState<SlabData[]>([]);
   const [, setIsDragging] = React.useState(false);
@@ -50,6 +51,13 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
       preDragSnapshotRef.current = null;
     }
   }, [initialSlab]);
+
+  // Call onUpdateSlab whenever slab changes
+  React.useEffect(() => {
+    if (onUpdateSlab) {
+      onUpdateSlab(slab);
+    }
+  }, [slab, onUpdateSlab]);
 
   // Helper: deep clone a slab snapshot
   const cloneSlab = (source: SlabData): SlabData => {

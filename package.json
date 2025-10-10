@@ -12,6 +12,7 @@
     "tsc": "tsc"
   },
   "dependencies": {
+    "@react-spring/web": "^10.0.3",
     "@supabase/supabase-js": "^2.57.4",
     "@tauri-apps/api": "^2",
     "@use-gesture/react": "^10.3.1",
