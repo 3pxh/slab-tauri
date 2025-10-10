@@ -5,7 +5,7 @@ import { PuzzleProgress } from '../lib/supabase'
 export function usePuzzleProgress(puzzleId?: string) {
   const [progress, setProgress] = useState<PuzzleProgress | null>(null)
   const [allProgress, setAllProgress] = useState<PuzzleProgress[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(!!puzzleId) // Start as true if we have a puzzleId
   const [error, setError] = useState<string | null>(null)
 
   // Load progress for specific puzzle

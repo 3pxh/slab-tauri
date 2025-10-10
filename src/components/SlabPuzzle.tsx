@@ -31,7 +31,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   const [isGrayscale, setIsGrayscale] = React.useState(false);
   
   // Authentication and progress tracking
-  const { progress, incrementAttempts, addTrophy, markCompleted, updateCustomData } = usePuzzleProgress(puzzle.id);
+  const { progress, isLoading, incrementAttempts, addTrophy, markCompleted, updateCustomData } = usePuzzleProgress(puzzle.id);
 
   // Track if we're in the middle of a guess submission to prevent race conditions
   const isSubmittingGuessRef = React.useRef(false);
@@ -50,18 +50,20 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       return;
     }
     
-    // If we don't have progress data yet, wait for it to load
+    // If we're still loading progress data, wait for it to complete
     // This prevents initializing with shown examples when we actually have saved progress
-    if (progress === null) {
+    if (isLoading) {
       return;
     }
+    
+    // If loading is complete but progress is null, that means this is a first-time user
+    // We should proceed with initialization using shown examples
     
     // Start with shown examples as the base state
     let initialSlabs = puzzle.shown_examples;
     let initialRemainingGuesses = 3;
     let initialHasWon = false;
     let initialEvaluationResults = new Map<string, boolean>();
-    
     // Only override with saved progress if we have meaningful saved data
     if (progress && progress.custom_data) {
       // Use saved slabs if available and not empty, otherwise fall back to shown examples
@@ -97,7 +99,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     
     // Mark as initialized
     hasInitializedRef.current = true;
-  }, [puzzle.shown_examples, progress]); // Depend on both, but hasInitializedRef prevents re-runs
+  }, [puzzle.shown_examples, progress, isLoading]); // Depend on both, but hasInitializedRef prevents re-runs
 
   // Pre-evaluate all slabs when puzzle loads (only after initialization)
   React.useEffect(() => {
@@ -144,48 +146,6 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     preEvaluateAllSlabs();
   }, [puzzle.evaluate_fn, puzzle.shown_examples, puzzle.hidden_examples, evaluationResults]);
 
-  // Comprehensive auto-save that handles all state together
-  const saveTimeoutRef = React.useRef<NodeJS.Timeout>();
-  const lastSavedStateRef = React.useRef<string>('');
-  
-  React.useEffect(() => {
-    // Don't auto-save during initial loading
-    if (!hasInitializedRef.current) {
-      return;
-    }
-    
-    // Create a comprehensive state representation
-    const stateToSave = {
-      savedSlabs: allSlabs,
-      remainingGuesses,
-      hasWon,
-      evaluationResults: Array.from(evaluationResults.entries())
-    };
-    const stateString = JSON.stringify(stateToSave);
-    
-    // Only save if state actually changed and we're not in the middle of a guess submission
-    if (stateString !== lastSavedStateRef.current && !isSubmittingGuessRef.current) {
-      // Clear existing timeout
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-      
-      // Debounce the save by 500ms
-      saveTimeoutRef.current = setTimeout(() => {
-        lastSavedStateRef.current = stateString;
-        updateCustomData(puzzle.id, stateToSave).catch(error => {
-          console.error('❌ Failed to auto-save state:', error);
-        });
-      }, 500);
-    }
-    
-    // Cleanup timeout on unmount
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [allSlabs, remainingGuesses, hasWon, evaluationResults, puzzle.id, updateCustomData]);
 
   const handleSlabCreate = (newSlab: SlabData) => {
     // If we're in a guess session, flash the guess button instead of creating a slab
@@ -201,8 +161,21 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     setAllSlabs(prev => {
       // Remove any existing slabs that are identical to the new one
       const filteredSlabs = prev.filter(existingSlab => !areSlabsEqual(clonedSlab, existingSlab));
-      // Add the new slab at the beginning
-      return [clonedSlab, ...filteredSlabs];
+      const newSlabs = [clonedSlab, ...filteredSlabs];
+      
+      // Save the updated state with the new slab
+      const stateToSave = {
+        savedSlabs: newSlabs,
+        remainingGuesses,
+        hasWon,
+        evaluationResults: Array.from(evaluationResults.entries())
+      };
+      
+      updateCustomData(puzzle.id, stateToSave).catch(error => {
+        console.error('❌ Failed to save progress after slab creation:', error);
+      });
+      
+      return newSlabs;
     });
     
     // Immediately evaluate the new slab for instant feedback
@@ -535,7 +508,6 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         
         // Save immediately without debounce
         await updateCustomData(puzzle.id, stateToSave);
-        lastSavedStateRef.current = JSON.stringify(stateToSave);
         
         // Check if player won (all guesses correct) - do this AFTER updateCustomData
         if (allCorrect) {
