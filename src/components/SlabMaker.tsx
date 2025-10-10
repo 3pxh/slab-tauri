@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiRotateCcw, FiRefreshCw, FiPlus, FiStar } from 'react-icons/fi';
+import { FiRotateCcw, FiRefreshCw, FiPlus } from 'react-icons/fi';
 import { FaArrowDownUpAcrossLine, FaLightbulb } from 'react-icons/fa6';
 import { PiShuffleBold } from 'react-icons/pi';
 import { useGesture } from '@use-gesture/react';
@@ -632,16 +632,16 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
                 className={`px-3 py-2 rounded text-sm flex flex-col items-center justify-center h-12 transition-all duration-300 ${
                   flashGuessButton 
                     ? 'animate-pulse bg-yellow-400 text-white shadow-lg scale-110' 
-                    : hasWon
-                      ? 'bg-yellow-500 text-white hover:bg-yellow-600'
-                      : isInGuessSession
-                        ? 'bg-green-500 text-white hover:bg-green-600'
-                        : guessCount > 0 
-                          ? 'bg-yellow-500 text-white hover:bg-yellow-600' 
-                          : 'bg-gray-400 text-white cursor-not-allowed'
+                    : guessCount <= 0
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : hasWon
+                        ? 'bg-yellow-500 text-white hover:bg-yellow-600'
+                        : isInGuessSession
+                          ? 'bg-green-500 text-white hover:bg-green-600'
+                          : 'bg-yellow-500 text-white hover:bg-yellow-600'
                 }`}
                 onClick={onGuess}
-                disabled={guessCount <= 0 && !hasWon && !isInGuessSession}
+                disabled={guessCount <= 0}
                 title={
                   hasWon 
                     ? "Puzzle completed!" 
@@ -650,9 +650,9 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
                       : "No guesses remaining"
                 }
               >
-                {hasWon ? <FiStar size={16} /> : <FaLightbulb size={16} />}
+                <FaLightbulb size={16} />
                 <span className="text-xs">
-                  {hasWon ? "★" : `${guessCount}/${maxGuesses}`}
+                  {`${guessCount}/${maxGuesses}`}
                 </span>
               </button>
             )}

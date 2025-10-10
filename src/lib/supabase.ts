@@ -200,3 +200,130 @@ export async function deleteSlab(slabId: number): Promise<SlabResponse> {
     message: 'Slab deleted successfully'
   }
 }
+
+// Puzzle Progress interfaces and functions
+export interface PuzzleProgress {
+  id?: string
+  puzzle_id: string
+  user_id: string
+  trophies: number
+  attempts: number
+  best_score?: number
+  completed_at?: string
+  last_played_at: string
+  custom_data?: Record<string, any>
+  created_at?: string
+  updated_at?: string
+}
+
+export interface PuzzleProgressResponse {
+  success: boolean
+  progress?: PuzzleProgress
+  progressList?: PuzzleProgress[]
+  message: string
+}
+
+// Function to get puzzle progress for current user
+export async function getPuzzleProgress(puzzleId: string): Promise<PuzzleProgressResponse> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('User not authenticated')
+  }
+
+  const { data, error } = await supabase
+    .from('puzzle_progress')
+    .select('*')
+    .eq('puzzle_id', puzzleId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+    throw new Error(`Failed to get puzzle progress: ${error.message}`)
+  }
+
+  return {
+    success: true,
+    progress: data || null,
+    message: data ? 'Progress found' : 'No progress found'
+  }
+}
+
+// Function to save puzzle progress
+export async function savePuzzleProgress(progress: Omit<PuzzleProgress, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<PuzzleProgressResponse> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('User not authenticated')
+  }
+
+  const progressData = {
+    ...progress,
+    user_id: user.id,
+    last_played_at: new Date().toISOString()
+  }
+
+  const { data, error } = await supabase
+    .from('puzzle_progress')
+    .upsert(progressData, { 
+      onConflict: 'puzzle_id,user_id',
+      ignoreDuplicates: false 
+    })
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(`Failed to save puzzle progress: ${error.message}`)
+  }
+
+  return {
+    success: true,
+    progress: data,
+    message: 'Progress saved successfully'
+  }
+}
+
+// Function to get all puzzle progress for current user
+export async function getAllPuzzleProgress(): Promise<PuzzleProgressResponse> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('User not authenticated')
+  }
+
+  const { data, error } = await supabase
+    .from('puzzle_progress')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('last_played_at', { ascending: false })
+
+  if (error) {
+    throw new Error(`Failed to get all puzzle progress: ${error.message}`)
+  }
+
+  return {
+    success: true,
+    progressList: data || [],
+    message: `Found ${data?.length || 0} progress records`
+  }
+}
+
+// Function to delete puzzle progress
+export async function deletePuzzleProgress(puzzleId: string): Promise<PuzzleProgressResponse> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('User not authenticated')
+  }
+
+  const { error } = await supabase
+    .from('puzzle_progress')
+    .delete()
+    .eq('puzzle_id', puzzleId)
+    .eq('user_id', user.id)
+
+  if (error) {
+    throw new Error(`Failed to delete puzzle progress: ${error.message}`)
+  }
+
+  return {
+    success: true,
+    message: 'Progress deleted successfully'
+  }
+}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowLeft, FiStar, FiMonitor } from 'react-icons/fi';
+import { FiArrowLeft, FiMonitor, FiAward } from 'react-icons/fi';
 import { GiPlasticDuck } from 'react-icons/gi';
 import { useGesture } from '@use-gesture/react';
 import { Puzzle } from '../lib/supabase';
@@ -8,6 +8,7 @@ import { deepCopy, formatDateUTC } from '../utils';
 import SlabMaker from './SlabMaker';
 import GuessPanel, { GuessResult } from './GuessPanel';
 import { executeCodeSafely } from '../utils/sandbox';
+import { usePuzzleProgress } from '../hooks/usePuzzleProgress';
 
 
 type SlabPuzzleProps = {
@@ -28,6 +29,9 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   const [flashGuessButton, setFlashGuessButton] = React.useState(false);
   const [selectedSlabForMaker, setSelectedSlabForMaker] = React.useState<SlabData | null>(null);
   const [isGrayscale, setIsGrayscale] = React.useState(false);
+  
+  // Authentication and progress tracking
+  const { progress, incrementAttempts, addTrophy, markCompleted, updateCustomData } = usePuzzleProgress(puzzle.id);
 
   // Load shown examples into state when component mounts
   React.useEffect(() => {
@@ -36,6 +40,130 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       setAllSlabs(deserializedExamples);
     }
   }, [puzzle.shown_examples]);
+
+  // Pre-evaluate all slabs when puzzle loads
+  React.useEffect(() => {
+    const preEvaluateAllSlabs = async () => {
+      if (!puzzle.evaluate_fn.trim()) {
+        return;
+      }
+
+      // Get all slabs that need evaluation (shown examples + hidden examples)
+      const allSlabsToEvaluate = [
+        ...(puzzle.shown_examples || []),
+        ...(puzzle.hidden_examples || [])
+      ];
+
+      // Filter out slabs that are already evaluated
+      const slabsToEvaluate = allSlabsToEvaluate.filter(slab => {
+        const key = getSlabKey(slab);
+        return !evaluationResults.has(key);
+      });
+
+      if (slabsToEvaluate.length > 0) {
+        try {
+          const results = await Promise.all(
+            slabsToEvaluate.map(slab => evaluateSlab(slab))
+          );
+
+          // Add new results to the map
+          setEvaluationResults(prev => {
+            const newMap = new Map(prev);
+            slabsToEvaluate.forEach((slab, index) => {
+              const key = getSlabKey(slab);
+              newMap.set(key, results[index]);
+            });
+            return newMap;
+          });
+        } catch (error) {
+          console.error('Error pre-evaluating slabs:', error);
+        }
+      }
+    };
+
+    preEvaluateAllSlabs();
+  }, [puzzle.evaluate_fn, puzzle.shown_examples, puzzle.hidden_examples]);
+
+  // Track if we're in the middle of a guess submission to prevent race conditions
+  const isSubmittingGuessRef = React.useRef(false);
+  
+  // Load existing progress when component mounts
+  React.useEffect(() => {
+    if (progress && !isSubmittingGuessRef.current) {
+      // Restore game state from saved progress
+      setRemainingGuesses(Math.max(0, 3 - progress.attempts));
+      setHasWon(!!progress.completed_at);
+      
+      // Restore comprehensive state from custom_data
+      if (progress.custom_data) {
+        // Restore saved slabs
+        if (progress.custom_data.savedSlabs) {
+          console.log('🔄 Restoring saved slabs:', progress.custom_data.savedSlabs.length);
+          setAllSlabs(progress.custom_data.savedSlabs);
+        }
+        
+        // Restore remaining guesses if available
+        if (typeof progress.custom_data.remainingGuesses === 'number') {
+          setRemainingGuesses(progress.custom_data.remainingGuesses);
+        }
+        
+        // Restore hasWon state if available
+        if (typeof progress.custom_data.hasWon === 'boolean') {
+          setHasWon(progress.custom_data.hasWon);
+        }
+        
+        // Restore evaluation results if available
+        if (Array.isArray(progress.custom_data.evaluationResults)) {
+          const restoredResults = new Map<string, boolean>(progress.custom_data.evaluationResults);
+          setEvaluationResults(restoredResults);
+        }
+      }
+    }
+  }, [progress]);
+
+  // Comprehensive auto-save that handles all state together
+  const saveTimeoutRef = React.useRef<NodeJS.Timeout>();
+  const lastSavedStateRef = React.useRef<string>('');
+  
+  React.useEffect(() => {
+    // Create a comprehensive state representation
+    const stateToSave = {
+      savedSlabs: allSlabs,
+      remainingGuesses,
+      hasWon,
+      evaluationResults: Array.from(evaluationResults.entries())
+    };
+    const stateString = JSON.stringify(stateToSave);
+    
+    // Only save if state actually changed and we're not in the middle of a guess submission
+    if (stateString !== lastSavedStateRef.current && !isSubmittingGuessRef.current) {
+      // Clear existing timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      
+      // Debounce the save by 500ms
+      saveTimeoutRef.current = setTimeout(() => {
+        console.log('💾 Auto-saving comprehensive state:', {
+          slabs: allSlabs.length,
+          remainingGuesses,
+          hasWon,
+          evaluationResults: evaluationResults.size
+        });
+        lastSavedStateRef.current = stateString;
+        updateCustomData(puzzle.id, stateToSave).catch(error => {
+          console.error('❌ Failed to auto-save state:', error);
+        });
+      }, 500);
+    }
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [allSlabs, remainingGuesses, hasWon, evaluationResults, puzzle.id, updateCustomData]);
 
   const handleSlabCreate = (newSlab: SlabData) => {
     // If we're in a guess session, flash the guess button instead of creating a slab
@@ -319,29 +447,17 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       // Reset pending guessed slabs when starting a new guess session
       setPendingGuessedSlabs([]);
     }
-    
-    // Evaluate hidden examples when the overlay is opened
-    evaluateHiddenExamples();
   };
 
   const handleCloseOverlay = () => {
     setShowGuessOverlay(false);
     setIsInGuessSession(false);
     
-    // Add pending guessed slabs to the main list
-    if (pendingGuessedSlabs.length > 0) {
-      setAllSlabs(prev => [...pendingGuessedSlabs, ...prev]);
-      
-      // Immediately evaluate the newly added slabs
-      pendingGuessedSlabs.forEach(slab => {
-        evaluateSingleSlab(slab);
-      });
-      
-      setPendingGuessedSlabs([]);
-    }
+    // Clear pending guessed slabs (they were already added in handleGuessSubmit)
+    setPendingGuessedSlabs([]);
   };
 
-  const handleGuessSubmit = (results: GuessResult[]) => {
+  const handleGuessSubmit = async (results: GuessResult[]) => {
     const filteredHidden = getFilteredHiddenExamples();
     let allCorrect = true;
     let hasAnyGuess = false;
@@ -358,18 +474,64 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
 
     // Only process if there are actual guesses made
     if (hasAnyGuess) {
-      // Decrement remaining guesses
-      setRemainingGuesses(prev => Math.max(0, prev - 1));
+      // Set flag to prevent race conditions during guess submission
+      isSubmittingGuessRef.current = true;
       
-      // Store guessed slabs in pending state (will be added to main list when overlay closes)
-      const guessedSlabs = results
-        .filter(result => result.index < filteredHidden.length)
-        .map(result => filteredHidden[result.index]);
-      setPendingGuessedSlabs(guessedSlabs);
-      
-      // Check if player won (all guesses correct)
-      if (allCorrect) {
-        setHasWon(true);
+      try {
+        // Decrement remaining guesses
+        setRemainingGuesses(prev => Math.max(0, prev - 1));
+        
+        // Store guessed slabs in pending state (will be added to main list when overlay closes)
+        const guessedSlabs = results
+          .filter(result => result.index < filteredHidden.length)
+          .map(result => filteredHidden[result.index]);
+        setPendingGuessedSlabs(guessedSlabs);
+        
+        // Also add the slabs immediately to ensure they're always added
+        setAllSlabs(prev => [...guessedSlabs, ...prev]);
+        
+        // Immediately evaluate the newly added slabs
+        guessedSlabs.forEach(slab => {
+          evaluateSingleSlab(slab);
+        });
+        
+        // Track progress: increment attempts
+        try {
+          await incrementAttempts(puzzle.id);
+        } catch (error) {
+          console.error('Failed to save progress:', error);
+        }
+        
+        // Force immediate save of the new state (do this first to avoid overwriting trophy count)
+        const stateToSave = {
+          savedSlabs: [...guessedSlabs, ...allSlabs],
+          remainingGuesses: Math.max(0, remainingGuesses - 1),
+          hasWon: allCorrect,
+          evaluationResults: Array.from(evaluationResults.entries())
+        };
+        
+        // Save immediately without debounce
+        await updateCustomData(puzzle.id, stateToSave);
+        lastSavedStateRef.current = JSON.stringify(stateToSave);
+        
+        // Check if player won (all guesses correct) - do this AFTER updateCustomData
+        if (allCorrect) {
+          setHasWon(true);
+          
+          // Track progress: mark as completed and add trophy
+          try {
+            await markCompleted(puzzle.id, results.filter(r => r.isCorrect).length);
+            await addTrophy(puzzle.id);
+          } catch (error) {
+            console.error('Failed to save completion progress:', error);
+          }
+        }
+        
+      } finally {
+        // Clear the flag after a short delay to allow state updates to complete
+        setTimeout(() => {
+          isSubmittingGuessRef.current = false;
+        }, 100);
       }
     }
 
@@ -385,38 +547,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     });
   };
 
-  // Evaluate hidden examples when they are shown in the guess overlay
-  const evaluateHiddenExamples = async () => {
-    if (!puzzle.evaluate_fn.trim()) {
-      return;
-    }
 
-    const slabsForOverlay = getSlabsForOverlay();
-    const slabsToEvaluate = slabsForOverlay.filter(slab => {
-      const key = getSlabKey(slab);
-      return !evaluationResults.has(key);
-    });
-
-    if (slabsToEvaluate.length > 0) {
-      try {
-        const results = await Promise.all(
-          slabsToEvaluate.map(slab => evaluateSlab(slab))
-        );
-
-        // Add new results to the map
-        setEvaluationResults(prev => {
-          const newMap = new Map(prev);
-          slabsToEvaluate.forEach((slab, index) => {
-            const key = getSlabKey(slab);
-            newMap.set(key, results[index]);
-          });
-          return newMap;
-        });
-      } catch (error) {
-        console.error('Error evaluating hidden examples:', error);
-      }
-    }
-  };
 
   return (
     <div className="w-full">
@@ -433,10 +564,17 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
           </button>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             {puzzle.name}
-            {hasWon && (
-              <FiStar className="text-yellow-500" size={20} />
-            )}
           </h2>
+          {/* Progress indicators */}
+          {progress && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center">
+                {Array.from({ length: progress.trophies }, (_, i) => (
+                  <FiAward key={i} className="text-yellow-500 fill-yellow-300" size={16} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <div className="text-sm text-gray-600">
@@ -554,6 +692,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
           />
         ))}
       </GuessPanel>
+
     </div>
   );
 };

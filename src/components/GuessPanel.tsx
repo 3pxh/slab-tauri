@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowRight, FiCheck, FiX } from 'react-icons/fi';
+import { FiArrowRight, FiCheck, FiX, FiAward } from 'react-icons/fi';
 import { FaLightbulb } from 'react-icons/fa6';
 import { GiPlasticDuck } from 'react-icons/gi';
 
@@ -97,6 +97,14 @@ const GuessPanel: React.FC<GuessPanelProps> = ({
     onClose();
   };
 
+  // Check if all guesses are correct
+  const allGuessesCorrect = React.useMemo(() => {
+    if (!guessesSubmitted || Object.keys(guessResults).length === 0) {
+      return false;
+    }
+    return Object.values(guessResults).every(result => result === true);
+  }, [guessesSubmitted, guessResults]);
+
   if (!isOpen) {
     return null;
   }
@@ -146,10 +154,12 @@ const GuessPanel: React.FC<GuessPanelProps> = ({
                       {/* Child content */}
                       <div className="w-32 h-32 relative">
                         {child}
-                        {/* Duck annotation for ground truth ducks after submission */}
-                        {hasBeenSubmitted && groundTruth[index] && (
+                        {/* Duck annotation for all ducks - always present but with opacity transition */}
+                        {groundTruth[index] && (
                           <div 
-                            className="absolute"
+                            className={`absolute transition-opacity duration-500 ${
+                              hasBeenSubmitted ? 'opacity-100' : 'opacity-0'
+                            }`}
                             style={{
                               top: '-4px',
                               right: '-4px',
@@ -178,18 +188,18 @@ const GuessPanel: React.FC<GuessPanelProps> = ({
                             className={currentGuess === 'black' ? 'text-black' : 'text-gray-500'} 
                           />
                         </button>
-                        {/* Red X for wrong guesses */}
-                        {hasBeenSubmitted && isIncorrect && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <FiX 
-                              size={32} 
-                              className="text-red-600 font-bold stroke-2" 
-                              style={{
-                                filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
-                              }}
-                            />
-                          </div>
-                        )}
+                        {/* Red X for wrong guesses - always present but with opacity transition */}
+                         <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-500 pointer-events-none ${
+                           (hasBeenSubmitted && isIncorrect) ? 'opacity-100' : 'opacity-0'
+                         }`}>
+                          <FiX 
+                            size={32} 
+                            className="text-red-600 font-bold stroke-2" 
+                            style={{
+                              filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
+                            }}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -214,7 +224,15 @@ const GuessPanel: React.FC<GuessPanelProps> = ({
                   onClick={handleClose}
                   title="Close"
                 >
-                  <FiArrowRight size={20} />
+                  {allGuessesCorrect ? (
+                    <>
+                      <FiAward className="text-yellow-500" size={20} />
+                      <FiAward className="text-yellow-500" size={20} />
+                      <FiAward className="text-yellow-500" size={20} />
+                    </>
+                  ) : (
+                    <FiArrowRight size={20} />
+                  )}
                 </button>
               ) : (
                 <button
@@ -232,7 +250,10 @@ const GuessPanel: React.FC<GuessPanelProps> = ({
                   }
                 >
                   {children.length > 0 ? (
-                    <FiCheck size={20} />
+                    <>
+                      <FiCheck size={20} />
+                      <span>Submit</span>
+                    </>
                   ) : (
                     <span>
                       No items to guess
