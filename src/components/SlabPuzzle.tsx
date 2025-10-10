@@ -33,16 +33,76 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   // Authentication and progress tracking
   const { progress, incrementAttempts, addTrophy, markCompleted, updateCustomData } = usePuzzleProgress(puzzle.id);
 
-  // Load shown examples into state when component mounts
+  // Track if we're in the middle of a guess submission to prevent race conditions
+  const isSubmittingGuessRef = React.useRef(false);
+  
+  // Track if we've completed initial loading to prevent sync loops
+  const hasInitializedRef = React.useRef(false);
+  
+  // Initialize state from puzzle and progress data - wait for both to be available
   React.useEffect(() => {
-    if (puzzle.shown_examples && puzzle.shown_examples.length > 0) {
-      const deserializedExamples = puzzle.shown_examples;
-      setAllSlabs(deserializedExamples);
+    if (hasInitializedRef.current) {
+      return; // Prevent re-initialization
     }
-  }, [puzzle.shown_examples]);
+    
+    // We need at least the puzzle data to initialize
+    if (!puzzle.shown_examples) {
+      return;
+    }
+    
+    // If we don't have progress data yet, wait for it to load
+    // This prevents initializing with shown examples when we actually have saved progress
+    if (progress === null) {
+      return;
+    }
+    
+    // Start with shown examples as the base state
+    let initialSlabs = puzzle.shown_examples;
+    let initialRemainingGuesses = 3;
+    let initialHasWon = false;
+    let initialEvaluationResults = new Map<string, boolean>();
+    
+    // Only override with saved progress if we have meaningful saved data
+    if (progress && progress.custom_data) {
+      // Use saved slabs if available and not empty, otherwise fall back to shown examples
+      if (progress.custom_data.savedSlabs && progress.custom_data.savedSlabs.length > 0) {
+        initialSlabs = progress.custom_data.savedSlabs;
+      }
+      
+      // Restore remaining guesses if available
+      if (typeof progress.custom_data.remainingGuesses === 'number') {
+        initialRemainingGuesses = progress.custom_data.remainingGuesses;
+      }
+      
+      // Restore hasWon state if available
+      if (typeof progress.custom_data.hasWon === 'boolean') {
+        initialHasWon = progress.custom_data.hasWon;
+      }
+      
+      // Restore evaluation results if available
+      if (Array.isArray(progress.custom_data.evaluationResults)) {
+        initialEvaluationResults = new Map<string, boolean>(progress.custom_data.evaluationResults);
+      }
+    } else if (progress) {
+      // If we have progress but no custom_data, still restore basic progress info
+      initialRemainingGuesses = Math.max(0, 3 - progress.attempts);
+      initialHasWon = !!progress.completed_at;
+    }
+    
+    // Set all initial state at once to prevent multiple renders
+    setAllSlabs(initialSlabs);
+    setRemainingGuesses(initialRemainingGuesses);
+    setHasWon(initialHasWon);
+    setEvaluationResults(initialEvaluationResults);
+    
+    // Mark as initialized
+    hasInitializedRef.current = true;
+  }, [puzzle.shown_examples, progress]); // Depend on both, but hasInitializedRef prevents re-runs
 
-  // Pre-evaluate all slabs when puzzle loads
+  // Pre-evaluate all slabs when puzzle loads (only after initialization)
   React.useEffect(() => {
+    if (!hasInitializedRef.current) return; // Wait for initialization
+    
     const preEvaluateAllSlabs = async () => {
       if (!puzzle.evaluate_fn.trim()) {
         return;
@@ -82,50 +142,18 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     };
 
     preEvaluateAllSlabs();
-  }, [puzzle.evaluate_fn, puzzle.shown_examples, puzzle.hidden_examples]);
-
-  // Track if we're in the middle of a guess submission to prevent race conditions
-  const isSubmittingGuessRef = React.useRef(false);
-  
-  // Load existing progress when component mounts
-  React.useEffect(() => {
-    if (progress && !isSubmittingGuessRef.current) {
-      // Restore game state from saved progress
-      setRemainingGuesses(Math.max(0, 3 - progress.attempts));
-      setHasWon(!!progress.completed_at);
-      
-      // Restore comprehensive state from custom_data
-      if (progress.custom_data) {
-        // Restore saved slabs
-        if (progress.custom_data.savedSlabs) {
-          console.log('🔄 Restoring saved slabs:', progress.custom_data.savedSlabs.length);
-          setAllSlabs(progress.custom_data.savedSlabs);
-        }
-        
-        // Restore remaining guesses if available
-        if (typeof progress.custom_data.remainingGuesses === 'number') {
-          setRemainingGuesses(progress.custom_data.remainingGuesses);
-        }
-        
-        // Restore hasWon state if available
-        if (typeof progress.custom_data.hasWon === 'boolean') {
-          setHasWon(progress.custom_data.hasWon);
-        }
-        
-        // Restore evaluation results if available
-        if (Array.isArray(progress.custom_data.evaluationResults)) {
-          const restoredResults = new Map<string, boolean>(progress.custom_data.evaluationResults);
-          setEvaluationResults(restoredResults);
-        }
-      }
-    }
-  }, [progress]);
+  }, [puzzle.evaluate_fn, puzzle.shown_examples, puzzle.hidden_examples, evaluationResults]);
 
   // Comprehensive auto-save that handles all state together
   const saveTimeoutRef = React.useRef<NodeJS.Timeout>();
   const lastSavedStateRef = React.useRef<string>('');
   
   React.useEffect(() => {
+    // Don't auto-save during initial loading
+    if (!hasInitializedRef.current) {
+      return;
+    }
+    
     // Create a comprehensive state representation
     const stateToSave = {
       savedSlabs: allSlabs,
@@ -144,12 +172,6 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       
       // Debounce the save by 500ms
       saveTimeoutRef.current = setTimeout(() => {
-        console.log('💾 Auto-saving comprehensive state:', {
-          slabs: allSlabs.length,
-          remainingGuesses,
-          hasWon,
-          evaluationResults: evaluationResults.size
-        });
         lastSavedStateRef.current = stateString;
         updateCustomData(puzzle.id, stateToSave).catch(error => {
           console.error('❌ Failed to auto-save state:', error);
@@ -400,8 +422,9 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     }
   };
 
-  // Update evaluation results when slabs change
+  // Update evaluation results when slabs change (only after initialization)
   React.useEffect(() => {
+    if (!hasInitializedRef.current) return; // Wait for initialization
     updateEvaluationResults();
   }, [allSlabs, puzzle.evaluate_fn]);
 

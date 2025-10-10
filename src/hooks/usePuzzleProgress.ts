@@ -142,7 +142,6 @@ export function usePuzzleProgress(puzzleId?: string) {
   // Load progress when puzzleId changes
   useEffect(() => {
     if (puzzleId) {
-      console.log('🔄 usePuzzleProgress: Loading progress for puzzle:', puzzleId)
       loadProgress(puzzleId)
     }
   }, [puzzleId, loadProgress])
