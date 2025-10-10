@@ -5,7 +5,8 @@ import SlabPuzzleCreator from './components/SlabPuzzleCreator';
 import LevelSelect from './components/LevelSelect';
 import Home from './components/Home';
 import PuzzlesList from './components/PuzzlesList';
-import { getPuzzle, getPuzzleByUuid, Puzzle } from './lib/supabase';
+import Instructions from './components/Instructions';
+import { getPuzzle, getPuzzleByUuid, getAllDates, Puzzle } from './lib/supabase';
 import { SlabData, createSlab } from './components/Slab';
 
 // Automatically run sandbox tests in development
@@ -24,7 +25,7 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 function App() {
-  const [mode, setMode] = React.useState<'home' | 'select' | 'create' | 'solve' | 'puzzles' | 'shared'>('home');
+  const [mode, setMode] = React.useState<'home' | 'select' | 'create' | 'solve' | 'puzzles' | 'shared' | 'instructions'>('home');
   const [puzzle, setPuzzle] = React.useState<Puzzle | null>(null);
   const [currentSlab, setCurrentSlab] = React.useState<SlabData | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -151,6 +152,44 @@ function App() {
     setMode('puzzles');
   };
 
+  const handleInstructions = () => {
+    setMode('instructions');
+  };
+
+  const handleFirstPuzzle = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Get all available dates and find the first one
+      const response = await getAllDates();
+      if (response.success && response.dates.length > 0) {
+        // The dates are already sorted in ascending order (oldest first)
+        const firstDateStr = response.dates[0];
+        const firstDate = new Date(firstDateStr);
+        
+        // Create a timestamp for the end of the first day (23:59:59.999) in UTC
+        const year = firstDate.getUTCFullYear();
+        const month = firstDate.getUTCMonth();
+        const day = firstDate.getUTCDate();
+        const endOfDay = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+        const timestamp = endOfDay.toISOString();
+        
+        const puzzleResponse = await getPuzzle(timestamp);
+        setPuzzle(puzzleResponse.puzzle);
+        setCurrentSlab(createSlab());
+        setMode('solve'); // Go directly to solve mode
+      } else {
+        setError('No puzzles available');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load first puzzle');
+      console.error('Error loading first puzzle:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
 
 
@@ -162,10 +201,15 @@ function App() {
             onTodayPuzzle={handleTodayPuzzle}
             onArchive={handleArchive}
             onCreatePuzzle={handleCreatePuzzle}
+            onInstructions={handleInstructions}
           />
         ) : mode === 'select' ? (
           <div>
-            <LevelSelect onSelect={handleSelect} />
+            <LevelSelect 
+              onSelect={handleSelect} 
+              onTodayPuzzle={handleTodayPuzzle}
+              onHome={() => setMode('home')}
+            />
             {loading && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div className="bg-white p-4 rounded-lg">
@@ -222,6 +266,12 @@ function App() {
                 puzzle={puzzle} 
                 slab={currentSlab}
               />
+            </div>
+          </div>
+        ) : mode === 'instructions' ? (
+          <div className="w-full h-full flex flex-col">
+            <div className="flex-1 min-h-0">
+              <Instructions onFirstPuzzle={handleFirstPuzzle} onTodayPuzzle={handleTodayPuzzle} onHome={() => setMode('home')} />
             </div>
           </div>
         ) : null}

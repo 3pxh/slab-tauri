@@ -1,16 +1,18 @@
 import React from 'react';
 import { getAllDates } from '../lib/supabase';
-import Instructions from './Instructions';
 import { getStandardizedDateString, isTodayUTC } from '../utils';
 import favicon from '../assets/favicon.png';
+import { FiArrowLeft, FiPlay } from 'react-icons/fi';
 
 interface LevelSelectProps {
   onSelect: (date: Date) => void;
+  onTodayPuzzle: () => void;
+  onHome: () => void;
 }
 
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect }) => {
+const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onTodayPuzzle, onHome }) => {
   const [visibleMonth, setVisibleMonth] = React.useState<Date>(() => {
     const now = new Date();
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
@@ -85,16 +87,27 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect }) => {
   return (
     <div className="w-full max-w-md mx-auto p-4">
       {/* App Header */}
-      <div className="flex items-center justify-center mb-6">
-        <img 
-          src={favicon} 
-          alt="Slab! App Icon" 
-          className="w-12 h-12 rounded-lg mr-3"
-        />
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Slab 17</h1>
-          <p className="text-sm text-gray-600 italic">a formal imagining</p>
+      <div className="flex items-center justify-between mb-6">
+        <button
+          onClick={onHome}
+          className="flex items-center text-gray-600 hover:text-gray-800 transition-colors duration-200"
+        >
+          <FiArrowLeft size={20} />
+        </button>
+        
+        <div className="flex items-center">
+          <img 
+            src={favicon} 
+            alt="Slab! App Icon" 
+            className="w-12 h-12 rounded-lg mr-3"
+          />
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">Slab 17</h1>
+            <p className="text-sm text-gray-600 italic">a formal imagining</p>
+          </div>
         </div>
+        
+        <div className="w-20"></div> {/* Spacer to center the title */}
       </div>
       
       <div className="mb-4">
@@ -159,7 +172,18 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect }) => {
         </div>
       )}
 
-      <Instructions />
+      {/* Today's Puzzle Button */}
+      <div className="mt-6">
+        <button
+          onClick={onTodayPuzzle}
+          className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-lg p-4 transition-colors duration-200 shadow-lg"
+        >
+          <div className="flex items-center justify-center space-x-3">
+            <FiPlay size={20} />
+            <span className="font-semibold">Today's Puzzle</span>
+          </div>
+        </button>
+      </div>
     </div>
   );
 };

@@ -73,6 +73,38 @@ export const createSlab = (): SlabData => {
   return { cells, groups };
 };
 
+// Create a random slab with various colors and groups
+export const createRandomSlab = (): SlabData => {
+  const cells: Cell[][] = [];
+  const groups: Record<number, Group> = {};
+  
+  // Create 3-8 random groups with different colors
+  const numGroups = Math.floor(Math.random() * 4) + 2; // 3-8 groups
+  const groupIds = Array.from({ length: numGroups }, (_, i) => i);
+  
+  // Assign random colors to groups (excluding gray for more visual interest)
+  const availableColors = [1, 2, 3, 4, 5, 6]; // Red, Orange, Yellow, Green, Blue, Purple
+  groupIds.forEach((groupId, index) => {
+    groups[groupId] = {
+      id: groupId,
+      color: availableColors[index % availableColors.length]
+    };
+  });
+  
+  // Fill the 6x6 grid with random group assignments
+  for (let row = 0; row < 6; row++) {
+    cells[row] = [];
+    for (let col = 0; col < 6; col++) {
+      const randomGroupId = groupIds[Math.floor(Math.random() * groupIds.length)];
+      cells[row][col] = {
+        groupId: randomGroupId
+      };
+    }
+  }
+  
+  return { cells, groups };
+};
+
 // Helper function to get border styles and corner radii based on neighbors
 const getBorderStyles = (row: number, col: number, slab: SlabData) => {
   const currentGroupId = slab.cells[row][col].groupId;
