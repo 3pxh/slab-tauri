@@ -10,14 +10,6 @@ interface GetPuzzleRequest {
   timestamp: string
 }
 
-interface CreatePuzzleRequest {
-  name: string
-  content_type: string
-  evaluate_fn: string
-  shown_examples: any[]
-  hidden_examples: any[]
-  publish_date: string
-}
 
 interface Puzzle {
   id: string
@@ -48,6 +40,26 @@ serve(async (req) => {
       key
     )
 
+    // Get the user ID for george@hoqqanen.com to restrict queries
+    const { data: georgeUser, error: userError } = await supabaseClient
+      .from('auth.users')
+      .select('id')
+      .eq('email', 'george@hoqqanen.com')
+      .single()
+
+    if (userError || !georgeUser) {
+      console.error('Error finding george@hoqqanen.com user:', userError)
+      return new Response(
+        JSON.stringify({ error: 'Authorized user not found' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    const georgeUserId = georgeUser.id
+
     // Parse request body
     const body = await req.json()
     const { action, timestamp, ...puzzleData } = body
@@ -77,9 +89,11 @@ serve(async (req) => {
       }
 
       // Query for the puzzle published most immediately before the given timestamp
+      // Only return puzzles created by george@hoqqanen.com
       const { data, error } = await supabaseClient
         .from('puzzles')
         .select('*')
+        .eq('creator_id', georgeUserId)
         .lte('publish_date', timestamp)
         .order('publish_date', { ascending: false })
         .limit(1)
@@ -126,10 +140,12 @@ serve(async (req) => {
     }
 
     // Handle ALL_DATES action - get all puzzle publish dates
+    // Only return dates for puzzles created by george@hoqqanen.com
     if (action === 'all_dates') {
       const { data, error } = await supabaseClient
         .from('puzzles')
         .select('publish_date')
+        .eq('creator_id', georgeUserId)
         .order('publish_date', { ascending: true })
 
       if (error) {
@@ -159,74 +175,10 @@ serve(async (req) => {
       )
     }
 
-    // Handle CREATE action - create new puzzle
-    if (action === 'create') {
-      // Validate required fields
-      if (!puzzleData.name || !puzzleData.content_type || !puzzleData.evaluate_fn) {
-        return new Response(
-          JSON.stringify({ error: 'Missing required fields: name, content_type, and evaluate_fn are required' }),
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        )
-      }
-
-      // Validate publish_date format if provided
-      if (puzzleData.publish_date) {
-        const publishDate = new Date(puzzleData.publish_date)
-        if (isNaN(publishDate.getTime())) {
-          return new Response(
-            JSON.stringify({ error: 'Invalid publish_date format. Use ISO 8601 format (e.g., 2024-12-20T10:00:00Z)' }),
-            { 
-              status: 400, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-            }
-          )
-        }
-      }
-
-      // Insert new puzzle
-      const { data, error } = await supabaseClient
-        .from('puzzles')
-        .insert([{
-          name: puzzleData.name,
-          content_type: puzzleData.content_type,
-          evaluate_fn: puzzleData.evaluate_fn,
-          shown_examples: puzzleData.shown_examples || [],
-          hidden_examples: puzzleData.hidden_examples || [],
-          publish_date: puzzleData.publish_date || new Date().toISOString()
-        }])
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Database error:', error)
-        return new Response(
-          JSON.stringify({ error: 'Failed to create puzzle', details: error.message }),
-          { 
-            status: 500, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        )
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          puzzle: data,
-          message: 'Puzzle created successfully'
-        }),
-        { 
-          status: 201, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
 
     // Handle unsupported actions
     return new Response(
-      JSON.stringify({ error: 'Unsupported action. Use "get", "create", or "all_dates".' }),
+      JSON.stringify({ error: 'Unsupported action. Use "get" or "all_dates".' }),
       { 
         status: 400, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

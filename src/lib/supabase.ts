@@ -35,21 +35,35 @@ export interface GetAllDatesResponse {
   message: string
 }
 
-// Function to get a puzzle by timestamp using the puzzles function
+// Function to get a puzzle by timestamp for George's puzzles
 export async function getPuzzle(timestamp: string): Promise<GetPuzzleResponse> {
-  const { data, error } = await supabase.functions.invoke('puzzles', {
-    method: 'POST',
-    body: { action: 'get', timestamp }
-  })
+  const { data, error } = await supabase
+    .from('puzzles')
+    .select('*')
+    .eq('creator_id', '3996a43b-86dd-4bda-8807-dc3d8e76e5a7')
+    .lte('publish_date', timestamp)
+    .order('publish_date', { ascending: false })
+    .limit(1)
 
   if (error) {
     throw new Error(`Failed to get puzzle: ${error.message}`)
   }
 
-  return data
+  if (!data || data.length === 0) {
+    throw new Error(`No puzzle found published before the given timestamp: ${timestamp}`)
+  }
+
+  const puzzle: Puzzle = data[0]
+
+  return {
+    success: true,
+    puzzle: puzzle,
+    timestamp: timestamp,
+    message: `Found puzzle published on ${puzzle.publish_date}`
+  }
 }
 
-// Function to create a new puzzle using the puzzles function
+// Function to create a new puzzle (uses RLS to automatically set creator_id)
 export async function createPuzzle(puzzleData: {
   name: string
   content_type: string
@@ -58,28 +72,141 @@ export async function createPuzzle(puzzleData: {
   hidden_examples?: any[]
   publish_date?: string
 }): Promise<{ success: boolean; puzzle: Puzzle; message: string }> {
-  const { data, error } = await supabase.functions.invoke('puzzles', {
-    method: 'POST',
-    body: { action: 'create', ...puzzleData }
-  })
+  const { data, error } = await supabase
+    .from('puzzles')
+    .insert([{
+      name: puzzleData.name,
+      content_type: puzzleData.content_type,
+      evaluate_fn: puzzleData.evaluate_fn,
+      shown_examples: puzzleData.shown_examples || [],
+      hidden_examples: puzzleData.hidden_examples || [],
+      publish_date: puzzleData.publish_date || new Date().toISOString()
+    }])
+    .select()
+    .single()
 
   if (error) {
     throw new Error(`Failed to create puzzle: ${error.message}`)
   }
 
-  return data
+  return {
+    success: true,
+    puzzle: data,
+    message: 'Puzzle created successfully'
+  }
 }
 
-// Function to get all puzzle dates using the puzzles function
+// Function to get all puzzle dates for George's puzzles
 export async function getAllDates(): Promise<GetAllDatesResponse> {
-  const { data, error } = await supabase.functions.invoke('puzzles', {
-    method: 'POST',
-    body: { action: 'all_dates' }
-  })
+  const { data, error } = await supabase
+    .from('puzzles')
+    .select('publish_date')
+    .eq('creator_id', '3996a43b-86dd-4bda-8807-dc3d8e76e5a7')
+    .order('publish_date', { ascending: true })
 
   if (error) {
     throw new Error(`Failed to get all dates: ${error.message}`)
   }
 
-  return data
+  const dates = data?.map(row => row.publish_date) || []
+
+  return {
+    success: true,
+    dates: dates,
+    count: dates.length,
+    message: `Found ${dates.length} puzzle dates`
+  }
+}
+
+// Slab management interfaces and functions
+export interface Slab {
+  id: number
+  slab_data: any
+  created_at: string
+  updated_at: string
+  creator_id: string | null
+}
+
+export interface SlabResponse {
+  success: boolean
+  slab?: Slab
+  slabs?: Slab[]
+  message: string
+}
+
+// Function to get all slabs created by the current user
+export async function getUserSlabs(): Promise<SlabResponse> {
+  const { data, error } = await supabase
+    .from('slabs')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    throw new Error(`Failed to get user slabs: ${error.message}`)
+  }
+
+  return {
+    success: true,
+    slabs: data || [],
+    message: `Found ${data?.length || 0} slabs`
+  }
+}
+
+// Function to create a new slab
+export async function createSlab(slabData: any): Promise<SlabResponse> {
+  const { data, error } = await supabase
+    .from('slabs')
+    .insert([{ 
+      slab_data: slabData,
+      creator_id: (await supabase.auth.getUser()).data.user?.id
+    }])
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(`Failed to create slab: ${error.message}`)
+  }
+
+  return {
+    success: true,
+    slab: data,
+    message: 'Slab created successfully'
+  }
+}
+
+// Function to update an existing slab
+export async function updateSlab(slabId: number, slabData: any): Promise<SlabResponse> {
+  const { data, error } = await supabase
+    .from('slabs')
+    .update({ slab_data: slabData })
+    .eq('id', slabId)
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(`Failed to update slab: ${error.message}`)
+  }
+
+  return {
+    success: true,
+    slab: data,
+    message: 'Slab updated successfully'
+  }
+}
+
+// Function to delete a slab
+export async function deleteSlab(slabId: number): Promise<SlabResponse> {
+  const { error } = await supabase
+    .from('slabs')
+    .delete()
+    .eq('id', slabId)
+
+  if (error) {
+    throw new Error(`Failed to delete slab: ${error.message}`)
+  }
+
+  return {
+    success: true,
+    message: 'Slab deleted successfully'
+  }
 }
