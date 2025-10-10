@@ -3,11 +3,12 @@ import React from 'react';
 import SlabPuzzle from './components/SlabPuzzle';
 import SlabPuzzleCreator from './components/SlabPuzzleCreator';
 import LevelSelect from './components/LevelSelect';
+import Tutorial from './components/Tutorial';
 import { getPuzzle, Puzzle } from './lib/supabase';
 import { SlabData, createSlab } from './components/Slab';
 
 function App() {
-  const [mode, setMode] = React.useState<'select' | 'create' | 'solve'>('select');
+  const [mode, setMode] = React.useState<'select' | 'create' | 'solve' | 'tutorial'>('select');
   const [puzzle, setPuzzle] = React.useState<Puzzle | null>(null);
   const [currentSlab, setCurrentSlab] = React.useState<SlabData | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -67,7 +68,7 @@ function App() {
       <div className="w-full max-w-md mx-auto h-full">
         {mode === 'select' ? (
           <div>
-            <LevelSelect onSelect={handleSelect} onCreatePuzzle={handleCreatePuzzle} />
+            <LevelSelect onSelect={handleSelect} onCreatePuzzle={handleCreatePuzzle} onTutorial={() => setMode('tutorial')} />
             {loading && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div className="bg-white p-4 rounded-lg">
@@ -89,6 +90,12 @@ function App() {
                 </div>
               </div>
             )}
+          </div>
+        ) : mode === 'tutorial' ? (
+          <div className="w-full h-full flex flex-col">
+            <div className="flex-1 min-h-0">
+              <Tutorial onComplete={() => setMode('select')} />
+            </div>
           </div>
         ) : mode === 'create' && puzzle ? (
           <div className="w-full h-full flex flex-col">
