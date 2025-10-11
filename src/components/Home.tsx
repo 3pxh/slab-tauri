@@ -1,7 +1,7 @@
 import React from 'react';
 import { FiCalendar, FiPlus, FiPlay, FiHelpCircle, FiMail } from 'react-icons/fi';
-import favicon from '../assets/favicon.png';
 import { useAuth } from '../hooks/useAuth';
+import AppHeader from './AppHeader';
 
 interface HomeProps {
   onTodayPuzzle: () => void;
@@ -49,17 +49,7 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
   return (
     <div className="w-full max-w-md mx-auto p-4">
       {/* App Header */}
-      <div className="flex items-center justify-center mb-8">
-        <img 
-          src={favicon} 
-          alt="Slab! App Icon" 
-          className="w-16 h-16 rounded-lg mr-4"
-        />
-        <div>
-          <h1 className="text-4xl font-bold text-gray-800">Slab 17</h1>
-          <p className="text-sm text-gray-600 italic">a formal imagining</p>
-        </div>
-      </div>
+      <AppHeader titleSize="large" />
 
       {/* Main Action Buttons */}
       <div className="space-y-4">

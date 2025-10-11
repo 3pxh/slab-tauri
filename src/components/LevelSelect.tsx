@@ -1,8 +1,8 @@
 import React from 'react';
 import { getAllDates } from '../lib/supabase';
 import { getStandardizedDateString, isTodayUTC } from '../utils';
-import favicon from '../assets/favicon.png';
-import { FiArrowLeft, FiPlay } from 'react-icons/fi';
+import { FiPlay } from 'react-icons/fi';
+import AppHeader from './AppHeader';
 
 interface LevelSelectProps {
   onSelect: (date: Date) => void;
@@ -87,28 +87,7 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onTodayPuzzle, onHo
   return (
     <div className="w-full max-w-md mx-auto p-4">
       {/* App Header */}
-      <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={onHome}
-          className="flex items-center text-gray-600 hover:text-gray-800 transition-colors duration-200"
-        >
-          <FiArrowLeft size={20} />
-        </button>
-        
-        <div className="flex items-center">
-          <img 
-            src={favicon} 
-            alt="Slab! App Icon" 
-            className="w-12 h-12 rounded-lg mr-3"
-          />
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">Slab 17</h1>
-            <p className="text-sm text-gray-600 italic">a formal imagining</p>
-          </div>
-        </div>
-        
-        <div className="w-20"></div> {/* Spacer to center the title */}
-      </div>
+      <AppHeader onBack={onHome} showBackButton={true} />
       
       <div className="mb-4">
         {isLoadingDates ? (

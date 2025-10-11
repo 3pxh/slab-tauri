@@ -1,9 +1,9 @@
 import React from 'react';
 import { FaLightbulb } from 'react-icons/fa6';
 import { GiPlasticDuck } from 'react-icons/gi';
-import { FiRefreshCw, FiAward, FiCalendar, FiPlay, FiArrowLeft } from 'react-icons/fi';
+import { FiRefreshCw, FiAward, FiCalendar, FiPlay } from 'react-icons/fi';
 import Slab, { createRandomSlab } from './Slab';
-import favicon from '../assets/favicon.png';
+import AppHeader from './AppHeader';
 
 interface InstructionsProps {
   onFirstPuzzle: () => void;
@@ -22,28 +22,7 @@ const Instructions: React.FC<InstructionsProps> = ({ onFirstPuzzle, onTodayPuzzl
   return (
     <div className="w-full max-w-md mx-auto p-4">
       {/* App Header */}
-      <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={onHome}
-          className="flex items-center text-gray-600 hover:text-gray-800 transition-colors duration-200"
-        >
-          <FiArrowLeft size={20} />
-        </button>
-        
-        <div className="flex items-center">
-          <img 
-            src={favicon} 
-            alt="Slab! App Icon" 
-            className="w-12 h-12 rounded-lg mr-3"
-          />
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">Slab 17</h1>
-            <p className="text-sm text-gray-600 italic">a formal imagining</p>
-          </div>
-        </div>
-        
-        <div className="w-20"></div> {/* Spacer to center the title */}
-      </div>
+      <AppHeader onBack={onHome} showBackButton={true} />
       
       <h3 className="text-lg font-semibold text-gray-800 mb-3">How to Play</h3>
       
