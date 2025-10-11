@@ -1,9 +1,9 @@
 import React from 'react';
-import { FiArrowLeft, FiMonitor, FiAward } from 'react-icons/fi';
+import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2 } from 'react-icons/fi';
 import { GiPlasticDuck } from 'react-icons/gi';
 import { useGesture } from '@use-gesture/react';
 import { Puzzle } from '../lib/supabase';
-import Slab, { SlabData } from './Slab';
+import Slab, { SlabData, areSlabsEqual } from './Slab';
 import { formatDateUTC } from '../utils';
 import SlabMaker from './SlabMaker';
 import GuessPanel from './GuessPanel';
@@ -30,6 +30,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   const {
     // State
     allSlabs,
+    archivedSlabs,
     showGuessOverlay,
     remainingGuesses,
     hasWon,
@@ -38,17 +39,22 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     flashGuessButton,
     selectedSlabForMaker,
     colorblindMode,
+    showArchivedSlabs,
     progress,
     
     // Actions
     handleSlabCreate,
     handleSlabClick,
+    handleSlabArchive,
+    handleSlabUnarchive,
+    handleSlabDelete,
     handleShuffle,
     handleSort,
     handleGuessClick,
     handleCloseOverlay,
     handleGuessSubmit,
     handleColorblindModeToggle,
+    handleToggleArchivedSlabs,
     reorderSlabs,
     getSlabKey,
     getCurrentColors,
@@ -59,6 +65,22 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
 
   // Local state for drag and drop
   const [localDraggedIndex, setLocalDraggedIndex] = React.useState<number | null>(null);
+
+  // Gesture handler for archived slabs (selection only, no drag)
+  const bindArchivedGestures = useGesture({
+    onClick: ({ event, args }) => {
+      const [, slab] = args as [number, SlabData];
+      // Check if the click is on action buttons
+      const target = event.target as HTMLElement;
+      if (target.closest('[data-unarchive-button]') || target.closest('[data-delete-button]')) {
+        return; // Let the button handle the action
+      }
+      
+      // Otherwise, select the slab
+      event.stopPropagation();
+      handleSlabClick(slab);
+    }
+  });
 
 
 
@@ -96,6 +118,15 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       if (localDraggedIndex === null) {
         event.stopPropagation();
         handleSlabClick(slab);
+      }
+    },
+    onPointerDown: ({ event, args }) => {
+      const [, slab] = args as [number, SlabData];
+      // Check if the click is on the archive button
+      const target = event.target as HTMLElement;
+      if (target.closest('[data-archive-button]')) {
+        event.stopPropagation();
+        handleSlabArchive(slab);
       }
     }
   }, {
@@ -219,7 +250,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                     }}
                   >
                     <div 
-                      className="rounded-sm cursor-move relative w-full h-full hover:ring-2 hover:ring-blue-400 hover:ring-opacity-50"
+                      className="group rounded-sm cursor-move relative w-full h-full hover:ring-2 hover:ring-blue-400 hover:ring-opacity-50"
                       title="Click to edit in SlabMaker"
                     >
                       <Slab 
@@ -244,12 +275,128 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                           <GiPlasticDuck size={16} />
                         </div>
                       )}
+                      {/* Archive button */}
+                      <button
+                        data-archive-button
+                        className={`absolute top-1 left-1 p-1 rounded-full bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 transition-colors ${
+                          selectedSlabForMaker && areSlabsEqual(selectedSlabForMaker, slab) 
+                            ? 'opacity-100' 
+                            : 'opacity-0 group-hover:opacity-100'
+                        }`}
+                        title="Archive this slab"
+                        aria-label="Archive slab"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSlabArchive(slab);
+                        }}
+                      >
+                        <FiEyeOff size={12} />
+                      </button>
                     </div>
                   </div>
                 );
               })}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Archived Slabs Section */}
+      {archivedSlabs.length > 0 && (
+        <div className="mt-4">
+          <button
+            className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors w-full"
+            onClick={handleToggleArchivedSlabs}
+            aria-label={showArchivedSlabs ? "Hide archived slabs" : "Show archived slabs"}
+          >
+            <FiEyeOff size={16} />
+            <span>Archived Slabs ({archivedSlabs.length})</span>
+            <span className={`ml-auto transition-transform ${showArchivedSlabs ? 'rotate-180' : ''}`}>
+              ▼
+            </span>
+          </button>
+          
+          {showArchivedSlabs && (
+            <div className="mt-2 bg-gray-200 p-2 rounded-lg">
+              <div className="flex flex-wrap gap-2 justify-center pr-4">
+                {archivedSlabs.map((slab, index) => {
+                  const key = getSlabKey(slab);
+                  const evaluationResult = evaluationResults.get(key) || false;
+                  
+                  return (
+                    <div 
+                      key={index} 
+                      className="flex flex-col relative"
+                      style={{
+                        width: 'calc(30% - 2px)',
+                        height: 'calc(30% - 2px)',
+                      }}
+                      {...bindArchivedGestures(index, slab)}
+                    >
+                      <div 
+                        className="group rounded-sm cursor-pointer relative w-full h-full hover:ring-2 hover:ring-green-400 hover:ring-opacity-50"
+                        title="Click to select"
+                      >
+                        <Slab 
+                          slab={slab} 
+                          size="small" 
+                          className="w-full h-full opacity-60" 
+                          colors={getCurrentColors()}
+                          colorblindMode={colorblindMode}
+                          getColorblindOverlay={getColorblindOverlay}
+                        />
+                        {/* Duck annotation for archived slabs */}
+                        {evaluationResult && (
+                          <div 
+                            className="absolute"
+                            style={{
+                              top: '-4px',
+                              right: '-4px',
+                              color: '#000000',
+                              filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
+                            }}
+                          >
+                            <GiPlasticDuck size={16} />
+                          </div>
+                        )}
+                        {/* Action buttons - only show when selected */}
+                        {selectedSlabForMaker && areSlabsEqual(selectedSlabForMaker, slab) && (
+                          <>
+                            {/* Unarchive button */}
+                            <button
+                              data-unarchive-button
+                              className="absolute top-1 left-1 p-1 rounded-full bg-white/80 hover:bg-white text-gray-600 hover:text-green-600 transition-colors"
+                              title="Unarchive this slab"
+                              aria-label="Unarchive slab"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSlabUnarchive(slab);
+                              }}
+                            >
+                              <FiEyeOff size={12} className="rotate-180" />
+                            </button>
+                            {/* Delete button */}
+                            <button
+                              data-delete-button
+                              className="absolute top-1 right-1 p-1 rounded-full bg-white/80 hover:bg-white text-gray-600 hover:text-red-600 transition-colors"
+                              title="Delete this slab permanently"
+                              aria-label="Delete slab"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSlabDelete(slab);
+                              }}
+                            >
+                              <FiTrash2 size={12} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

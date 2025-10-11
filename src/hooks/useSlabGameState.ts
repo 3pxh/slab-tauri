@@ -9,6 +9,7 @@ import { analytics } from '../utils/analytics';
 export interface SlabGameState {
   // Core game state
   allSlabs: SlabData[];
+  archivedSlabs: SlabData[];
   remainingGuesses: number;
   hasWon: boolean;
   
@@ -20,6 +21,7 @@ export interface SlabGameState {
   flashGuessButton: boolean;
   selectedSlabForMaker: SlabData | null;
   colorblindMode: 'none' | 'icon' | 'number' | 'letter';
+  showArchivedSlabs: boolean;
   
   // Evaluation state
   evaluationResults: Map<string, boolean>;
@@ -33,6 +35,9 @@ export interface SlabGameActions {
   // Slab management
   handleSlabCreate: (newSlab: SlabData) => void;
   handleSlabClick: (clickedSlab: SlabData) => void;
+  handleSlabArchive: (slab: SlabData) => void;
+  handleSlabUnarchive: (slab: SlabData) => void;
+  handleSlabDelete: (slab: SlabData) => void;
   handleShuffle: () => void;
   handleSort: () => void;
   
@@ -43,6 +48,7 @@ export interface SlabGameActions {
   
   // UI controls
   handleColorblindModeToggle: () => void;
+  handleToggleArchivedSlabs: () => void;
   
   // Slab reordering
   reorderSlabs: (fromIndex: number, toIndex: number) => void;
@@ -65,6 +71,7 @@ export interface SlabGameActions {
 export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameActions {
   // Core game state
   const [allSlabs, setAllSlabs] = useState<SlabData[]>([]);
+  const [archivedSlabs, setArchivedSlabs] = useState<SlabData[]>([]);
   const [remainingGuesses, setRemainingGuesses] = useState(3);
   const [hasWon, setHasWon] = useState(false);
   
@@ -76,6 +83,7 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
   const [flashGuessButton, setFlashGuessButton] = useState(false);
   const [selectedSlabForMaker, setSelectedSlabForMaker] = useState<SlabData | null>(null);
   const [colorblindMode, setColorblindMode] = useState<'none' | 'icon' | 'number' | 'letter'>('none');
+  const [showArchivedSlabs, setShowArchivedSlabs] = useState(false);
   
   // Evaluation state
   const [evaluationResults, setEvaluationResults] = useState<Map<string, boolean>>(new Map());
@@ -110,6 +118,7 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     
     // Start with shown examples as the base state
     let initialSlabs = puzzle.shown_examples;
+    let initialArchivedSlabs: SlabData[] = [];
     let initialRemainingGuesses = 3;
     let initialHasWon = false;
     let initialEvaluationResults = new Map<string, boolean>();
@@ -119,6 +128,11 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
       // Use saved slabs if available and not empty, otherwise fall back to shown examples
       if (progress.custom_data.savedSlabs && progress.custom_data.savedSlabs.length > 0) {
         initialSlabs = progress.custom_data.savedSlabs;
+      }
+      
+      // Restore archived slabs if available
+      if (Array.isArray(progress.custom_data.archivedSlabs)) {
+        initialArchivedSlabs = progress.custom_data.archivedSlabs;
       }
       
       // Restore remaining guesses if available
@@ -143,6 +157,7 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     
     // Set all initial state at once to prevent multiple renders
     setAllSlabs(initialSlabs);
+    setArchivedSlabs(initialArchivedSlabs);
     setRemainingGuesses(initialRemainingGuesses);
     setHasWon(initialHasWon);
     setEvaluationResults(initialEvaluationResults);
@@ -398,6 +413,78 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     setSelectedSlabForMaker(clonedSlab);
   }, []);
 
+  const handleSlabArchive = useCallback((slabToArchive: SlabData) => {
+    setAllSlabs(prev => {
+      const filteredSlabs = prev.filter(slab => !areSlabsEqual(slab, slabToArchive));
+      
+      // Save the updated state
+      const stateToSave = {
+        savedSlabs: filteredSlabs,
+        archivedSlabs: [...archivedSlabs, slabToArchive],
+        remainingGuesses,
+        hasWon,
+        evaluationResults: Array.from(evaluationResults.entries())
+      };
+      
+      updateCustomData(puzzle.id, stateToSave).catch(error => {
+        console.error('❌ Failed to save progress after archiving slab:', error);
+      });
+      
+      return filteredSlabs;
+    });
+    
+    setArchivedSlabs(prev => [...prev, slabToArchive]);
+  }, [archivedSlabs, remainingGuesses, hasWon, evaluationResults, updateCustomData, puzzle.id]);
+
+  const handleSlabUnarchive = useCallback((slabToUnarchive: SlabData) => {
+    setArchivedSlabs(prev => {
+      const filteredArchived = prev.filter(slab => !areSlabsEqual(slab, slabToUnarchive));
+      
+      // Save the updated state
+      const stateToSave = {
+        savedSlabs: [...allSlabs, slabToUnarchive],
+        archivedSlabs: filteredArchived,
+        remainingGuesses,
+        hasWon,
+        evaluationResults: Array.from(evaluationResults.entries())
+      };
+      
+      updateCustomData(puzzle.id, stateToSave).catch(error => {
+        console.error('❌ Failed to save progress after unarchiving slab:', error);
+      });
+      
+      return filteredArchived;
+    });
+    
+    setAllSlabs(prev => [...prev, slabToUnarchive]);
+  }, [allSlabs, remainingGuesses, hasWon, evaluationResults, updateCustomData, puzzle.id]);
+
+  const handleSlabDelete = useCallback((slabToDelete: SlabData) => {
+    setArchivedSlabs(prev => {
+      const filteredArchived = prev.filter(slab => !areSlabsEqual(slab, slabToDelete));
+      
+      // Save the updated state
+      const stateToSave = {
+        savedSlabs: allSlabs,
+        archivedSlabs: filteredArchived,
+        remainingGuesses,
+        hasWon,
+        evaluationResults: Array.from(evaluationResults.entries())
+      };
+      
+      updateCustomData(puzzle.id, stateToSave).catch(error => {
+        console.error('❌ Failed to save progress after deleting slab:', error);
+      });
+      
+      return filteredArchived;
+    });
+    
+    // Clear selection if the deleted slab was selected
+    if (selectedSlabForMaker && areSlabsEqual(selectedSlabForMaker, slabToDelete)) {
+      setSelectedSlabForMaker(null);
+    }
+  }, [allSlabs, remainingGuesses, hasWon, evaluationResults, updateCustomData, puzzle.id, selectedSlabForMaker]);
+
   const handleShuffle = useCallback(() => {
     setAllSlabs(prev => {
       const shuffled = [...prev];
@@ -547,6 +634,10 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     });
   }, []);
 
+  const handleToggleArchivedSlabs = useCallback(() => {
+    setShowArchivedSlabs(prev => !prev);
+  }, []);
+
   const reorderSlabs = useCallback((fromIndex: number, toIndex: number) => {
     setAllSlabs(prev => {
       const newSlabs = [...prev];
@@ -565,6 +656,7 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
   return {
     // State
     allSlabs,
+    archivedSlabs,
     remainingGuesses,
     hasWon,
     draggedIndex,
@@ -574,6 +666,7 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     flashGuessButton,
     selectedSlabForMaker,
     colorblindMode,
+    showArchivedSlabs,
     evaluationResults,
     progress,
     isLoading,
@@ -581,12 +674,16 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     // Actions
     handleSlabCreate,
     handleSlabClick,
+    handleSlabArchive,
+    handleSlabUnarchive,
+    handleSlabDelete,
     handleShuffle,
     handleSort,
     handleGuessClick,
     handleCloseOverlay,
     handleGuessSubmit,
     handleColorblindModeToggle,
+    handleToggleArchivedSlabs,
     reorderSlabs,
     getSlabKey,
     getCurrentColors,
