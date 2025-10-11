@@ -1,8 +1,9 @@
 import React from 'react';
-import { FiCalendar, FiPlus, FiPlay, FiHelpCircle, FiMail } from 'react-icons/fi';
+import { FiCalendar, FiPlus, FiPlay, FiHelpCircle, FiMail, FiBell } from 'react-icons/fi';
 import { useAuth } from '../hooks/useAuth';
 import AppHeader from './AppHeader';
 import { analytics } from '../utils/analytics';
+import { signupForLaunch } from '../lib/supabase';
 
 interface HomeProps {
   onTodayPuzzle: () => void;
@@ -19,10 +20,25 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
     console.log('🏠 Home component auth state:', { isAuthenticated, isAnonymous });
     analytics.homeViewed();
   }, [isAuthenticated, isAnonymous]);
+
+  // Check if user has already signed up for email notifications
+  React.useEffect(() => {
+    const hasSignedUpForLaunch = localStorage.getItem('slab_email_signup');
+    if (hasSignedUpForLaunch === 'true') {
+      setHasSignedUp(true);
+    }
+  }, []);
   const [showLinkAccount, setShowLinkAccount] = React.useState(false);
   const [linkEmail, setLinkEmail] = React.useState('');
   const [linkMessage, setLinkMessage] = React.useState('');
   const [isLinking, setIsLinking] = React.useState(false);
+  
+  // Email signup state
+  const [showEmailSignup, setShowEmailSignup] = React.useState(false);
+  const [signupEmail, setSignupEmail] = React.useState('');
+  const [signupMessage, setSignupMessage] = React.useState('');
+  const [isSigningUp, setIsSigningUp] = React.useState(false);
+  const [hasSignedUp, setHasSignedUp] = React.useState(false);
 
   const handleLinkAccount = async () => {
     if (!linkEmail.trim()) {
@@ -46,6 +62,34 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
       setLinkMessage(`Failed to link account: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLinking(false);
+    }
+  };
+
+  const handleEmailSignup = async () => {
+    if (!signupEmail.trim()) {
+      setSignupMessage('Please enter an email address');
+      return;
+    }
+
+    setIsSigningUp(true);
+    setSignupMessage('');
+    
+    try {
+      const result = await signupForLaunch(signupEmail.trim());
+      setSignupMessage(result.message);
+      
+      if (result.success) {
+        analytics.emailSignupCompleted();
+        setShowEmailSignup(false);
+        setSignupEmail('');
+        setHasSignedUp(true);
+        // Remember in localStorage that user has signed up
+        localStorage.setItem('slab_email_signup', 'true');
+      }
+    } catch (error) {
+      setSignupMessage(`Failed to sign up: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSigningUp(false);
     }
   };
 
@@ -133,6 +177,39 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
         </button>
       </div>
 
+      {/* Email Signup Section */}
+      <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
+        <div className="text-center">
+          {hasSignedUp ? (
+            <>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <FiBell size={16} className="text-green-600" />
+                <span className="text-sm font-medium text-green-700">We'll let you know when we launch!</span>
+              </div>
+              <p className="text-xs text-gray-600">
+                We'll notify you when the full app launches. Thanks for your interest.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <FiBell size={16} className="text-gray-600" />
+                <span className="text-sm font-medium text-gray-700">Get notified when there's an app!</span>
+              </div>
+              <p className="text-xs text-gray-600 mb-3">
+                Enter your email to be the first to know when the full app is ready.
+              </p>
+              <button
+                onClick={() => setShowEmailSignup(true)}
+                className="w-full bg-gray-600 hover:bg-gray-700 text-white text-sm py-2 px-4 rounded-md transition-colors duration-200"
+              >
+                Notify me
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Save Progress Link - only show for anonymous users */}
       {isAuthenticated && isAnonymous && (
         <div className="mt-6 text-center">
@@ -207,6 +284,58 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
                   setLinkMessage('');
                 }}
                 disabled={isLinking}
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email Signup Modal */}
+      {showEmailSignup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center gap-2 mb-4">
+              <FiBell size={20} />
+              <h3 className="text-lg font-semibold">Get Launch Notifications</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              We'll send you an email when the full app launches. No spam, just one notification when we're ready!
+            </p>
+            <div className="mb-4">
+              <input
+                type="email"
+                value={signupEmail}
+                onChange={(e) => setSignupEmail(e.target.value)}
+                placeholder="Enter your email address"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
+                disabled={isSigningUp}
+              />
+            </div>
+            {signupMessage && (
+              <div className={`mb-4 p-3 rounded-md text-sm ${
+                signupMessage.includes('Thanks') || signupMessage.includes('already') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+              }`}>
+                {signupMessage}
+              </div>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={handleEmailSignup}
+                disabled={isSigningUp || !signupEmail.trim()}
+                className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSigningUp ? 'Signing up...' : 'Notify me'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowEmailSignup(false);
+                  setSignupEmail('');
+                  setSignupMessage('');
+                }}
+                disabled={isSigningUp}
                 className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
               >
                 Cancel

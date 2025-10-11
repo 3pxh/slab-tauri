@@ -120,6 +120,11 @@ export const analytics = {
     trackEvent('Account Linked');
   },
 
+  // Email signup events
+  emailSignupCompleted: () => {
+    trackEvent('Email Signup Completed');
+  },
+
   // Error tracking
   errorOccurred: (error: string, context?: string) => {
     trackEvent('Error Occurred', {

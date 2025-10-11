@@ -327,3 +327,33 @@ export async function deletePuzzleProgress(puzzleId: string): Promise<PuzzleProg
     message: 'Progress deleted successfully'
   }
 }
+
+// Email signup interfaces and functions
+export interface EmailSignupResponse {
+  success: boolean
+  message: string
+  email?: string
+  already_signed_up?: boolean
+}
+
+// Function to sign up for app launch notifications
+export async function signupForLaunch(email: string): Promise<EmailSignupResponse> {
+  const response = await fetch(`${supabaseUrl}/functions/v1/email-signup`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${supabaseAnonKey}`,
+    },
+    body: JSON.stringify({
+      email: email
+    })
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || 'Failed to sign up for launch notifications')
+  }
+
+  const data = await response.json()
+  return data
+}
