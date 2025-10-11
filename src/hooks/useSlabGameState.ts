@@ -4,6 +4,7 @@ import { SlabData, areSlabsEqual, COLORS } from '../components/Slab';
 import { deepCopy } from '../utils';
 import { executeCodeSafely } from '../utils/sandbox';
 import { usePuzzleProgress } from './usePuzzleProgress';
+import { analytics } from '../utils/analytics';
 
 export interface SlabGameState {
   // Core game state
@@ -509,6 +510,10 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
         // Check if player won (all guesses correct) - do this AFTER updateCustomData
         if (allCorrect) {
           setHasWon(true);
+          
+          // Track analytics for puzzle completion
+          const timeSpent = Date.now() - (window as any).puzzleStartTime || 0;
+          analytics.puzzleCompleted(puzzle, 3 - remainingGuesses + 1, timeSpent / 1000, allSlabs.length);
           
           // Track progress: mark as completed and add trophy
           try {

@@ -5,6 +5,7 @@ import { PiShuffleBold } from 'react-icons/pi';
 import { useGesture } from '@use-gesture/react';
 import { SlabData, createSlab, Cell, COLORS, getGroup } from './Slab';
 import { deepCopy } from '../utils';
+import { analytics } from '../utils/analytics';
 
 
 
@@ -22,6 +23,7 @@ type SlabMakerProps = {
   colors?: string[];
   colorblindMode?: 'none' | 'icon' | 'number' | 'letter';
   getColorblindOverlay?: (colorIndex: number) => string | null;
+  puzzle?: any; // Add puzzle prop for analytics
 };
 
 const SlabMaker: React.FC<SlabMakerProps> = ({ 
@@ -37,7 +39,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   onSort, 
   colors = COLORS,
   colorblindMode = 'none',
-  getColorblindOverlay
+  getColorblindOverlay,
+  puzzle
 }) => {
   const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
   const [history, setHistory] = React.useState<SlabData[]>([]);
@@ -632,7 +635,10 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
             {onShuffle && (
               <button
                 className="px-3 py-2 rounded text-sm bg-gray-100 hover:bg-gray-200 flex items-center justify-center h-12"
-                onClick={onShuffle}
+                onClick={() => {
+                  if (puzzle) analytics.slabsShuffled(puzzle);
+                  onShuffle();
+                }}
                 title="Randomize slab order"
               >
                 <PiShuffleBold size={16} />
@@ -641,7 +647,10 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
             {onSort && (
               <button
                 className="px-3 py-2 rounded text-sm bg-gray-100 hover:bg-gray-200 flex items-center justify-center h-12"
-                onClick={onSort}
+                onClick={() => {
+                  if (puzzle) analytics.slabsSorted(puzzle);
+                  onSort();
+                }}
                 title="Sort by evaluation (black first, then white)"
               >
                 <FaArrowDownUpAcrossLine size={16} />
@@ -657,7 +666,10 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                   ? 'bg-gray-400 text-white' 
                   : 'bg-blue-500 text-white hover:bg-blue-600'
               }`}
-              onClick={() => onCreate(slab)}
+              onClick={() => {
+                if (puzzle) analytics.slabCreated(puzzle, Object.keys(slab.groups).length);
+                onCreate(slab);
+              }}
               title={isInGuessSession ? "Complete your guess first" : "Create puzzle from current slab"}
             >
               <FiPlus size={16} />

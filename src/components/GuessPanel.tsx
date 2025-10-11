@@ -2,6 +2,7 @@ import React from 'react';
 import { FiArrowRight, FiCheck, FiX, FiAward } from 'react-icons/fi';
 import { FaLightbulb } from 'react-icons/fa6';
 import { GiPlasticDuck } from 'react-icons/gi';
+import { analytics } from '../utils/analytics';
 
 export type GuessResult = {
   index: number;
@@ -19,6 +20,7 @@ export type GuessPanelProps = {
   groundTruth?: boolean[]; // Array indicating which items are ducks (true) or not (false)
   showSuccess?: boolean;
   emptyMessage?: string;
+  puzzle?: any; // Add puzzle prop for analytics
 };
 
 const GuessPanel: React.FC<GuessPanelProps> = ({
@@ -30,7 +32,8 @@ const GuessPanel: React.FC<GuessPanelProps> = ({
   onGuessSubmit,
   groundTruth = [],
   showSuccess = false,
-  emptyMessage = "No items available to guess on."
+  emptyMessage = "No items available to guess on.",
+  puzzle
 }) => {
   const [guesses, setGuesses] = React.useState<{ [key: number]: 'white' | 'black' | null }>({});
   const [guessResults, setGuessResults] = React.useState<{ [key: number]: boolean | null }>({});
@@ -81,6 +84,13 @@ const GuessPanel: React.FC<GuessPanelProps> = ({
 
     // Only process if there are actual guesses made
     if (hasAnyGuess) {
+      // Track analytics for each guess
+      if (puzzle) {
+        results.forEach((result) => {
+          analytics.guessMade(puzzle, maxGuesses - remainingGuesses + 1, result.isCorrect);
+        });
+      }
+      
       onGuessSubmit(results);
       setGuessesSubmitted(true);
       

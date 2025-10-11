@@ -8,6 +8,7 @@ import { formatDateUTC } from '../utils';
 import SlabMaker from './SlabMaker';
 import GuessPanel from './GuessPanel';
 import { useSlabGameState } from '../hooks/useSlabGameState';
+import { analytics, sessionTracker } from '../utils/analytics';
 
 
 type SlabPuzzleProps = {
@@ -17,6 +18,14 @@ type SlabPuzzleProps = {
 };
 
 const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
+  // Track puzzle start
+  React.useEffect(() => {
+    analytics.puzzleStarted(puzzle);
+    sessionTracker.incrementPuzzleCount();
+    // Set puzzle start time for analytics
+    (window as any).puzzleStartTime = Date.now();
+  }, [puzzle]);
+
   // Use the custom hook for all state management
   const {
     // State
@@ -136,7 +145,10 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
           </div>
           <button
             className="px-2 py-1 rounded text-sm hover:bg-gray-200 transition-colors flex items-center gap-1"
-            onClick={handleColorblindModeToggle}
+            onClick={() => {
+              handleColorblindModeToggle();
+              analytics.colorblindModeToggled(colorblindMode);
+            }}
             title={`Colorblind mode: ${colorblindMode === 'none' ? 'None' : colorblindMode === 'icon' ? 'Icons' : colorblindMode === 'number' ? 'Numbers' : 'Letters'}`}
             aria-label={`Toggle colorblind mode: ${colorblindMode}`}
           >
@@ -167,6 +179,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         colors={getCurrentColors()}
         colorblindMode={colorblindMode}
         getColorblindOverlay={getColorblindOverlay}
+        puzzle={puzzle}
       />
 
       {/* All Slabs */}
@@ -249,6 +262,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         onGuessSubmit={handleGuessSubmit}
         groundTruth={getGroundTruth()}
         emptyMessage="No hidden examples available or all have been revealed."
+        puzzle={puzzle}
       >
         {getSlabsForOverlay().map((slab, index) => (
           <Slab 

@@ -2,6 +2,7 @@ import React from 'react';
 import { FiCalendar, FiPlus, FiPlay, FiHelpCircle, FiMail } from 'react-icons/fi';
 import { useAuth } from '../hooks/useAuth';
 import AppHeader from './AppHeader';
+import { analytics } from '../utils/analytics';
 
 interface HomeProps {
   onTodayPuzzle: () => void;
@@ -13,9 +14,10 @@ interface HomeProps {
 const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, onInstructions }) => {
   const { isAnonymous, linkAccountWithEmail, isAuthenticated } = useAuth();
   
-  // Debug logging
+  // Debug logging and analytics
   React.useEffect(() => {
     console.log('🏠 Home component auth state:', { isAuthenticated, isAnonymous });
+    analytics.homeViewed();
   }, [isAuthenticated, isAnonymous]);
   const [showLinkAccount, setShowLinkAccount] = React.useState(false);
   const [linkEmail, setLinkEmail] = React.useState('');
@@ -36,6 +38,7 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
       setLinkMessage(result.message);
       
       if (result.success) {
+        analytics.accountLinked();
         setShowLinkAccount(false);
         setLinkEmail('');
       }
@@ -55,7 +58,10 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
       <div className="space-y-4">
         {/* Today's Puzzle Button */}
         <button
-          onClick={onTodayPuzzle}
+          onClick={() => {
+            analytics.puzzleStarted({ id: 'daily', name: "Today's Puzzle", publish_date: new Date().toISOString().split('T')[0], is_daily: true } as any);
+            onTodayPuzzle();
+          }}
           className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
         >
           <div className="grid grid-cols-3 gap-4 items-center">
@@ -71,7 +77,10 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
 
         {/* Instructions Button */}
         <button
-          onClick={onInstructions}
+          onClick={() => {
+            analytics.instructionsViewed();
+            onInstructions();
+          }}
           className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
         >
           <div className="grid grid-cols-3 gap-4 items-center">
@@ -87,7 +96,10 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
 
         {/* Archive Button */}
         <button
-          onClick={onArchive}
+          onClick={() => {
+            analytics.archiveViewed();
+            onArchive();
+          }}
           className="w-full bg-purple-500 hover:bg-purple-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
         >
           <div className="grid grid-cols-3 gap-4 items-center">
@@ -103,7 +115,10 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
 
         {/* Make a Puzzle Button */}
         <button
-          onClick={onCreatePuzzle}
+          onClick={() => {
+            analytics.puzzleCreatorViewed();
+            onCreatePuzzle();
+          }}
           className="w-full bg-green-500 hover:bg-green-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
         >
           <div className="grid grid-cols-3 gap-4 items-center">
