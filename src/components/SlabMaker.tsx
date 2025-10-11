@@ -20,9 +20,25 @@ type SlabMakerProps = {
   onShuffle?: () => void;
   onSort?: () => void;
   colors?: string[];
+  colorblindMode?: 'none' | 'icon' | 'number' | 'letter';
+  getColorblindOverlay?: (colorIndex: number) => string | null;
 };
 
-const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0, maxGuesses = 3, hasWon = false, flashGuessButton = false, isInGuessSession = false, initialSlab, onShuffle, onSort, colors = COLORS }) => {
+const SlabMaker: React.FC<SlabMakerProps> = ({ 
+  onCreate, 
+  onGuess, 
+  guessCount = 0, 
+  maxGuesses = 3, 
+  hasWon = false, 
+  flashGuessButton = false, 
+  isInGuessSession = false, 
+  initialSlab, 
+  onShuffle, 
+  onSort, 
+  colors = COLORS,
+  colorblindMode = 'none',
+  getColorblindOverlay
+}) => {
   const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
   const [history, setHistory] = React.useState<SlabData[]>([]);
   const [, setIsDragging] = React.useState(false);
@@ -534,6 +550,25 @@ const SlabMaker: React.FC<SlabMakerProps> = ({ onCreate, onGuess, guessCount = 0
                 data-cell-coords={`${rowIndex},${colIndex}`}
                 {...bindCellGestures(rowIndex, colIndex)}
               >
+                {/* Colorblind overlay */}
+                {colorblindMode !== 'none' && getColorblindOverlay && (() => {
+                  const colorIndex = getGroup(slab.groups, cell.groupId)?.color || 0;
+                  const overlay = getColorblindOverlay(colorIndex);
+                  if (!overlay) return null;
+                  
+                  return (
+                    <div 
+                      className="absolute inset-0 flex items-center justify-center text-sm font-normal pointer-events-none"
+                      style={{
+                        color: colorIndex === 0 ? '#000' : '#fff',
+                        textShadow: colorIndex === 0 ? '1px 1px 2px rgba(255,255,255,0.8)' : '1px 1px 2px rgba(0,0,0,0.8)',
+                        zIndex: 2
+                      }}
+                    >
+                      {overlay}
+                    </div>
+                  );
+                })()}
                 {(() => {
                   const concave = getConcaveCorners(rowIndex, colIndex);
                   const dotSize = 8;

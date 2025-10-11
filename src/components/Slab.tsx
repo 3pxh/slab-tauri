@@ -180,9 +180,18 @@ type SlabProps = {
   size?: 'small' | 'medium' | 'large';
   className?: string;
   colors?: string[];
+  colorblindMode?: 'none' | 'icon' | 'number' | 'letter';
+  getColorblindOverlay?: (colorIndex: number) => string | null;
 };
 
-const Slab: React.FC<SlabProps> = ({ slab, size = 'medium', className = '', colors = COLORS }) => {
+const Slab: React.FC<SlabProps> = ({ 
+  slab, 
+  size = 'medium', 
+  className = '', 
+  colors = COLORS,
+  colorblindMode = 'none',
+  getColorblindOverlay
+}) => {
   const sizeClasses = {
     small: 'w-32 h-32',
     medium: 'w-48 h-48',
@@ -203,6 +212,28 @@ const Slab: React.FC<SlabProps> = ({ slab, size = 'medium', className = '', colo
                 ...getBorderStyles(rowIndex, colIndex, slab)
               }}
             >
+              {/* Colorblind overlay */}
+              {colorblindMode !== 'none' && getColorblindOverlay && (() => {
+                const colorIndex = getGroup(slab.groups, cell.groupId)?.color || 0;
+                const overlay = getColorblindOverlay(colorIndex);
+                if (!overlay) return null;
+                
+                const overlaySize = size === 'small' ? 'text-sm' : size === 'medium' ? 'text-base' : 'text-lg';
+                const overlayWeight = colorblindMode === 'letter' ? 'font-bold' : 'font-normal';
+                
+                return (
+                  <div 
+                    className={`absolute inset-0 flex items-center justify-center ${overlaySize} ${overlayWeight} pointer-events-none`}
+                    style={{
+                      color: colorIndex === 0 ? '#000' : '#fff',
+                      textShadow: colorIndex === 0 ? '1px 1px 2px rgba(255,255,255,0.8)' : '1px 1px 2px rgba(0,0,0,0.8)',
+                      zIndex: 2
+                    }}
+                  >
+                    {overlay}
+                  </div>
+                );
+              })()}
               {(() => {
                 const concave = getConcaveCorners(rowIndex, colIndex, slab);
                 const dotSize = size === 'small' ? 3 : size === 'medium' ? 6 : 8;
