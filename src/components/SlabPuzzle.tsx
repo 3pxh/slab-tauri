@@ -608,7 +608,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         <div>
           <div className="bg-gray-200 p-2 rounded-lg">
             <div 
-              className="flex flex-wrap gap-2 justify-center"
+              className="flex flex-wrap gap-2 justify-center pr-4"
               onDragOver={(e) => {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
