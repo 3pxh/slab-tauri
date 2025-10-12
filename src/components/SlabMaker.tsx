@@ -506,9 +506,6 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
       newSlab.groups = newGroups;
       return newSlab;
     });
-    
-    // Deselect the group after applying color
-    setSelectedGroup(null);
   };
 
 
