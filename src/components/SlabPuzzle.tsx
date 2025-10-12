@@ -120,8 +120,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         handleSlabClick(slab);
       }
     },
-    onPointerDown: ({ event, args }) => {
-      const [, slab] = args as [number, SlabData];
+    onPointerDown: ({ event }) => {
       // Check if the click is on the archive button and prevent gesture handling
       const target = event.target as HTMLElement;
       if (target.closest('[data-archive-button]')) {
