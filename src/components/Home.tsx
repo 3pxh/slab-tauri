@@ -3,7 +3,7 @@ import { FiCalendar, FiPlus, FiPlay, FiHelpCircle, FiMail, FiBell } from 'react-
 import { useAuth } from '../hooks/useAuth';
 import AppHeader from './AppHeader';
 import { analytics } from '../utils/analytics';
-import { signupForLaunch } from '../lib/supabase';
+import { signupForLaunch, getPuzzle, Puzzle } from '../lib/supabase';
 
 interface HomeProps {
   onTodayPuzzle: () => void;
@@ -15,11 +15,46 @@ interface HomeProps {
 const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, onInstructions }) => {
   const { isAnonymous, linkAccountWithEmail, isAuthenticated } = useAuth();
   
+  // State for today's puzzle
+  const [todaysPuzzle, setTodaysPuzzle] = React.useState<Puzzle | null>(null);
+  const [isLoadingPuzzle, setIsLoadingPuzzle] = React.useState(true);
+  const [puzzleError, setPuzzleError] = React.useState<string | null>(null);
+  
   // Debug logging and analytics
   React.useEffect(() => {
     console.log('🏠 Home component auth state:', { isAuthenticated, isAnonymous });
     analytics.homeViewed();
   }, [isAuthenticated, isAnonymous]);
+
+  // Fetch today's puzzle name
+  React.useEffect(() => {
+    const fetchTodaysPuzzle = async () => {
+      try {
+        setIsLoadingPuzzle(true);
+        setPuzzleError(null);
+        
+        // Get today's date in UTC
+        const today = new Date();
+        const year = today.getUTCFullYear();
+        const month = today.getUTCMonth();
+        const day = today.getUTCDate();
+        
+        // Create timestamp for end of today (23:59:59.999) in UTC
+        const endOfDay = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+        const timestamp = endOfDay.toISOString();
+        
+        const response = await getPuzzle(timestamp);
+        setTodaysPuzzle(response.puzzle);
+      } catch (error) {
+        console.error('Error loading today\'s puzzle:', error);
+        setPuzzleError(error instanceof Error ? error.message : 'Failed to load today\'s puzzle');
+      } finally {
+        setIsLoadingPuzzle(false);
+      }
+    };
+
+    fetchTodaysPuzzle();
+  }, []);
 
   // Check if user has already signed up for email notifications
   React.useEffect(() => {
@@ -103,18 +138,28 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
         {/* Today's Puzzle Button */}
         <button
           onClick={() => {
-            analytics.puzzleStarted({ id: 'daily', name: "Today's Puzzle", publish_date: new Date().toISOString().split('T')[0], is_daily: true } as any);
+            analytics.puzzleStarted({ 
+              id: todaysPuzzle?.id || 'daily', 
+              name: todaysPuzzle?.name || "Today's Puzzle", 
+              publish_date: new Date().toISOString().split('T')[0], 
+              is_daily: true 
+            } as any);
             onTodayPuzzle();
           }}
           className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
+          disabled={isLoadingPuzzle}
         >
           <div className="grid grid-cols-3 gap-4 items-center">
             <div className="flex justify-end">
               <FiPlay size={24} />
             </div>
             <div className="col-span-2 text-left">
-              <div className="text-lg font-semibold">Today's Puzzle</div>
-              <div className="text-sm opacity-90">Play the daily challenge</div>
+              <div className="text-lg font-semibold">
+                {isLoadingPuzzle ? 'Loading puzzle...' :`Today: '${todaysPuzzle?.name}'` || "Today's Puzzle"}
+              </div>
+              <div className="text-sm opacity-90">
+                {puzzleError ? 'Unable to load puzzle name' : 'Play the daily puzzle'}
+              </div>
             </div>
           </div>
         </button>
