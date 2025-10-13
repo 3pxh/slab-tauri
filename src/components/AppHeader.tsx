@@ -18,16 +18,14 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   const iconMargin = titleSize === 'large' ? 'mr-4' : 'mr-3';
 
   return (
-    <div className="flex items-center justify-between mb-6">
-      {showBackButton && onBack ? (
+    <div className="flex items-center mb-6">
+      {showBackButton && onBack && (
         <button
           onClick={onBack}
-          className="flex items-center text-gray-600 hover:text-gray-800 transition-colors duration-200"
+          className="flex items-center text-gray-600 hover:text-gray-800 transition-colors duration-200 mr-4"
         >
           <FiArrowLeft size={20} />
         </button>
-      ) : (
-        <div></div>
       )}
       
       <div className="flex items-center">
@@ -41,12 +39,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({
           <p className="text-sm text-gray-600 italic">the philosopher's puzzle game</p>
         </div>
       </div>
-      
-      {showBackButton ? (
-        <div className="w-20"></div>
-      ) : (
-        <div></div>
-      )}
     </div>
   );
 };

@@ -147,10 +147,10 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
             {steps.map((step, index) => (
               <div 
                 key={index}
-                className="w-full flex-shrink-0 flex flex-col items-center px-4 text-center justify-start overflow-y-auto pb-8"
+                className="w-full flex-shrink-0 flex flex-col items-center px-4 justify-start overflow-y-auto pb-8"
               >
                 {/* App Header */}
-                <div className="pt-4 pb-0">
+                <div className="pt-4 pb-0 w-full">
                   <AppHeader 
                     titleSize="large" 
                     showBackButton={true}
@@ -159,12 +159,12 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
                 </div>
 
                 {/* Step Title */}
-                <h2 className="text-4xl font-bold text-gray-800 mb-4">
+                <h2 className="text-4xl font-bold text-gray-800 mb-4 text-center">
                   {step.title}
                 </h2>
 
                 {/* Step Content */}
-                <p className="text-gray-600 leading-relaxed mb-0">
+                <p className="text-gray-600 leading-relaxed mb-0 text-center">
                   {step.content}
                 </p>
 
