@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiCalendar, FiPlus, FiPlay, FiHelpCircle, FiMail, FiBell } from 'react-icons/fi';
+import { FiCalendar, FiPlus, FiPlay, FiMail, FiBell } from 'react-icons/fi';
 import { useAuth } from '../hooks/useAuth';
 import AppHeader from './AppHeader';
 import { analytics } from '../utils/analytics';
@@ -9,10 +9,10 @@ interface HomeProps {
   onTodayPuzzle: () => void;
   onArchive: () => void;
   onCreatePuzzle: () => void;
-  onInstructions: () => void;
+  onTutorial: () => void;
 }
 
-const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, onInstructions }) => {
+const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, onTutorial }) => {
   const { isAnonymous, linkAccountWithEmail, isAuthenticated } = useAuth();
   
   // State for today's puzzle
@@ -164,21 +164,21 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
           </div>
         </button>
 
-        {/* Instructions Button */}
+        {/* Tutorial Button */}
         <button
           onClick={() => {
-            analytics.instructionsViewed();
-            onInstructions();
+            analytics.tutorialViewed();
+            onTutorial();
           }}
           className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
         >
           <div className="grid grid-cols-3 gap-4 items-center">
             <div className="flex justify-end">
-              <FiHelpCircle size={24} />
+              <FiPlay size={24} />
             </div>
             <div className="col-span-2 text-left">
-              <div className="text-lg font-semibold">How to Play</div>
-              <div className="text-sm opacity-90">Learn the rules</div>
+              <div className="text-lg font-semibold">Tutorial</div>
+              <div className="text-sm opacity-90">Get started with Slab</div>
             </div>
           </div>
         </button>

@@ -90,8 +90,16 @@ export const analytics = {
     trackEvent('Archive Viewed');
   },
 
-  instructionsViewed: () => {
-    trackEvent('Instructions Viewed');
+  tutorialViewed: () => {
+    trackEvent('Tutorial Viewed');
+  },
+
+  tutorialStarted: () => {
+    trackEvent('Tutorial Started');
+  },
+
+  tutorialCompleted: () => {
+    trackEvent('Tutorial Completed');
   },
 
   puzzleCreatorViewed: () => {

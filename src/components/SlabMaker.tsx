@@ -24,6 +24,7 @@ type SlabMakerProps = {
   colorblindMode?: 'none' | 'icon' | 'number' | 'letter';
   getColorblindOverlay?: (colorIndex: number) => string | null;
   puzzle?: any; // Add puzzle prop for analytics
+  hideControls?: boolean; // Hide control buttons for tutorial
 };
 
 const SlabMaker: React.FC<SlabMakerProps> = ({ 
@@ -40,7 +41,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   colors = COLORS,
   colorblindMode = 'none',
   getColorblindOverlay,
-  puzzle
+  puzzle,
+  hideControls = false
 }) => {
   const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
   const [history, setHistory] = React.useState<SlabData[]>([]);
@@ -606,6 +608,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
       </div>
       
       {/* Control Buttons */}
+      {!hideControls && (
       <div className="mt-2">
         <div className="flex justify-between items-center">
           {/* Left group: Undo, Reset */}
@@ -703,6 +706,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

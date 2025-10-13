@@ -5,7 +5,7 @@ import SlabPuzzleCreator from './components/SlabPuzzleCreator';
 import LevelSelect from './components/LevelSelect';
 import Home from './components/Home';
 import PuzzlesList from './components/PuzzlesList';
-import Instructions from './components/Instructions';
+import Tutorial from './components/Tutorial';
 import { getPuzzle, getPuzzleByUuid, getAllDates, Puzzle } from './lib/supabase';
 import { SlabData, createSlab } from './components/Slab';
 
@@ -25,7 +25,7 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 function App() {
-  const [mode, setMode] = React.useState<'home' | 'select' | 'create' | 'solve' | 'puzzles' | 'shared' | 'instructions'>('home');
+  const [mode, setMode] = React.useState<'home' | 'select' | 'create' | 'solve' | 'puzzles' | 'shared' | 'tutorial'>('home');
   const [puzzle, setPuzzle] = React.useState<Puzzle | null>(null);
   const [currentSlab, setCurrentSlab] = React.useState<SlabData | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -152,8 +152,8 @@ function App() {
     setMode('puzzles');
   };
 
-  const handleInstructions = () => {
-    setMode('instructions');
+  const handleTutorial = () => {
+    setMode('tutorial');
   };
 
   const handleFirstPuzzle = async () => {
@@ -201,7 +201,7 @@ function App() {
             onTodayPuzzle={handleTodayPuzzle}
             onArchive={handleArchive}
             onCreatePuzzle={handleCreatePuzzle}
-            onInstructions={handleInstructions}
+            onTutorial={handleTutorial}
           />
         ) : mode === 'select' ? (
           <div>
@@ -268,10 +268,10 @@ function App() {
               />
             </div>
           </div>
-        ) : mode === 'instructions' ? (
+        ) : mode === 'tutorial' ? (
           <div className="w-full h-full flex flex-col">
             <div className="flex-1 min-h-0">
-              <Instructions onFirstPuzzle={handleFirstPuzzle} onTodayPuzzle={handleTodayPuzzle} onHome={() => setMode('home')} />
+              <Tutorial onFirstPuzzle={handleFirstPuzzle} onHome={() => setMode('home')} />
             </div>
           </div>
         ) : null}

@@ -236,8 +236,8 @@ const Slab: React.FC<SlabProps> = ({
               })()}
               {(() => {
                 const concave = getConcaveCorners(rowIndex, colIndex, slab);
-                const dotSize = size === 'small' ? 3 : size === 'medium' ? 6 : 8;
-                const offset = size === 'small' ? '-2px' : size === 'medium' ? '-4px' : '-5px';
+                const dotSize = size === 'small' ? 3 : size === 'medium' ? 3 : 8;
+                const offset = size === 'small' ? '-2px' : size === 'medium' ? '-2px' : '-5px';
                 const dotStyleBase: React.CSSProperties = {
                   position: 'absolute',
                   width: `${dotSize}px`,
