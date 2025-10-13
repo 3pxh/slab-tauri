@@ -1,7 +1,7 @@
 import React from 'react';
-import { FiRotateCcw, FiRefreshCw, FiPlus } from 'react-icons/fi';
+import { FiRotateCcw, FiRefreshCw } from 'react-icons/fi';
 import { FaArrowDownUpAcrossLine, FaLightbulb } from 'react-icons/fa6';
-import { PiShuffleBold } from 'react-icons/pi';
+import { PiShuffleBold, PiGavelFill } from 'react-icons/pi';
 import { useGesture } from '@use-gesture/react';
 import { SlabData, createSlab, Cell, COLORS, getGroup } from './Slab';
 import { deepCopy } from '../utils';
@@ -672,7 +672,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
               }}
               title={isInGuessSession ? "Complete your guess first" : "Create puzzle from current slab"}
             >
-              <FiPlus size={16} />
+              <PiGavelFill size={24} />
             </button>
             {onGuess && (
               <button
