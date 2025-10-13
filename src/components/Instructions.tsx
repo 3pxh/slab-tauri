@@ -1,6 +1,6 @@
 import React from 'react';
 import { FaLightbulb } from 'react-icons/fa6';
-import { GiPlasticDuck } from 'react-icons/gi';
+import { FiStar } from 'react-icons/fi';
 import { FiRefreshCw, FiAward, FiCalendar, FiPlay } from 'react-icons/fi';
 import Slab, { createRandomSlab } from './Slab';
 import AppHeader from './AppHeader';
@@ -45,10 +45,10 @@ const Instructions: React.FC<InstructionsProps> = ({ onFirstPuzzle, onTodayPuzzl
         <div className="flex items-center space-x-3">
           <div className="flex-shrink-0">
             <div className="w-8 h-8 bg-white border border-gray-300 rounded flex items-center justify-center">
-              <GiPlasticDuck className="w-5 h-5 text-black" />
+              <FiStar className="w-5 h-5 text-yellow-500 fill-yellow-400" />
             </div>
           </div>
-          <p>There is a secret rule which marks slabs with a duck. The rule can be anything, for example "the slab has no red" or "no blue is next to a yellow", or "there's no group bigger than 5 cells".</p>
+          <p>There is a secret rule which marks slabs with a star. The rule can be anything, for example "the slab has no red" or "no blue is next to a yellow", or "there's no group bigger than 5 cells".</p>
         </div>
         
         <div className="flex items-center space-x-3">
@@ -57,7 +57,7 @@ const Instructions: React.FC<InstructionsProps> = ({ onFirstPuzzle, onTodayPuzzl
               <span className="text-white text-base font-bold">+</span>
             </div>
           </div>
-          <p>Make your own slabs to see which ones are ducks. Try to find the pattern by making different kinds. You get two examples to start, one duck and one not.</p>
+          <p>Make your own slabs to see which ones are stars. Try to find the pattern by making different kinds. You get two examples to start, one star and one not.</p>
         </div>
         
         <div className="flex items-center space-x-3">

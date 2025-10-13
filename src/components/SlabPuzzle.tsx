@@ -1,6 +1,6 @@
 import React from 'react';
 import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2 } from 'react-icons/fi';
-import { GiPlasticDuck } from 'react-icons/gi';
+import { FiStar } from 'react-icons/fi';
 import { useGesture } from '@use-gesture/react';
 import { Puzzle } from '../lib/supabase';
 import Slab, { SlabData, areSlabsEqual } from './Slab';
@@ -260,7 +260,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                         colorblindMode={colorblindMode}
                         getColorblindOverlay={getColorblindOverlay}
                       />
-                      {/* Duck annotation directly on slab */}
+                      {/* Star annotation directly on slab */}
                       {evaluationResult && (
                         <div 
                           className="absolute"
@@ -271,7 +271,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                             filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
                           }}
                         >
-                          <GiPlasticDuck size={16} />
+                          <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
                         </div>
                       )}
                       {/* Archive button */}
@@ -344,7 +344,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                           colorblindMode={colorblindMode}
                           getColorblindOverlay={getColorblindOverlay}
                         />
-                        {/* Duck annotation for archived slabs */}
+                        {/* Star annotation for archived slabs */}
                         {evaluationResult && (
                           <div 
                             className="absolute"
@@ -355,7 +355,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                               filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
                             }}
                           >
-                            <GiPlasticDuck size={16} />
+                            <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
                           </div>
                         )}
                         {/* Action buttons - only show when selected */}

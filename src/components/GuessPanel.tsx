@@ -1,12 +1,12 @@
 import React from 'react';
 import { FiArrowRight, FiCheck, FiX, FiAward } from 'react-icons/fi';
 import { FaLightbulb } from 'react-icons/fa6';
-import { GiPlasticDuck } from 'react-icons/gi';
+import { FiStar } from 'react-icons/fi';
 import { analytics } from '../utils/analytics';
 
 export type GuessResult = {
   index: number;
-  isDuck: boolean;
+  isStar: boolean;
   isCorrect: boolean;
 };
 
@@ -17,7 +17,7 @@ export type GuessPanelProps = {
   maxGuesses: number;
   children: React.ReactNode[];
   onGuessSubmit: (results: GuessResult[]) => void;
-  groundTruth?: boolean[]; // Array indicating which items are ducks (true) or not (false)
+  groundTruth?: boolean[]; // Array indicating which items are stars (true) or not (false)
   showSuccess?: boolean;
   emptyMessage?: string;
   puzzle?: any; // Add puzzle prop for analytics
@@ -66,18 +66,18 @@ const GuessPanel: React.FC<GuessPanelProps> = ({
 
     children.forEach((_, index) => {
       const guess = guesses[index];
-      // Default to 'white' (not duck) if no guess is made
+      // Default to 'white' (not star) if no guess is made
       const actualGuess = guess || 'white';
       hasAnyGuess = true;
       
       // Use ground truth to determine if the guess is correct
-      const isDuck = actualGuess === 'black';
+      const isStar = actualGuess === 'black';
       const actualResult = groundTruth[index] || false;
-      const isCorrect = (isDuck && actualResult) || (!isDuck && !actualResult);
+      const isCorrect = (isStar && actualResult) || (!isStar && !actualResult);
       
       results.push({
         index,
-        isDuck,
+        isStar,
         isCorrect
       });
     });
@@ -145,7 +145,7 @@ const GuessPanel: React.FC<GuessPanelProps> = ({
         <div className="flex-1 overflow-y-auto">
           <div className="grid grid-cols-2 gap-0">
             {children.map((child, index) => {
-              const currentGuess = guesses[index] || 'white'; // Default to 'white' (not duck)
+              const currentGuess = guesses[index] || 'white'; // Default to 'white' (not star)
               const result = guessResults[index];
               const isIncorrect = result === false;
               const hasBeenSubmitted = result !== null && result !== undefined;
@@ -164,7 +164,7 @@ const GuessPanel: React.FC<GuessPanelProps> = ({
                       {/* Child content */}
                       <div className="w-32 h-32 relative">
                         {child}
-                        {/* Duck annotation for all ducks - always present but with opacity transition */}
+                        {/* Star annotation for all stars - always present but with opacity transition */}
                         {groundTruth[index] && (
                           <div 
                             className={`absolute transition-opacity duration-500 ${
@@ -177,12 +177,12 @@ const GuessPanel: React.FC<GuessPanelProps> = ({
                               filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
                             }}
                           >
-                            <GiPlasticDuck size={16} />
+                            <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
                           </div>
                         )}
                       </div>
                       
-                      {/* Duck Guess Button */}
+                      {/* Star Guess Button */}
                       <div className="relative">
                         <button
                           className={`w-10 h-10 rounded-full flex items-center justify-center ${
@@ -191,11 +191,11 @@ const GuessPanel: React.FC<GuessPanelProps> = ({
                               : 'bg-gray-200 border-2 border-gray-300 hover:border-gray-400'
                           }`}
                           onClick={() => handleGuessSelect(index)}
-                          title={currentGuess === 'black' ? "Guess: Duck (True)" : "Guess: Not Duck (False)"}
+                          title={currentGuess === 'black' ? "Guess: Star (True)" : "Guess: Not Star (False)"}
                         >
-                          <GiPlasticDuck 
+                          <FiStar 
                             size={20} 
-                            className={currentGuess === 'black' ? 'text-black' : 'text-gray-500'} 
+                            className={currentGuess === 'black' ? 'text-black fill-black' : 'text-gray-500'} 
                           />
                         </button>
                         {/* Red X for wrong guesses - always present but with opacity transition */}
