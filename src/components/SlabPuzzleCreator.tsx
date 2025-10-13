@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowLeft } from 'react-icons/fi';
+import { FiArrowLeft, FiStar } from 'react-icons/fi';
 import { Puzzle, getAllDates, getPuzzle, supabase, getUserSlabs, createSlab, deleteSlab, Slab as SlabRecord } from '../lib/supabase';
 import SlabMaker from './SlabMaker';
 import SlabComponent, { SlabData, areSlabsEqual } from './Slab';
@@ -527,6 +527,35 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
         setSlabMessage(`Slab created but failed to save to database: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
+
+    // Automatically run evaluation if there's an evaluation function
+    if (evaluationFn.trim()) {
+      // Use setTimeout to ensure state updates are complete before running evaluation
+      setTimeout(async () => {
+        try {
+          // Run evaluation on all slabs including the new one
+          const results = await Promise.all(
+            [...createdSlabs, slabWithId].map(async (slabToEvaluate) => {
+              try {
+                const result = await executeCodeSafely(evaluationFn, slabToEvaluate, 5000);
+                if (result.success) {
+                  return result.result;
+                } else {
+                  console.error('Error evaluating slab:', result.error);
+                  return false;
+                }
+              } catch (error) {
+                console.error('Error evaluating slab:', error);
+                return false;
+              }
+            })
+          );
+          setEvaluationResults(results);
+        } catch (error) {
+          console.error('Error running automatic evaluation:', error);
+        }
+      }, 0);
+    }
   };
 
   const handleShownExampleChange = (index: number, isShown: boolean) => {
@@ -993,10 +1022,24 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
                 <div className="mb-2 text-sm font-medium">Slab #{index + 1}</div>
                 <div 
                   onClick={() => handleSlabClick(index)}
-                  className="cursor-pointer hover:opacity-80 transition-opacity duration-200"
+                  className="cursor-pointer hover:opacity-80 transition-opacity duration-200 relative"
                   title="Click to move to front"
                 >
                   <SlabComponent slab={slab} size="small" />
+                  {/* Star annotation directly on slab */}
+                  {evaluationResults.length > index && evaluationResults[index] && (
+                    <div 
+                      className="absolute"
+                      style={{
+                        top: '-4px',
+                        right: '-4px',
+                        color: '#000000',
+                        filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
+                      }}
+                    >
+                      <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
+                    </div>
+                  )}
                 </div>
                 <div className="mt-3 flex flex-col gap-1">
                   <div className="flex gap-1">
@@ -1035,19 +1078,6 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
                     </button>
                   )}
                 </div>
-                {/* Evaluation Result Dot */}
-                {evaluationResults.length > index && (
-                  <div className="mt-1 flex justify-center">
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        evaluationResults[index] 
-                          ? 'bg-black' 
-                          : 'bg-white border-2 border-black'
-                      }`}
-                      title={evaluationResults[index] ? 'True' : 'False'}
-                    />
-                  </div>
-                )}
               </div>
             ))}
           </div>
