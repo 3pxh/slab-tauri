@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowLeft, FiStar } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowUp, FiArrowDown, FiStar } from 'react-icons/fi';
 import { Puzzle, getAllDates, getPuzzle, supabase, getUserSlabs, createSlab, deleteSlab, Slab as SlabRecord } from '../lib/supabase';
 import SlabMaker from './SlabMaker';
 import SlabComponent, { SlabData, areSlabsEqual } from './Slab';
@@ -488,8 +488,8 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
         return prev; // Don't add duplicate
       }
       
-      // Add the new slab
-      return [...prev, slabWithId];
+      // Add the new slab at the beginning of the list
+      return [slabWithId, ...prev];
     });
     
     // Only update other arrays if we actually added a new slab
@@ -497,19 +497,19 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       const currentLength = prev.length;
       setShownExamples(prevShown => {
         if (currentLength > prevShown.length) {
-          return [...prevShown, false];
+          return [false, ...prevShown]; // Add at beginning to match slab order
         }
         return prevShown;
       });
       setHiddenExamples(prevHidden => {
         if (currentLength > prevHidden.length) {
-          return [...prevHidden, false];
+          return [false, ...prevHidden]; // Add at beginning to match slab order
         }
         return prevHidden;
       });
       setEvaluationResults(prevResults => {
         if (currentLength > prevResults.length) {
-          return [...prevResults, false];
+          return [false, ...prevResults]; // Add at beginning to match slab order
         }
         return prevResults;
       });
@@ -599,6 +599,78 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       const newResults = [...prev];
       const clickedResult = newResults.splice(index, 1)[0];
       return [clickedResult, ...newResults];
+    });
+  };
+
+  const handleMoveSlabUp = (index: number) => {
+    if (index === 0) return; // Already at the top
+    
+    setCreatedSlabs(prev => {
+      const newSlabs = [...prev];
+      const slab = newSlabs.splice(index, 1)[0];
+      newSlabs.splice(index - 1, 0, slab);
+      return newSlabs;
+    });
+
+    // Reorder the corresponding state arrays
+    setShownExamples(prev => {
+      const newShown = [...prev];
+      const shown = newShown.splice(index, 1)[0];
+      newShown.splice(index - 1, 0, shown);
+      return newShown;
+    });
+
+    setHiddenExamples(prev => {
+      const newHidden = [...prev];
+      const hidden = newHidden.splice(index, 1)[0];
+      newHidden.splice(index - 1, 0, hidden);
+      return newHidden;
+    });
+
+    setEvaluationResults(prev => {
+      const newResults = [...prev];
+      const result = newResults.splice(index, 1)[0];
+      newResults.splice(index - 1, 0, result);
+      return newResults;
+    });
+  };
+
+  const handleMoveSlabDown = (index: number) => {
+    setCreatedSlabs(prev => {
+      if (index === prev.length - 1) return prev; // Already at the bottom
+      
+      const newSlabs = [...prev];
+      const slab = newSlabs.splice(index, 1)[0];
+      newSlabs.splice(index + 1, 0, slab);
+      return newSlabs;
+    });
+
+    // Reorder the corresponding state arrays
+    setShownExamples(prev => {
+      if (index === prev.length - 1) return prev;
+      
+      const newShown = [...prev];
+      const shown = newShown.splice(index, 1)[0];
+      newShown.splice(index + 1, 0, shown);
+      return newShown;
+    });
+
+    setHiddenExamples(prev => {
+      if (index === prev.length - 1) return prev;
+      
+      const newHidden = [...prev];
+      const hidden = newHidden.splice(index, 1)[0];
+      newHidden.splice(index + 1, 0, hidden);
+      return newHidden;
+    });
+
+    setEvaluationResults(prev => {
+      if (index === prev.length - 1) return prev;
+      
+      const newResults = [...prev];
+      const result = newResults.splice(index, 1)[0];
+      newResults.splice(index + 1, 0, result);
+      return newResults;
     });
   };
 
@@ -1062,6 +1134,32 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
                       }`}
                     >
                       Hidden
+                    </button>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => handleMoveSlabUp(index)}
+                      disabled={index === 0}
+                      className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                        index === 0
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                      title="Move up"
+                    >
+                      <FiArrowUp size={12} />
+                    </button>
+                    <button
+                      onClick={() => handleMoveSlabDown(index)}
+                      disabled={index === createdSlabs.length - 1}
+                      className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                        index === createdSlabs.length - 1
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                      title="Move down"
+                    >
+                      <FiArrowDown size={12} />
                     </button>
                   </div>
                   {isAuthenticated && (
