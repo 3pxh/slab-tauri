@@ -164,7 +164,7 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
                 </h2>
 
                 {/* Step Content */}
-                <p className="text-gray-600 leading-relaxed mb-0 text-center">
+                <p className={`text-gray-600 leading-relaxed text-center ${step.showSlabMaker ? 'mb-0' : 'mb-6'}`}>
                   {step.content}
                 </p>
 
