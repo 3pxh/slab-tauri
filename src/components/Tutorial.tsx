@@ -136,15 +136,6 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
 
   return (
     <div className="w-full max-w-md mx-auto h-full flex flex-col">
-      {/* App Header */}
-      <div className="p-4 pb-0">
-        <AppHeader 
-          titleSize="large" 
-          showBackButton={true}
-          onBack={onHome}
-        />
-      </div>
-
       {/* Scrollable Tutorial Content */}
       <div className="flex-1 overflow-hidden">
         <div className="relative w-full h-full">
@@ -156,23 +147,30 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
             {steps.map((step, index) => (
               <div 
                 key={index}
-                className={`w-full flex-shrink-0 flex flex-col items-center px-4 text-center ${
-                  step.showSlabMaker ? 'justify-start overflow-y-auto' : 'justify-center'
-                }`}
+                className="w-full flex-shrink-0 flex flex-col items-center px-4 text-center justify-start overflow-y-auto pb-8"
               >
+                {/* App Header */}
+                <div className="pt-4 pb-0">
+                  <AppHeader 
+                    titleSize="large" 
+                    showBackButton={true}
+                    onBack={onHome}
+                  />
+                </div>
+
                 {/* Step Title */}
                 <h2 className="text-4xl font-bold text-gray-800 mb-4">
                   {step.title}
                 </h2>
 
                 {/* Step Content */}
-                <p className={`text-gray-600 leading-relaxed ${step.showSlabMaker ? 'mb-0' : 'mb-6'}`}>
+                <p className="text-gray-600 leading-relaxed mb-0">
                   {step.content}
                 </p>
 
                 {/* Random Slab Display (only for "This is a Slab" step) */}
                 {step.showSlab && (
-                  <div className="flex flex-col items-center gap-4">
+                  <div className="flex flex-col items-center gap-4 pb-8">
                     <SlabComponent 
                       slab={randomSlab} 
                       size="medium"
