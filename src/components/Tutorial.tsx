@@ -1,8 +1,9 @@
 import React from 'react';
 import { FiArrowRight, FiArrowLeft, FiRefreshCw, FiStar } from 'react-icons/fi';
+import { FaLightbulb } from 'react-icons/fa6';
 import AppHeader from './AppHeader';
 import { analytics } from '../utils/analytics';
-import SlabComponent, { SlabData, createRandomSlab, COLORS } from './Slab';
+import SlabComponent, { SlabData, createRandomSlab, createSlab, COLORS } from './Slab';
 import SlabMaker from './SlabMaker';
 import { getPuzzle, getAllDates, Puzzle } from '../lib/supabase';
 import { executeCodeSafely } from '../utils/sandbox';
@@ -18,6 +19,42 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
   const [firstPuzzle, setFirstPuzzle] = React.useState<Puzzle | null>(null);
   const [isLoadingPuzzle, setIsLoadingPuzzle] = React.useState(false);
   const [evaluationResults, setEvaluationResults] = React.useState<Map<string, boolean>>(new Map());
+  
+  // Create smiley face slab
+  const smileyFaceSlab = React.useMemo(() => {
+    const slab = createSlab();
+    
+    // Set all cells to yellow (color index 1)
+    for (let r = 0; r < 6; r++) {
+      for (let c = 0; c < 6; c++) {
+        const groupId = 0;
+        slab.cells[r][c] = { groupId };
+        slab.groups[groupId] = { id: groupId, color: 3 }; // Yellow
+      }
+    }
+    
+    // Create left eye (blue, color index 2)
+    const leftEyeGroupId = 100;
+    slab.cells[1][1] = { groupId: leftEyeGroupId };
+    slab.groups[leftEyeGroupId] = { id: leftEyeGroupId, color: 5 }; // Blue
+    
+    // Create right eye (blue, color index 2)
+    const rightEyeGroupId = 101;
+    slab.cells[1][4] = { groupId: rightEyeGroupId };
+    slab.groups[rightEyeGroupId] = { id: rightEyeGroupId, color: 5 }; // Blue
+    
+    // Create mouth (blue, color index 2)
+    const mouthGroupId = 102;
+    slab.cells[4][1] = { groupId: mouthGroupId };
+    slab.cells[4][2] = { groupId: mouthGroupId };
+    slab.cells[4][3] = { groupId: mouthGroupId };
+    slab.cells[4][4] = { groupId: mouthGroupId };
+    slab.cells[3][1] = { groupId: mouthGroupId };
+    slab.cells[3][4] = { groupId: mouthGroupId };
+    slab.groups[mouthGroupId] = { id: mouthGroupId, color: 5 }; // Blue
+    
+    return slab;
+  }, []);
 
   // Track tutorial start
   React.useEffect(() => {
@@ -124,12 +161,14 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
     {
       title: "How to Win",
       content: "When you think you understand why a judge likes some slabs, guess 5 slabs correctly to pass their test and win. You get 3 tries, and you can't make new slabs while a you're guessing.",
-      showSlab: false
+      showSlab: false,
+      showGuessButton: true
     },
     {
       title: "Have fun!",
       content: "",
-      showSlab: false
+      showSlab: false,
+      showSmileyFace: true
     }
   ];
 
@@ -249,6 +288,42 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
                     ) : (
                       <div className="text-gray-500 text-sm">No examples available</div>
                     )}
+                  </div>
+                )}
+
+                {/* Guess Button Display (only for "How to Win" step) */}
+                {step.showGuessButton && (
+                  <div className="flex flex-col items-center gap-4 pb-8">
+                    <div className="text-sm text-gray-600 text-center">
+                      When you're ready to guess, use this button:
+                    </div>
+                    <button
+                      className="px-6 py-4 rounded text-sm flex flex-col items-center justify-center h-20 bg-yellow-500 text-white shadow-lg"
+                      disabled
+                      title="Guess button (disabled in tutorial)"
+                    >
+                      <FaLightbulb size={32} />
+                      <span className="text-sm font-semibold mt-1">
+                        3/3
+                      </span>
+                    </button>
+                    <div className="text-xs text-gray-500 text-center max-w-xs">
+                      3/3 remaining guesses
+                    </div>
+                  </div>
+                )}
+
+                {/* Smiley Face Display (only for "Have fun!" step) */}
+                {step.showSmileyFace && (
+                  <div className="flex flex-col items-center gap-4 pb-8">
+                    <SlabComponent 
+                      slab={smileyFaceSlab} 
+                      size="large"
+                      className="shadow-lg"
+                    />
+                    <div className="text-sm text-gray-600 text-center">
+                      😊
+                    </div>
                   </div>
                 )}
               </div>

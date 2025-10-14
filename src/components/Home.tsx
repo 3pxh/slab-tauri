@@ -178,7 +178,7 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
             </div>
             <div className="col-span-2 text-left">
               <div className="text-lg font-semibold">Tutorial</div>
-              <div className="text-sm opacity-90">Get started with Slab</div>
+              <div className="text-sm opacity-90">Learn to play!</div>
             </div>
           </div>
         </button>
