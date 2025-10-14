@@ -160,31 +160,82 @@ export class AuthService {
     }
   }
 
-  async linkAccountWithEmail(email: string): Promise<{ success: boolean; message: string }> {
+  async linkAccountWithEmail(email: string): Promise<{ success: boolean; message: string; action: 'linked' | 'signin_sent' }> {
     try {
-      // Check if email already exists
+      // Check if current user is anonymous
       const { data: existingUser } = await supabase.auth.getUser()
       if (!existingUser.user || !existingUser.user.is_anonymous) {
-        return { success: false, message: 'No anonymous account to link' }
+        return { success: false, message: 'No anonymous account to link', action: 'linked' }
       }
 
-      // Update the anonymous user with an email
-      const { error } = await supabase.auth.updateUser({
+      // First, try to update the anonymous user with an email
+      const { error: updateError } = await supabase.auth.updateUser({
         email: email.trim()
       })
 
-      if (error) {
-        return { success: false, message: `Failed to link account: ${error.message}` }
+      if (updateError) {
+        console.log('Update error:', updateError)
+        
+        // If update fails, it might be because an account with this email already exists
+        // In that case, send a magic link to sign in to the existing account
+        const emailExistsErrors = [
+          'already registered',
+          'already exists', 
+          'User already registered',
+          'duplicate key value',
+          'email address is already in use',
+          'Email already registered',
+          'A user with this email address has already been registered'
+        ]
+        
+        const isEmailExistsError = emailExistsErrors.some(errorText => 
+          updateError.message.toLowerCase().includes(errorText.toLowerCase())
+        )
+        
+        console.log('Is email exists error:', isEmailExistsError, 'for message:', updateError.message)
+        
+        if (isEmailExistsError) {
+          console.log('Email already exists, sending sign-in link...')
+          const { error: signInError } = await supabase.auth.signInWithOtp({
+            email: email.trim(),
+            options: {
+              emailRedirectTo: window.location.origin
+            }
+          })
+
+          if (signInError) {
+            console.log('Sign-in error:', signInError)
+            return { 
+              success: false, 
+              message: `Failed to send sign-in link: ${signInError.message}`,
+              action: 'signin_sent'
+            }
+          }
+
+          return { 
+            success: true, 
+            message: 'An account with this email already exists. Check your email for a sign-in link!',
+            action: 'signin_sent'
+          }
+        }
+
+        return { 
+          success: false, 
+          message: `Failed to link account: ${updateError.message}`,
+          action: 'linked'
+        }
       }
 
       return { 
         success: true, 
-        message: 'Account linked successfully! Check your email to verify.' 
+        message: 'Account linked successfully! Check your email to verify.',
+        action: 'linked'
       }
     } catch (error) {
       return { 
         success: false, 
-        message: `Failed to link account: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        message: `Failed to link account: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        action: 'linked'
       }
     }
   }

@@ -263,7 +263,7 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
             className="text-sm text-blue-600 hover:text-blue-800 underline flex items-center justify-center gap-1 mx-auto"
           >
             <FiMail size={14} />
-            Save your progress
+            Save your progress / Sign In
           </button>
         </div>
       )}
@@ -291,11 +291,11 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="flex items-center gap-2 mb-4">
               <FiMail size={20} />
-              <h3 className="text-lg font-semibold">Save Your Progress</h3>
+              <h3 className="text-lg font-semibold">Save Your Progress / Sign In</h3>
             </div>
             <p className="text-gray-600 mb-4">
-              Add an email address to save your progress permanently. You can continue playing as an anonymous user, 
-              but linking an email will preserve your progress across devices.
+              Add an email address to save your progress permanently. If you already have an account with this email, 
+              we'll send you a sign-in link instead.
             </p>
             <div className="mb-4">
               <input
@@ -309,7 +309,7 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
             </div>
             {linkMessage && (
               <div className={`mb-4 p-3 rounded-md text-sm ${
-                linkMessage.includes('success') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                linkMessage.includes('success') || linkMessage.includes('Check your email') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
               }`}>
                 {linkMessage}
               </div>
@@ -320,7 +320,7 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
                 disabled={isLinking || !linkEmail.trim()}
                 className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLinking ? 'Linking...' : 'Link Account'}
+                {isLinking ? 'Processing...' : 'Continue'}
               </button>
               <button
                 onClick={() => {
