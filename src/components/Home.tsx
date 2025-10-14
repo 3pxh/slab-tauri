@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiCalendar, FiPlus, FiPlay, FiMail, FiBell } from 'react-icons/fi';
+import { FiCalendar, FiPlus, FiPlay, FiMail, FiBell, FiBookOpen } from 'react-icons/fi';
 import { useAuth } from '../hooks/useAuth';
 import AppHeader from './AppHeader';
 import { analytics } from '../utils/analytics';
@@ -174,7 +174,7 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
         >
           <div className="grid grid-cols-3 gap-4 items-center">
             <div className="flex justify-end">
-              <FiPlay size={24} />
+              <FiBookOpen size={24} />
             </div>
             <div className="col-span-2 text-left">
               <div className="text-lg font-semibold">Tutorial</div>
