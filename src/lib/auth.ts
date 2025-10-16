@@ -160,6 +160,49 @@ export class AuthService {
     }
   }
 
+  async signInWithPassword(email: string, password: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password
+      })
+
+      if (error) {
+        return { success: false, message: `Sign in failed: ${error.message}` }
+      }
+
+      return { success: true, message: 'Signed in successfully!' }
+    } catch (error) {
+      return { 
+        success: false, 
+        message: `Sign in failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      }
+    }
+  }
+
+  async signUpWithPassword(email: string, password: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: password,
+        options: {
+          emailRedirectTo: window.location.origin
+        }
+      })
+
+      if (error) {
+        return { success: false, message: `Sign up failed: ${error.message}` }
+      }
+
+      return { success: true, message: 'Account created! Check your email to confirm your account.' }
+    } catch (error) {
+      return { 
+        success: false, 
+        message: `Sign up failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      }
+    }
+  }
+
   async linkAccountWithEmail(email: string): Promise<{ success: boolean; message: string; action: 'linked' | 'signin_sent' }> {
     try {
       // Check if current user is anonymous

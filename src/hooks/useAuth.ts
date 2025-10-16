@@ -13,6 +13,14 @@ export function useAuth() {
     return await authService.signInWithEmail(email)
   }
 
+  const signInWithPassword = async (email: string, password: string) => {
+    return await authService.signInWithPassword(email, password)
+  }
+
+  const signUpWithPassword = async (email: string, password: string) => {
+    return await authService.signUpWithPassword(email, password)
+  }
+
   const linkAccountWithEmail = async (email: string) => {
     return await authService.linkAccountWithEmail(email)
   }
@@ -28,6 +36,8 @@ export function useAuth() {
   return {
     ...authState,
     signInWithEmail,
+    signInWithPassword,
+    signUpWithPassword,
     linkAccountWithEmail,
     signOut,
     deleteAccount

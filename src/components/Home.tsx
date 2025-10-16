@@ -13,7 +13,7 @@ interface HomeProps {
 }
 
 const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, onTutorial }) => {
-  const { isAnonymous, linkAccountWithEmail, isAuthenticated } = useAuth();
+  const { isAnonymous, linkAccountWithEmail, isAuthenticated, signInWithPassword, signUpWithPassword } = useAuth();
   
   // State for today's puzzle
   const [todaysPuzzle, setTodaysPuzzle] = React.useState<Puzzle | null>(null);
@@ -65,8 +65,10 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
   }, []);
   const [showLinkAccount, setShowLinkAccount] = React.useState(false);
   const [linkEmail, setLinkEmail] = React.useState('');
+  const [linkPassword, setLinkPassword] = React.useState('');
   const [linkMessage, setLinkMessage] = React.useState('');
   const [isLinking, setIsLinking] = React.useState(false);
+  const [authMode, setAuthMode] = React.useState<'email' | 'password'>('email');
   
   // Email signup state
   const [showEmailSignup, setShowEmailSignup] = React.useState(false);
@@ -81,20 +83,41 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
       return;
     }
 
+    if (authMode === 'password' && !linkPassword.trim()) {
+      setLinkMessage('Please enter a password');
+      return;
+    }
+
     setIsLinking(true);
     setLinkMessage('');
     
     try {
-      const result = await linkAccountWithEmail(linkEmail.trim());
+      let result;
+      
+      if (authMode === 'email') {
+        // Use the existing linkAccountWithEmail function for email link authentication
+        result = await linkAccountWithEmail(linkEmail.trim());
+      } else {
+        // For password mode, try to sign in first, then sign up if that fails
+        try {
+          result = await signInWithPassword(linkEmail.trim(), linkPassword);
+        } catch (signInError) {
+          // If sign in fails, try to sign up
+          result = await signUpWithPassword(linkEmail.trim(), linkPassword);
+        }
+      }
+      
       setLinkMessage(result.message);
       
       if (result.success) {
         analytics.accountLinked();
         setShowLinkAccount(false);
         setLinkEmail('');
+        setLinkPassword('');
+        setAuthMode('email');
       }
     } catch (error) {
-      setLinkMessage(`Failed to link account: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setLinkMessage(`Failed to authenticate: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLinking(false);
     }
@@ -294,9 +317,40 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
               <h3 className="text-lg font-semibold">Save Your Progress / Sign In</h3>
             </div>
             <p className="text-gray-600 mb-4">
-              Add an email address to save your progress permanently. If you already have an account with this email, 
-              we'll send you a sign-in link instead.
+              {authMode === 'email' 
+                ? "Add an email address to save your progress permanently. If you already have an account with this email, we'll send you a sign-in link instead."
+                : "Sign in with your email and password, or create a new account if you don't have one yet."
+              }
             </p>
+            
+            {/* Authentication Mode Toggle */}
+            <div className="mb-4">
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setAuthMode('email')}
+                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                    authMode === 'email' 
+                      ? 'bg-white text-blue-600 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                  disabled={isLinking}
+                >
+                  Email Link
+                </button>
+                <button
+                  onClick={() => setAuthMode('password')}
+                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                    authMode === 'password' 
+                      ? 'bg-white text-blue-600 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                  disabled={isLinking}
+                >
+                  Use Password
+                </button>
+              </div>
+            </div>
+
             <div className="mb-4">
               <input
                 type="email"
@@ -307,9 +361,23 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
                 disabled={isLinking}
               />
             </div>
+            
+            {authMode === 'password' && (
+              <div className="mb-4">
+                <input
+                  type="password"
+                  value={linkPassword}
+                  onChange={(e) => setLinkPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isLinking}
+                />
+              </div>
+            )}
+            
             {linkMessage && (
               <div className={`mb-4 p-3 rounded-md text-sm ${
-                linkMessage.includes('success') || linkMessage.includes('Check your email') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                linkMessage.includes('success') || linkMessage.includes('Check your email') || linkMessage.includes('Signed in') || linkMessage.includes('Account created') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
               }`}>
                 {linkMessage}
               </div>
@@ -317,16 +385,18 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
             <div className="flex gap-3">
               <button
                 onClick={handleLinkAccount}
-                disabled={isLinking || !linkEmail.trim()}
+                disabled={isLinking || !linkEmail.trim() || (authMode === 'password' && !linkPassword.trim())}
                 className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLinking ? 'Processing...' : 'Continue'}
+                {isLinking ? 'Processing...' : (authMode === 'email' ? 'Send Email Link' : 'Sign In / Sign Up')}
               </button>
               <button
                 onClick={() => {
                   setShowLinkAccount(false);
                   setLinkEmail('');
+                  setLinkPassword('');
                   setLinkMessage('');
+                  setAuthMode('email');
                 }}
                 disabled={isLinking}
                 className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
