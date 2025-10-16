@@ -138,7 +138,7 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
   const steps = [
     {
       title: "Welcome to Slab!",
-      content: "Slab 17 is a puzzle game where you play as a scientist trying to understand the world of slabs. Every day offers a different perspective and a new mystery to solve.",
+      content: "Slab is a fiendishly difficult daily puzzle game meant to tickle the sharpest minds. You play as a scientist trying to understand the world of slabs. Every day offers a different perspective and a new mystery to solve.",
       showSlab: false
     },
     {
@@ -147,26 +147,26 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
       showSlab: true
     },
     {
-      title: "You can make slabs",
-      content: "Try dragging, double-tapping, and adding colors.",
+      title: "How to make slabs",
+      content: "Drag, double-tap, and add colors.",
       showSlab: false,
       showSlabMaker: true
     },
     {
-      title: "The Challenge",
-      content: "Every day there is a new judge who likes some slabs but not others. As you make slabs the judge will mark the ones they like with a star. A judge might like blue, or slabs without big regions, or rainbows, anything goes!",
+      title: "The Puzzle",
+      content: "There's a secret rule that decides which slabs pass. The rule might be anything, like 'it has to have a red cell' or 'no groups can be bigger than 4 cells' or 'a blue group must touch a yellow group', and every day's puzzle is different. You start with two examples, one that follows the rule and one that doesn't. Your job isn't to make perfect slabs, but to experiment: build different slabs to learn what the rule could be.",
       showSlab: false,
       showExamples: true
     },
     {
       title: "How to Win",
-      content: "When you think you understand why a judge likes some slabs, guess 5 slabs correctly to pass their test and win. You get 3 tries, and you can't make new slabs while a you're guessing.",
+      content: "When you think you understand what the rule is, try guessing. You'll see 5 slabs. If you correctly guess which ones pass the rule, you win! You get 3 tries, and you can't build new slabs while you have a guess in progress.",
       showSlab: false,
       showGuessButton: true
     },
     {
       title: "Have fun!",
-      content: "",
+      content: "Are you ready for the challenge?",
       showSlab: false,
       showSmileyFace: true
     }
@@ -278,7 +278,7 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
                                   )}
                                 </div>
                                 <div className="text-xs text-gray-500">
-                                  {evaluationResult ? 'Judge likes this' : 'Judge doesn\'t like this'}
+                                  {evaluationResult ? 'Passes the rule ⭐️' : 'Doesn\'t pass the rule'}
                                 </div>
                               </div>
                             );

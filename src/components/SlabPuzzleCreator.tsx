@@ -53,6 +53,8 @@ Your rule code should:
 IMPORTANT: Do NOT write \`function(slab) { ... }\` or \`(slab) => { ... }\`
 The code you provide will be wrapped in a function automatically.
 
+It must have a return statement to return a value.
+
 Output the code for a rule that returns true if`;
 
 type SlabWithId = SlabData & { id: number };
