@@ -190,8 +190,8 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     }
   }, {
     drag: {
-      filterTaps: true, // Prevent tap events when dragging
-      threshold: 5, // Minimum movement to start drag
+      filterTaps: false, // Allow tap events even when drag is detected
+      threshold: 10, // Increase threshold to reduce false drag detection on mobile
     }
   });
 
