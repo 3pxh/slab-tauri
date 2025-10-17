@@ -23,6 +23,13 @@ export interface SlabGameState {
   colorblindMode: 'none' | 'icon' | 'number' | 'letter';
   showArchivedSlabs: boolean;
   
+  // Individual guessing state
+  isInIndividualGuessMode: boolean;
+  currentGuessIndex: number;
+  guessCorrectCount: number;
+  guessIncorrectCount: number;
+  slabsToGuess: SlabData[];
+  
   // Evaluation state
   evaluationResults: Map<string, boolean>;
   
@@ -45,6 +52,12 @@ export interface SlabGameActions {
   handleGuessClick: () => void;
   handleCloseOverlay: () => void;
   handleGuessSubmit: (results: any[]) => Promise<void>;
+  
+  // Individual guessing management
+  handleIndividualGuessSubmit: (isStar: boolean) => Promise<boolean>;
+  handleProceedToNext: () => Promise<void>;
+  handleWinNext: () => Promise<void>;
+  handleCloseIndividualGuess: () => void;
   
   // UI controls
   handleColorblindModeToggle: () => void;
@@ -85,6 +98,14 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
   const [colorblindMode, setColorblindMode] = useState<'none' | 'icon' | 'number' | 'letter'>('none');
   const [showArchivedSlabs, setShowArchivedSlabs] = useState(false);
   
+  // Individual guessing state
+  const [isInIndividualGuessMode, setIsInIndividualGuessMode] = useState(false);
+  const [currentGuessIndex, setCurrentGuessIndex] = useState(0);
+  const [guessCorrectCount, setGuessCorrectCount] = useState(0);
+  const [guessIncorrectCount, setGuessIncorrectCount] = useState(0);
+  const [slabsToGuess, setSlabsToGuess] = useState<SlabData[]>([]);
+  const [lastGuessResult, setLastGuessResult] = useState<boolean | null>(null);
+  
   // Evaluation state
   const [evaluationResults, setEvaluationResults] = useState<Map<string, boolean>>(new Map());
   
@@ -122,6 +143,12 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     let initialRemainingGuesses = 3;
     let initialHasWon = false;
     let initialEvaluationResults = new Map<string, boolean>();
+    let initialIsInIndividualGuessMode = false;
+    let initialCurrentGuessIndex = 0;
+    let initialGuessCorrectCount = 0;
+    let initialGuessIncorrectCount = 0;
+    let initialSlabsToGuess: SlabData[] = [];
+    let initialLastGuessResult: boolean | null = null;
     
     // Only override with saved progress if we have meaningful saved data
     if (progress && progress.custom_data) {
@@ -149,6 +176,26 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
       if (Array.isArray(progress.custom_data.evaluationResults)) {
         initialEvaluationResults = new Map<string, boolean>(progress.custom_data.evaluationResults);
       }
+      
+      // Restore individual guessing state if available
+      if (typeof progress.custom_data.isInIndividualGuessMode === 'boolean') {
+        initialIsInIndividualGuessMode = progress.custom_data.isInIndividualGuessMode;
+      }
+      if (typeof progress.custom_data.currentGuessIndex === 'number') {
+        initialCurrentGuessIndex = progress.custom_data.currentGuessIndex;
+      }
+      if (typeof progress.custom_data.guessCorrectCount === 'number') {
+        initialGuessCorrectCount = progress.custom_data.guessCorrectCount;
+      }
+      if (typeof progress.custom_data.guessIncorrectCount === 'number') {
+        initialGuessIncorrectCount = progress.custom_data.guessIncorrectCount;
+      }
+      if (Array.isArray(progress.custom_data.slabsToGuess)) {
+        initialSlabsToGuess = progress.custom_data.slabsToGuess;
+      }
+      if (typeof progress.custom_data.lastGuessResult === 'boolean') {
+        initialLastGuessResult = progress.custom_data.lastGuessResult;
+      }
     } else if (progress) {
       // If we have progress but no custom_data, still restore basic progress info
       initialRemainingGuesses = Math.max(0, 3 - progress.attempts);
@@ -161,6 +208,12 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     setRemainingGuesses(initialRemainingGuesses);
     setHasWon(initialHasWon);
     setEvaluationResults(initialEvaluationResults);
+    setIsInIndividualGuessMode(initialIsInIndividualGuessMode);
+    setCurrentGuessIndex(initialCurrentGuessIndex);
+    setGuessCorrectCount(initialGuessCorrectCount);
+    setGuessIncorrectCount(initialGuessIncorrectCount);
+    setSlabsToGuess(initialSlabsToGuess);
+    setLastGuessResult(initialLastGuessResult);
     
     // Mark as initialized
     hasInitializedRef.current = true;
@@ -520,15 +573,22 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
       return;
     }
     
-    setShowGuessOverlay(true);
+    // Get the slabs to guess on (first 5 hidden examples not already in allSlabs)
+    const filteredHidden = getFilteredHiddenExamples();
     
-    // Only start a new guess session if we're not already in one
-    if (!isInGuessSession) {
-      setIsInGuessSession(true);
-      // Reset pending guessed slabs when starting a new guess session
-      setPendingGuessedSlabs([]);
+    if (filteredHidden.length === 0) {
+      return; // No slabs to guess on
     }
-  }, [remainingGuesses, isInGuessSession]);
+    
+    // Start individual guessing mode
+    setIsInIndividualGuessMode(true);
+    setCurrentGuessIndex(0);
+    setGuessCorrectCount(0);
+    setGuessIncorrectCount(0);
+    setSlabsToGuess(filteredHidden);
+    setLastGuessResult(null);
+    setIsInGuessSession(true);
+  }, [remainingGuesses, getFilteredHiddenExamples]);
 
   const handleCloseOverlay = useCallback(() => {
     setShowGuessOverlay(false);
@@ -537,6 +597,125 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     // Clear pending guessed slabs (they were already added in handleGuessSubmit)
     setPendingGuessedSlabs([]);
   }, []);
+
+  const handleIndividualGuessSubmit = useCallback(async (isStar: boolean): Promise<boolean> => {
+    if (currentGuessIndex >= slabsToGuess.length) {
+      return false; // No more slabs to guess
+    }
+
+    const currentSlab = slabsToGuess[currentGuessIndex];
+    const key = getSlabKey(currentSlab);
+    const actualResult = evaluationResults.get(key) || false;
+    const isCorrect = (isStar && actualResult) || (!isStar && !actualResult);
+
+    // Store the result for use in proceedToNext
+    setLastGuessResult(isCorrect);
+
+    // Track analytics
+    analytics.guessMade(puzzle, 3 - remainingGuesses + 1, isCorrect);
+
+    // Return the result without moving to next slab or adding to main list yet
+    // The component will handle showing the confirmation and then call proceedToNext
+    return isCorrect;
+  }, [currentGuessIndex, slabsToGuess, getSlabKey, evaluationResults, remainingGuesses, puzzle]);
+
+  const handleProceedToNext = useCallback(async () => {
+    if (currentGuessIndex >= slabsToGuess.length) {
+      return;
+    }
+
+    const currentSlab = slabsToGuess[currentGuessIndex];
+    
+    // Update counters based on the last guess result
+    if (lastGuessResult !== null) {
+      if (lastGuessResult) {
+        setGuessCorrectCount(prev => prev + 1);
+      } else {
+        setGuessIncorrectCount(prev => prev + 1);
+      }
+    }
+    
+    // Add the guessed slab to the main list
+    setAllSlabs(prev => [currentSlab, ...prev]);
+
+    // Move to next slab or finish
+    if (currentGuessIndex + 1 >= slabsToGuess.length) {
+      // Finished all guesses - move to results state, don't exit yet
+      setCurrentGuessIndex(prev => prev + 1); // This will make currentIndex >= totalSlabs
+      setLastGuessResult(null);
+    } else {
+      // Move to next slab
+      setCurrentGuessIndex(prev => prev + 1);
+      setLastGuessResult(null);
+    }
+  }, [currentGuessIndex, slabsToGuess, lastGuessResult, guessCorrectCount, remainingGuesses, allSlabs, puzzle, incrementAttempts, updateCustomData, markCompleted, addTrophy]);
+
+  const handleCloseIndividualGuess = useCallback(() => {
+    setIsInIndividualGuessMode(false);
+    setIsInGuessSession(false);
+    setCurrentGuessIndex(0);
+    setGuessCorrectCount(0);
+    setGuessIncorrectCount(0);
+    setSlabsToGuess([]);
+    setLastGuessResult(null);
+  }, []);
+
+  const handleWinNext = useCallback(async () => {
+    // This is called when they click next after finishing all guesses (win or lose)
+    const currentSlab = slabsToGuess[currentGuessIndex - 1]; // Get the last slab since currentIndex is now >= totalSlabs
+    const allCorrect = guessCorrectCount === slabsToGuess.length;
+    
+    // Close the guessing mode immediately for responsive UI
+    setIsInIndividualGuessMode(false);
+    setIsInGuessSession(false);
+    setCurrentGuessIndex(0);
+    setGuessCorrectCount(0);
+    setGuessIncorrectCount(0);
+    setSlabsToGuess([]);
+    setLastGuessResult(null);
+    
+    // Set hasWon based on whether they got all correct
+    setHasWon(allCorrect);
+    
+    // Decrement remaining guesses
+    setRemainingGuesses(prev => Math.max(0, prev - 1));
+    
+    // Do all the async operations in the background
+    (async () => {
+      try {
+        // Track progress: increment attempts
+        await incrementAttempts(puzzle.id);
+
+        // Save state
+        const stateToSave = {
+          savedSlabs: [currentSlab, ...allSlabs],
+          remainingGuesses: Math.max(0, remainingGuesses - 1),
+          hasWon: allCorrect,
+          evaluationResults: Array.from(evaluationResults.entries()),
+          isInIndividualGuessMode: false,
+          currentGuessIndex: 0,
+          guessCorrectCount: 0,
+          guessIncorrectCount: 0,
+          slabsToGuess: [],
+          lastGuessResult: null
+        };
+        
+        await updateCustomData(puzzle.id, stateToSave);
+
+        // Track analytics for puzzle completion (only if they won)
+        if (allCorrect) {
+          const timeSpent = Date.now() - (window as any).puzzleStartTime || 0;
+          analytics.puzzleCompleted(puzzle, 3 - remainingGuesses + 1, timeSpent / 1000, allSlabs.length);
+          
+          // Track progress: mark as completed and add trophy
+          await markCompleted(puzzle.id, slabsToGuess.length);
+          await addTrophy(puzzle.id);
+        }
+      } catch (error) {
+        console.error('Failed to save completion progress:', error);
+      }
+    })();
+  }, [currentGuessIndex, slabsToGuess, guessCorrectCount, remainingGuesses, allSlabs, puzzle, incrementAttempts, updateCustomData, markCompleted, addTrophy]);
 
   const handleGuessSubmit = useCallback(async (results: any[]) => {
     const filteredHidden = getFilteredHiddenExamples();
@@ -667,6 +846,11 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     selectedSlabForMaker,
     colorblindMode,
     showArchivedSlabs,
+    isInIndividualGuessMode,
+    currentGuessIndex,
+    guessCorrectCount,
+    guessIncorrectCount,
+    slabsToGuess,
     evaluationResults,
     progress,
     isLoading,
@@ -682,6 +866,10 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     handleGuessClick,
     handleCloseOverlay,
     handleGuessSubmit,
+    handleIndividualGuessSubmit,
+    handleProceedToNext,
+    handleWinNext,
+    handleCloseIndividualGuess,
     handleColorblindModeToggle,
     handleToggleArchivedSlabs,
     reorderSlabs,

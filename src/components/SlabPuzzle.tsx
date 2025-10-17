@@ -6,7 +6,7 @@ import { Puzzle } from '../lib/supabase';
 import Slab, { SlabData, areSlabsEqual } from './Slab';
 import { formatDateUTC } from '../utils';
 import SlabMaker from './SlabMaker';
-import GuessPanel from './GuessPanel';
+import IndividualSlabGuesser from './IndividualSlabGuesser';
 import { useSlabGameState } from '../hooks/useSlabGameState';
 import { analytics, sessionTracker } from '../utils/analytics';
 
@@ -31,7 +31,6 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     // State
     allSlabs,
     archivedSlabs,
-    showGuessOverlay,
     remainingGuesses,
     hasWon,
     evaluationResults,
@@ -40,6 +39,11 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     selectedSlabForMaker,
     colorblindMode,
     showArchivedSlabs,
+    isInIndividualGuessMode,
+    currentGuessIndex,
+    guessCorrectCount,
+    guessIncorrectCount,
+    slabsToGuess,
     progress,
     
     // Actions
@@ -51,16 +55,15 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     handleShuffle,
     handleSort,
     handleGuessClick,
-    handleCloseOverlay,
-    handleGuessSubmit,
+    handleIndividualGuessSubmit,
+    handleProceedToNext,
+    handleWinNext,
     handleColorblindModeToggle,
     handleToggleArchivedSlabs,
     reorderSlabs,
     getSlabKey,
     getCurrentColors,
     getColorblindOverlay,
-    getSlabsForOverlay,
-    getGroundTruth,
   } = useSlabGameState(puzzle);
 
   // Scroll detection for showing/hiding the scroll-to-slabs button
@@ -264,28 +267,46 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         </div>
       </div>
       
-      <SlabMaker 
-        onCreate={handleSlabCreate} 
-        onGuess={handleGuessClick}
-        guessCount={remainingGuesses}
-        maxGuesses={3}
-        hasWon={hasWon}
-        flashGuessButton={flashGuessButton}
-        isInGuessSession={isInGuessSession}
-        initialSlab={selectedSlabForMaker || undefined}
-        onShuffle={handleShuffle}
-        onSort={handleSort}
-        colors={getCurrentColors()}
-        colorblindMode={colorblindMode}
-        getColorblindOverlay={getColorblindOverlay}
-        puzzle={puzzle}
-      />
+      {/* Show IndividualSlabGuesser when in individual guess mode, otherwise show SlabMaker */}
+      {isInIndividualGuessMode ? (
+        <IndividualSlabGuesser
+          currentSlab={slabsToGuess[currentGuessIndex]}
+          currentIndex={currentGuessIndex}
+          totalSlabs={slabsToGuess.length}
+          correctCount={guessCorrectCount}
+          incorrectCount={guessIncorrectCount}
+          onGuessSubmit={handleIndividualGuessSubmit}
+          onProceedToNext={handleProceedToNext}
+          onWinNext={handleWinNext}
+          colors={getCurrentColors()}
+          colorblindMode={colorblindMode}
+          getColorblindOverlay={getColorblindOverlay}
+          levelAttempts={progress?.attempts || 0}
+        />
+      ) : (
+        <SlabMaker 
+          onCreate={handleSlabCreate} 
+          onGuess={handleGuessClick}
+          guessCount={remainingGuesses}
+          maxGuesses={3}
+          hasWon={hasWon}
+          flashGuessButton={flashGuessButton}
+          isInGuessSession={isInGuessSession}
+          initialSlab={selectedSlabForMaker || undefined}
+          onShuffle={handleShuffle}
+          onSort={handleSort}
+          colors={getCurrentColors()}
+          colorblindMode={colorblindMode}
+          getColorblindOverlay={getColorblindOverlay}
+          puzzle={puzzle}
+        />
+      )}
 
       {/* Floating Scroll to Slabs Button */}
       {showScrollToSlabs && (
         <button
           onClick={scrollToSlabList}
-          className="fixed bottom--2 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-110 flex items-center justify-center z-50"
+          className="fixed bottom-2 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-110 flex items-center justify-center z-50"
           title="Scroll to slab list"
           aria-label="Scroll to slab list"
         >
@@ -480,29 +501,6 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         </div>
       )}
 
-      {/* Guess Panel */}
-      <GuessPanel
-        isOpen={showGuessOverlay}
-        onClose={handleCloseOverlay}
-        remainingGuesses={remainingGuesses}
-        maxGuesses={3}
-        onGuessSubmit={handleGuessSubmit}
-        groundTruth={getGroundTruth()}
-        emptyMessage="No hidden examples available or all have been revealed."
-        puzzle={puzzle}
-      >
-        {getSlabsForOverlay().map((slab, index) => (
-          <Slab 
-            key={index}
-            slab={slab} 
-            size="small" 
-            className="w-full h-full" 
-            colors={getCurrentColors()}
-            colorblindMode={colorblindMode}
-            getColorblindOverlay={getColorblindOverlay}
-          />
-        ))}
-      </GuessPanel>
 
     </div>
   );
