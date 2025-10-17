@@ -513,28 +513,6 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
 
   return (
     <div className="p-4 w-full max-w-md mx-auto">
-      {/* Color Swatches */}
-      <div className="mb-2">
-        <div className="flex justify-center gap-1 w-full">
-          {colors.map((color, index) => (
-            <button
-              key={index}
-              className={`flex-1 rounded cursor-pointer transition-all hover:scale-110 ${
-                selectedGroup !== null ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              }`}
-              style={{ 
-                backgroundColor: color,
-                aspectRatio: '1',
-                maxWidth: '48px',
-                maxHeight: '48px'
-              }}
-              onClick={() => applyColorToGroup(index)}
-              title={`Color ${index}`}
-            />
-          ))}
-        </div>
-      </div>
-      
       <div className="grid grid-cols-6 w-full" style={{ gridAutoRows: '1fr' }}>
         {slab.cells.map((row, rowIndex) => (
           <React.Fragment key={rowIndex}>
@@ -605,6 +583,28 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
             ))}
           </React.Fragment>
         ))}
+      </div>
+      
+      {/* Color Swatches */}
+      <div className="mt-2 mb-2">
+        <div className="flex justify-center gap-1 w-full">
+          {colors.map((color, index) => (
+            <button
+              key={index}
+              className={`flex-1 rounded cursor-pointer transition-all hover:scale-110 ${
+                selectedGroup !== null ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+              style={{ 
+                backgroundColor: color,
+                aspectRatio: '1',
+                maxWidth: '48px',
+                maxHeight: '48px'
+              }}
+              onClick={() => applyColorToGroup(index)}
+              title={`Color ${index}`}
+            />
+          ))}
+        </div>
       </div>
       
       {/* Control Buttons */}

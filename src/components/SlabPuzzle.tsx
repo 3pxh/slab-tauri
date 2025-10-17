@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2 } from 'react-icons/fi';
+import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2, FiChevronDown } from 'react-icons/fi';
 import { FiStar } from 'react-icons/fi';
 import { useGesture } from '@use-gesture/react';
 import { Puzzle } from '../lib/supabase';
@@ -63,8 +63,68 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     getGroundTruth,
   } = useSlabGameState(puzzle);
 
+  // Scroll detection for showing/hiding the scroll-to-slabs button
+  React.useEffect(() => {
+    const checkScrollVisibility = () => {
+      if (!slabListRef.current || !containerRef.current) return;
+      const slabListRect = slabListRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const isSlabListVisible = slabListRect.top < 0 || slabListRect.bottom < viewportHeight + 5;
+      const shouldShow = allSlabs.length > 0 && !isSlabListVisible;
+      setShowScrollToSlabs(shouldShow);
+    };
+
+    // Find the actual scrollable element
+    const findScrollableElement = () => {
+      let element: HTMLElement | null = containerRef.current;
+      while (element && element !== document.body) {
+        const style = window.getComputedStyle(element);
+        const overflow = style.overflow + style.overflowY + style.overflowX;
+        if (overflow.includes('scroll') || overflow.includes('auto')) {
+          return element;
+        }
+        element = element.parentElement;
+      }
+      return window;
+    };
+
+    // Initial check
+    checkScrollVisibility();
+
+    // Set up scroll listener
+    const handleScroll = () => {
+      checkScrollVisibility();
+    };
+
+    const scrollableElement = findScrollableElement();
+    
+    // Add listeners to the actual scrollable element
+    if (scrollableElement === window) {
+      window.addEventListener('scroll', handleScroll, { passive: true });
+    } else {
+      scrollableElement.addEventListener('scroll', handleScroll, { passive: true });
+    }
+    
+    // Also listen to window resize
+    window.addEventListener('resize', handleScroll, { passive: true });
+
+    return () => {
+      if (scrollableElement === window) {
+        window.removeEventListener('scroll', handleScroll);
+      } else {
+        scrollableElement.removeEventListener('scroll', handleScroll);
+      }
+      window.removeEventListener('resize', handleScroll);
+    };
+  }, [allSlabs.length]);
+
   // Local state for drag and drop
   const [localDraggedIndex, setLocalDraggedIndex] = React.useState<number | null>(null);
+  
+  // State for scroll-to-slab functionality
+  const [showScrollToSlabs, setShowScrollToSlabs] = React.useState(false);
+  const slabListRef = React.useRef<HTMLDivElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   // Gesture handler for archived slabs (selection only, no drag)
   const bindArchivedGestures = useGesture({
@@ -140,10 +200,19 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     return formatDateUTC(dateString);
   };
 
+  const scrollToSlabList = () => {
+    if (slabListRef.current) {
+      slabListRef.current.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    }
+  };
+
 
 
   return (
-    <div className="w-full">
+    <div className="w-full" ref={containerRef}>
       {/* Puzzle Information */}
       <div className="p-3 bg-gray-100 rounded-lg flex justify-between items-center">
         <div className="flex items-center gap-3">
@@ -212,9 +281,21 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         puzzle={puzzle}
       />
 
+      {/* Floating Scroll to Slabs Button */}
+      {showScrollToSlabs && (
+        <button
+          onClick={scrollToSlabList}
+          className="fixed bottom--2 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-110 flex items-center justify-center z-50"
+          title="Scroll to slab list"
+          aria-label="Scroll to slab list"
+        >
+          <FiChevronDown size={24} />
+        </button>
+      )}
+
       {/* All Slabs */}
       {allSlabs.length > 0 && (
-        <div>
+        <div ref={slabListRef}>
           <div className="bg-gray-200 p-2 rounded-lg">
             <div 
               className="flex flex-wrap gap-2 justify-center pr-4"
