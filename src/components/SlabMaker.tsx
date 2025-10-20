@@ -60,6 +60,23 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   const preDragSnapshotRef = React.useRef<SlabData | null>(null);
   // Track last visited cell during drag to detect diagonals
   const lastDragCellRef = React.useRef<{row: number, col: number} | null>(null);
+  // Keep a ref to the current slab to avoid stale closures
+  const slabRef = React.useRef<SlabData>(slab);
+
+  // Update ref whenever slab changes
+  React.useEffect(() => {
+    slabRef.current = slab;
+  }, [slab]);
+
+  // Helper: deep clone a slab snapshot
+  const cloneSlab = (source: SlabData): SlabData => {
+    return deepCopy(source);
+  };
+
+  // Push current slab into history
+  const pushHistory = React.useCallback((snapshot?: SlabData) => {
+    setHistory(prev => [...prev, cloneSlab(snapshot ?? slabRef.current)]);
+  }, []);
 
   // Handle initialSlab prop changes
   React.useEffect(() => {
@@ -74,12 +91,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
       setDragStartCell(null);
       preDragSnapshotRef.current = null;
     }
-  }, [initialSlab]);
-
-  // Helper: deep clone a slab snapshot
-  const cloneSlab = (source: SlabData): SlabData => {
-    return deepCopy(source);
-  };
+  }, [initialSlab, pushHistory]);
 
   // Helper: find all connected components of a group using flood fill
   const findConnectedComponents = (groupId: number, cells: Cell[][]): {row: number, col: number}[][] => {
@@ -175,11 +187,6 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     }
     
     return newSlab;
-  };
-
-  // Push current slab into history
-  const pushHistory = (snapshot?: SlabData) => {
-    setHistory(prev => [...prev, cloneSlab(snapshot ?? slab)]);
   };
 
   // Undo action
