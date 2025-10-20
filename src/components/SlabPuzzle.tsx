@@ -181,11 +181,9 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     },
     onClick: ({ event, args }) => {
       const [, slab] = args as [number, SlabData];
-      // Only handle click if not dragging
-      if (localDraggedIndex === null) {
-        event.stopPropagation();
-        handleSlabClick(slab);
-      }
+      // Handle click regardless of drag state - the drag threshold should prevent false drags
+      event.stopPropagation();
+      handleSlabClick(slab);
     },
     onPointerDown: ({ event }) => {
       // Check if the click is on the archive button and prevent gesture handling
@@ -198,7 +196,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   }, {
     drag: {
       filterTaps: false, // Allow tap events even when drag is detected
-      threshold: 10, // Increase threshold to reduce false drag detection on mobile
+      threshold: 15, // Increase threshold to reduce false drag detection on mobile
     }
   });
 
