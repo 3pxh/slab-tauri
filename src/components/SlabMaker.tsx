@@ -25,6 +25,8 @@ type SlabMakerProps = {
   getColorblindOverlay?: (colorIndex: number) => string | null;
   puzzle?: any; // Add puzzle prop for analytics
   hideControls?: boolean; // Hide control buttons for tutorial
+  showRuleButton?: boolean; // Show the rule description button
+  onShowRuleModal?: () => void; // Callback to show rule modal
 };
 
 const SlabMaker: React.FC<SlabMakerProps> = ({ 
@@ -42,7 +44,9 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   colorblindMode = 'none',
   getColorblindOverlay,
   puzzle,
-  hideControls = false
+  hideControls = false,
+  showRuleButton = false,
+  onShowRuleModal
 }) => {
   const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
   const [history, setHistory] = React.useState<SlabData[]>([]);
@@ -701,6 +705,16 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                 <span className="text-xs">
                   {`${guessCount}/${maxGuesses}`}
                 </span>
+              </button>
+            )}
+            {showRuleButton && puzzle?.rule_description && onShowRuleModal && (
+              <button
+                className="px-3 py-2 rounded text-sm flex items-center justify-center h-12 bg-gray-500 text-white hover:bg-gray-600 transition-colors"
+                onClick={onShowRuleModal}
+                title="View puzzle rules"
+                aria-label="View puzzle rules"
+              >
+                <span className="text-lg font-bold">?</span>
               </button>
             )}
           </div>

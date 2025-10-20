@@ -9,6 +9,7 @@ import SlabMaker from './SlabMaker';
 import IndividualSlabGuesser from './IndividualSlabGuesser';
 import { useSlabGameState } from '../hooks/useSlabGameState';
 import { analytics, sessionTracker } from '../utils/analytics';
+import RuleDescriptionModal from './RuleDescriptionModal';
 
 
 type SlabPuzzleProps = {
@@ -128,6 +129,9 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   const [showScrollToSlabs, setShowScrollToSlabs] = React.useState(false);
   const slabListRef = React.useRef<HTMLDivElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  
+  // State for rule description modal
+  const [showRuleModal, setShowRuleModal] = React.useState(false);
 
   // Gesture handler for archived slabs (selection only, no drag)
   const bindArchivedGestures = useGesture({
@@ -210,6 +214,10 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         block: 'start' 
       });
     }
+  };
+
+  const handleShowRuleModal = () => {
+    setShowRuleModal(true);
   };
 
 
@@ -299,6 +307,8 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
           colorblindMode={colorblindMode}
           getColorblindOverlay={getColorblindOverlay}
           puzzle={puzzle}
+          showRuleButton={hasWon || remainingGuesses <= 0}
+          onShowRuleModal={handleShowRuleModal}
         />
       )}
 
@@ -501,6 +511,14 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         </div>
       )}
 
+      {/* Rule Description Modal */}
+      <RuleDescriptionModal
+        isOpen={showRuleModal}
+        onClose={() => setShowRuleModal(false)}
+        ruleDescription={puzzle.rule_description || ''}
+        puzzleName={puzzle.name}
+        remainingGuesses={remainingGuesses}
+      />
 
     </div>
   );

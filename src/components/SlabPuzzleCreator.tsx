@@ -73,6 +73,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   const [createdSlabs, setCreatedSlabs] = React.useState<SlabWithId[]>([]);
   const [puzzleName, setPuzzleName] = React.useState(puzzle.name || '');
   const [evaluationFn, setEvaluationFn] = React.useState(puzzle.evaluate_fn || '');
+  const [ruleDescription, setRuleDescription] = React.useState(puzzle.rule_description || '');
   const [isCreating, setIsCreating] = React.useState(false);
   const [shownExamples, setShownExamples] = React.useState<boolean[]>([]);
   const [hiddenExamples, setHiddenExamples] = React.useState<boolean[]>([]);
@@ -782,6 +783,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
           name: puzzleName.trim(),
           content_type: puzzle.content_type,
           evaluate_fn: evaluationFn.trim(),
+          rule_description: ruleDescription.trim() || null,
           shown_examples: serializedShownSlabs,
           hidden_examples: serializedHiddenSlabs,
           publish_date: puzzle.publish_date || new Date().toISOString(),
@@ -1031,6 +1033,24 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Enter puzzle name..."
           />
+        </div>
+
+        {/* Rule Description Field */}
+        <div className="mb-4">
+          <label htmlFor="rule-description" className="block text-sm font-medium text-gray-700 mb-1">
+            Rule Description
+          </label>
+          <textarea
+            id="rule-description"
+            value={ruleDescription}
+            onChange={(e) => setRuleDescription(e.target.value)}
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Enter a plain English description of the puzzle rule..."
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            This description will be shown to players after they complete or fail the puzzle.
+          </p>
         </div>
 
         {/* Evaluation Function Field */}

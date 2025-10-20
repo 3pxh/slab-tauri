@@ -17,6 +17,7 @@ export interface Puzzle {
   publish_date: string
   created_at: string
   updated_at: string
+  rule_description?: string
 }
 
 // Interface for the get_puzzle function response
