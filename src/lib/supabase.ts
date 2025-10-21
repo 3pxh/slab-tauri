@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { SlabData } from '../components/Slab';
 
 // Remote Supabase project configuration
 const supabaseUrl = 'https://gfdfhbulxqcjfmmufsmf.supabase.co'
@@ -208,7 +209,7 @@ export interface SerializedSlab {
   colors: string[][];
 }
 
-// Custom data structure for puzzle progress
+// Custom data structure for puzzle progress (as stored in database)
 export interface PuzzleProgressCustomData {
   hasWon?: boolean;
   savedSlabs?: SerializedSlab[];
@@ -219,12 +220,27 @@ export interface PuzzleProgressCustomData {
   currentGuessIndex?: number;
   guessCorrectCount?: number;
   guessIncorrectCount?: number;
-  slabsToGuess?: any[]; // This would be SlabData[] but we don't serialize these
+  slabsToGuess?: SerializedSlab[];
   lastGuessResult?: boolean | null;
 }
 
-// Puzzle Progress interfaces and functions
-export interface PuzzleProgress {
+// Custom data structure for puzzle progress (as returned to game state after deserialization)
+export interface PuzzleProgressCustomDataDeserialized {
+  hasWon?: boolean;
+  savedSlabs?: SlabData[];
+  archivedSlabs?: SlabData[];
+  remainingGuesses?: number;
+  // Optional fields for individual guessing mode
+  isInIndividualGuessMode?: boolean;
+  currentGuessIndex?: number;
+  guessCorrectCount?: number;
+  guessIncorrectCount?: number;
+  slabsToGuess?: SlabData[];
+  lastGuessResult?: boolean | null;
+}
+
+// Base Puzzle Progress interface (shared fields)
+export interface PuzzleProgressBase {
   id?: string
   puzzle_id: string
   user_id: string
@@ -233,9 +249,18 @@ export interface PuzzleProgress {
   best_score?: number
   completed_at?: string
   last_played_at: string
-  custom_data?: PuzzleProgressCustomData
   created_at?: string
   updated_at?: string
+}
+
+// Puzzle Progress interface (as stored in database)
+export interface PuzzleProgress extends PuzzleProgressBase {
+  custom_data?: PuzzleProgressCustomData
+}
+
+// Puzzle Progress interface for game state (after deserialization)
+export interface PuzzleProgressDeserialized extends PuzzleProgressBase {
+  custom_data?: PuzzleProgressCustomDataDeserialized
 }
 
 export interface PuzzleProgressResponse {

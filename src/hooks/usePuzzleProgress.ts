@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { puzzleProgressService } from '../lib/puzzleProgress'
-import { PuzzleProgress } from '../lib/supabase'
+import { PuzzleProgress, PuzzleProgressDeserialized } from '../lib/supabase'
 
 export function usePuzzleProgress(puzzleId?: string) {
-  const [progress, setProgress] = useState<PuzzleProgress | null>(null)
+  const [progress, setProgress] = useState<PuzzleProgressDeserialized | null>(null)
   const [allProgress, setAllProgress] = useState<PuzzleProgress[]>([])
   const [isLoading, setIsLoading] = useState(!!puzzleId) // Start as true if we have a puzzleId
   const [error, setError] = useState<string | null>(null)
@@ -39,7 +39,7 @@ export function usePuzzleProgress(puzzleId?: string) {
   }, [])
 
   // Save progress
-  const saveProgress = useCallback(async (progressData: Omit<PuzzleProgress, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  const saveProgress = useCallback(async (progressData: Omit<PuzzleProgressDeserialized, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     setIsLoading(true)
     setError(null)
     
