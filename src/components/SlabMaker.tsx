@@ -54,7 +54,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   const [encounteredCells, setEncounteredCells] = React.useState<Set<string>>(new Set());
   const [firstGroup, setFirstGroup] = React.useState<number | null>(null);
   const [dragStartCell, setDragStartCell] = React.useState<{row: number, col: number} | null>(null);
-  const [selectedGroup, setSelectedGroup] = React.useState<number | null>(null);
+  const [selectedCell, setSelectedCell] = React.useState<{row: number, col: number} | null>(null);
 
   // Keep a snapshot from drag start to push at drag end
   const preDragSnapshotRef = React.useRef<SlabData | null>(null);
@@ -67,7 +67,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
       // Push current state to history before setting new slab
       pushHistory();
       setSlab(cloneSlab(initialSlab));
-      setSelectedGroup(null);
+      setSelectedCell(null);
       setIsDragging(false);
       setEncounteredCells(new Set());
       setFirstGroup(null);
@@ -279,7 +279,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
       const nextHistory = prev.slice(0, -1);
       const last = prev[prev.length - 1];
       setSlab(cloneSlab(last));
-      setSelectedGroup(null);
+      setSelectedCell(null);
       setIsDragging(false);
       setEncounteredCells(new Set());
       setFirstGroup(null);
@@ -293,7 +293,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   const handleReset = () => {
     pushHistory();
     setSlab(createSlab());
-    setSelectedGroup(null);
+    setSelectedCell(null);
     setIsDragging(false);
     setEncounteredCells(new Set());
     setFirstGroup(null);
@@ -328,8 +328,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
         setDragStartCell({ row, col });
         preDragSnapshotRef.current = cloneSlab(slab);
         lastDragCellRef.current = { row, col };
-        // Select the group we're dragging from
-        setSelectedGroup(groupId);
+        // Select the cell we're dragging from
+        setSelectedCell({ row, col });
       }
       
       // Handle drag movement - merge cells as we drag over them
@@ -441,18 +441,17 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
         lastDragCellRef.current = null;
         
         // Now that dragging is complete, check for and split any disconnected groups
-        setSlab(prevSlab => splitDisconnectedGroups(prevSlab));
+        setSlab(prevSlab => reassignGroupIds(splitDisconnectedGroups(prevSlab)));
       }
     },
     onClick: ({ args }) => {
       const [row, col] = args as [number, number];
-      // Single tap - select/deselect group
-      const groupId = slab.cells[row][col].groupId;
-      if (selectedGroup === groupId) {
-        // Tapping the selected group again deselects it
-        setSelectedGroup(null);
+      // Single tap - select/deselect cell
+      if (selectedCell && selectedCell.row === row && selectedCell.col === col) {
+        // Tapping the selected cell again deselects it
+        setSelectedCell(null);
       } else {
-        setSelectedGroup(groupId);
+        setSelectedCell({ row, col });
       }
     },
     onDoubleClick: ({ event, args }) => {
@@ -501,7 +500,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
       });
       
       // After breaking apart, check for and split any disconnected groups
-      setSlab(prevSlab => splitDisconnectedGroups(prevSlab));
+      setSlab(prevSlab => reassignGroupIds(splitDisconnectedGroups(prevSlab)));
     }
   }, {
     drag: {
@@ -513,7 +512,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   // Helper function to get border styles and corner radii based on neighbors
   const getBorderStyles = (row: number, col: number) => {
     const currentGroupId = slab.cells[row][col].groupId;
-    const isSelected = selectedGroup === currentGroupId;
+    const selectedGroupId = selectedCell ? slab.cells[selectedCell.row][selectedCell.col].groupId : null;
+    const isSelected = selectedCell && currentGroupId === selectedGroupId;
     const borderColor = isSelected ? '#ffff00' : 'white'; // Yellow for selected, white for normal
     const borderWidth = isSelected ? '3px' : '3px';
     
@@ -583,7 +583,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
 
   // Apply color to selected group
   const applyColorToGroup = (colorIndex: number) => {
-    if (selectedGroup === null) return;
+    if (selectedCell === null) return;
     // Persist snapshot before coloring
     pushHistory();
     
@@ -591,10 +591,13 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
       const newSlab = { ...prevSlab };
       const newGroups = { ...prevSlab.groups };
       
+      // Get the group ID from the selected cell
+      const selectedGroupId = prevSlab.cells[selectedCell.row][selectedCell.col].groupId;
+      
       // Update the group's color
-      const group = newGroups[selectedGroup];
+      const group = newGroups[selectedGroupId];
       if (group) {
-        newGroups[selectedGroup] = {
+        newGroups[selectedGroupId] = {
           ...group,
           color: colorIndex
         };
@@ -687,7 +690,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
             <button
               key={index}
               className={`flex-1 rounded cursor-pointer transition-all hover:scale-110 ${
-                selectedGroup !== null ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                selectedCell !== null ? 'opacity-100' : 'opacity-0 pointer-events-none'
               }`}
               style={{ 
                 backgroundColor: color,
