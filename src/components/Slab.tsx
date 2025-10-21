@@ -33,13 +33,67 @@ export const getGroup = (groups: Record<number, Group>, groupId: number): Group 
   return groups[groupId];
 };
 
-// Helper functions for serialization (now just pass-through since Record is natively serializable)
-export const serializeSlabData = (slab: SlabData): any => {
-  return slab;
+// Helper functions for efficient serialization
+export const serializeSlab = (slab: SlabData): { grid: string; colors: string[][] } => {
+  // Convert groupId to letter (0-9 = a-j, 10-25 = k-z, 26-35 = A-J)
+  const groupIdToLetter = (groupId: number): string => {
+    if (groupId <= 25) return String.fromCharCode(97 + groupId); // a-z
+    return String.fromCharCode(65 + groupId - 26); // A-J
+  };
+
+  // Create grid string by reading cells in row-major order
+  let grid = '';
+  for (let row = 0; row < slab.cells.length; row++) {
+    for (let col = 0; col < slab.cells[row].length; col++) {
+      grid += groupIdToLetter(slab.cells[row][col].groupId);
+    }
+  }
+
+  // Create colors array - each index contains letters for that color
+  const colors: string[][] = [];
+  for (const [groupId, group] of Object.entries(slab.groups)) {
+    const colorIndex = group.color;
+    if (!colors[colorIndex]) {
+      colors[colorIndex] = [];
+    }
+    colors[colorIndex].push(groupIdToLetter(parseInt(groupId)));
+  }
+
+  return { grid, colors };
 };
 
-export const deserializeSlabData = (data: any): SlabData => {
-  return data;
+export const deserializeSlab = (serialized: { grid: string; colors: string[][] }): SlabData => {
+  // Convert letter back to groupId
+  const letterToGroupId = (letter: string): number => {
+    const code = letter.charCodeAt(0);
+    if (code >= 97 && code <= 122) return code - 97; // a-z -> 0-25
+    return code - 65 + 26; // A-J -> 26-35
+  };
+
+  // Reconstruct cells from grid
+  const cells: Cell[][] = [];
+  const gridLength = Math.sqrt(serialized.grid.length);
+  
+  for (let row = 0; row < gridLength; row++) {
+    cells[row] = [];
+    for (let col = 0; col < gridLength; col++) {
+      const letter = serialized.grid[row * gridLength + col];
+      cells[row][col] = { groupId: letterToGroupId(letter) };
+    }
+  }
+
+  // Reconstruct groups from colors
+  const groups: Record<number, Group> = {};
+  for (let colorIndex = 0; colorIndex < serialized.colors.length; colorIndex++) {
+    if (serialized.colors[colorIndex]) {
+      for (const letter of serialized.colors[colorIndex]) {
+        const groupId = letterToGroupId(letter);
+        groups[groupId] = { id: groupId, color: colorIndex };
+      }
+    }
+  }
+
+  return { cells, groups };
 };
 
 // Helper function to compare if two SlabData objects are equal

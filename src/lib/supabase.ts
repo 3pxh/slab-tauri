@@ -202,6 +202,27 @@ export async function deleteSlab(slabId: number): Promise<SlabResponse> {
   }
 }
 
+// Serialized slab format (stored in database)
+export interface SerializedSlab {
+  grid: string;
+  colors: string[][];
+}
+
+// Custom data structure for puzzle progress
+export interface PuzzleProgressCustomData {
+  hasWon?: boolean;
+  savedSlabs?: SerializedSlab[];
+  archivedSlabs?: SerializedSlab[];
+  remainingGuesses?: number;
+  // Optional fields for individual guessing mode
+  isInIndividualGuessMode?: boolean;
+  currentGuessIndex?: number;
+  guessCorrectCount?: number;
+  guessIncorrectCount?: number;
+  slabsToGuess?: any[]; // This would be SlabData[] but we don't serialize these
+  lastGuessResult?: boolean | null;
+}
+
 // Puzzle Progress interfaces and functions
 export interface PuzzleProgress {
   id?: string
@@ -212,7 +233,7 @@ export interface PuzzleProgress {
   best_score?: number
   completed_at?: string
   last_played_at: string
-  custom_data?: Record<string, any>
+  custom_data?: PuzzleProgressCustomData
   created_at?: string
   updated_at?: string
 }

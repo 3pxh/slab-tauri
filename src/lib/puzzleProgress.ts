@@ -1,5 +1,6 @@
-import { supabase, PuzzleProgress } from './supabase'
+import { supabase, PuzzleProgress, SerializedSlab } from './supabase'
 import { authService } from './auth'
+import { serializeSlab, deserializeSlab } from '../components/Slab'
 
 export class PuzzleProgressService {
   private static instance: PuzzleProgressService
@@ -11,6 +12,39 @@ export class PuzzleProgressService {
       PuzzleProgressService.instance = new PuzzleProgressService()
     }
     return PuzzleProgressService.instance
+  }
+
+  // Helper function to deserialize slabs in progress data
+  private deserializeSlabsInProgress(progress: PuzzleProgress): PuzzleProgress {
+    if (!progress || !progress.custom_data) return progress;
+    
+    const deserialized = { ...progress };
+    
+    // Deserialize savedSlabs if they exist and are serialized
+    if (deserialized.custom_data?.savedSlabs && Array.isArray(deserialized.custom_data.savedSlabs)) {
+      // Check if slabs are serialized (have grid property) or need deserialization
+      if (deserialized.custom_data.savedSlabs[0] && typeof deserialized.custom_data.savedSlabs[0] === 'object' && 'grid' in deserialized.custom_data.savedSlabs[0]) {
+        const deserializedSlabs = deserialized.custom_data.savedSlabs.map((slab: SerializedSlab) => deserializeSlab(slab));
+        deserialized.custom_data = {
+          ...deserialized.custom_data,
+          savedSlabs: deserializedSlabs as any
+        };
+      }
+    }
+    
+    // Deserialize archivedSlabs if they exist and are serialized
+    if (deserialized.custom_data?.archivedSlabs && Array.isArray(deserialized.custom_data.archivedSlabs)) {
+      // Check if slabs are serialized (have grid property) or need deserialization
+      if (deserialized.custom_data.archivedSlabs[0] && typeof deserialized.custom_data.archivedSlabs[0] === 'object' && 'grid' in deserialized.custom_data.archivedSlabs[0]) {
+        const deserializedSlabs = deserialized.custom_data.archivedSlabs.map((slab: SerializedSlab) => deserializeSlab(slab));
+        deserialized.custom_data = {
+          ...deserialized.custom_data,
+          archivedSlabs: deserializedSlabs as any
+        };
+      }
+    }
+    
+    return deserialized;
   }
 
   async getProgress(puzzleId: string): Promise<PuzzleProgress | null> {
@@ -35,7 +69,39 @@ export class PuzzleProgressService {
       throw new Error(`Failed to get puzzle progress: ${error.message}`)
     }
 
-    return data
+    // Deserialize slabs before returning
+    return data ? this.deserializeSlabsInProgress(data) : null
+  }
+
+  // Helper function to serialize slabs in progress data
+  private serializeSlabsInProgress(progress: Omit<PuzzleProgress, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Omit<PuzzleProgress, 'id' | 'user_id' | 'created_at' | 'updated_at'> {
+    const serialized = { ...progress };
+    
+    // Serialize savedSlabs if they exist and are not already serialized
+    if (serialized.custom_data?.savedSlabs && Array.isArray(serialized.custom_data.savedSlabs)) {
+      // Check if slabs are already serialized (have grid property) or need serialization
+      if (serialized.custom_data.savedSlabs[0] && typeof serialized.custom_data.savedSlabs[0] === 'object' && !('grid' in serialized.custom_data.savedSlabs[0])) {
+        const serializedSlabs: SerializedSlab[] = serialized.custom_data.savedSlabs.map((slab: any) => serializeSlab(slab));
+        serialized.custom_data = {
+          ...serialized.custom_data,
+          savedSlabs: serializedSlabs
+        };
+      }
+    }
+    
+    // Serialize archivedSlabs if they exist and are not already serialized
+    if (serialized.custom_data?.archivedSlabs && Array.isArray(serialized.custom_data.archivedSlabs)) {
+      // Check if slabs are already serialized (have grid property) or need serialization
+      if (serialized.custom_data.archivedSlabs[0] && typeof serialized.custom_data.archivedSlabs[0] === 'object' && !('grid' in serialized.custom_data.archivedSlabs[0])) {
+        const serializedSlabs: SerializedSlab[] = serialized.custom_data.archivedSlabs.map((slab: any) => serializeSlab(slab));
+        serialized.custom_data = {
+          ...serialized.custom_data,
+          archivedSlabs: serializedSlabs
+        };
+      }
+    }
+    
+    return serialized;
   }
 
   async saveProgress(progress: Omit<PuzzleProgress, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<PuzzleProgress> {
@@ -47,8 +113,11 @@ export class PuzzleProgressService {
       throw new Error('User not authenticated')
     }
 
+    // Serialize slabs before saving to database
+    const serializedProgress = this.serializeSlabsInProgress(progress);
+    
     const progressData = {
-      ...progress,
+      ...serializedProgress,
       user_id: authState.user.id,
       last_played_at: new Date().toISOString()
     }
