@@ -138,43 +138,133 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     return components;
   };
 
-  // Helper: split disconnected groups into separate groups
-  const splitDisconnectedGroups = (slab: SlabData): SlabData => {
-    const newSlab = cloneSlab(slab);
-    const groupsToCheck = Object.keys(slab.groups).map(Number);
+  // Helper: generate a unique group ID within the valid range (0-35)
+  const generateUniqueGroupId = (existingGroups: Record<number, any>): number => {
+    // Try to find an available ID in the range 0-35
+    for (let id = 0; id <= 35; id++) {
+      if (!existingGroups[id]) {
+        return id;
+      }
+    }
     
-    for (const groupId of groupsToCheck) {
-      const components = findConnectedComponents(groupId, newSlab.cells);
+    // If all IDs 0-35 are taken, we need to reassign existing groups
+    // This should be very rare in practice, but handle it gracefully
+    console.warn('All group IDs 0-35 are in use, this may indicate a bug');
+    return 0; // Fallback, though this will cause issues
+  };
+
+  // Helper: reassign group IDs to ensure they're all within 0-35 range
+  const reassignGroupIds = (slab: SlabData): SlabData => {
+    const newSlab = cloneSlab(slab);
+    const usedIds = new Set<number>();
+    const groupMapping = new Map<number, number>();
+    
+    // First, collect all unique group IDs from cells
+    const allGroupIds = new Set<number>();
+    for (let r = 0; r < 6; r++) {
+      for (let c = 0; c < 6; c++) {
+        allGroupIds.add(slab.cells[r][c].groupId);
+      }
+    }
+    
+    // Assign new IDs within 0-35 range
+    let nextId = 0;
+    for (const oldGroupId of allGroupIds) {
+      // Find next available ID
+      while (nextId <= 35 && usedIds.has(nextId)) {
+        nextId++;
+      }
       
-      // If there are multiple components, split them into separate groups
-      if (components.length > 1) {
-        const originalGroup = newSlab.groups[groupId];
-        if (!originalGroup) continue;
-        
-        // Keep the first component with the original group ID
-        // Create new groups for the remaining components
-        for (let i = 1; i < components.length; i++) {
-          const component = components[i];
-          const newGroupId = 6 * component[0].row + component[0].col; // Use first cell position as unique ID
-          
-          // Update all cells in this component to use the new group ID
-          for (const cell of component) {
-            newSlab.cells[cell.row][cell.col] = {
-              ...newSlab.cells[cell.row][cell.col],
-              groupId: newGroupId
-            };
-          }
-          
-          // Create new group with same color as original
-          newSlab.groups[newGroupId] = {
-            id: newGroupId,
-            color: originalGroup.color
+      if (nextId > 35) {
+        console.error('Cannot reassign all group IDs within 0-35 range');
+        return newSlab; // Return unchanged if we can't fit
+      }
+      
+      groupMapping.set(oldGroupId, nextId);
+      usedIds.add(nextId);
+      nextId++;
+    }
+    
+    // Update all cells with new group IDs
+    for (let r = 0; r < 6; r++) {
+      for (let c = 0; c < 6; c++) {
+        const oldGroupId = newSlab.cells[r][c].groupId;
+        const newGroupId = groupMapping.get(oldGroupId);
+        if (newGroupId !== undefined) {
+          newSlab.cells[r][c] = {
+            ...newSlab.cells[r][c],
+            groupId: newGroupId
           };
         }
       }
     }
     
+    // Update groups object with new IDs
+    const newGroups: Record<number, any> = {};
+    for (const [oldGroupId, newGroupId] of groupMapping) {
+      const originalGroup = newSlab.groups[oldGroupId];
+      if (originalGroup) {
+        newGroups[newGroupId] = {
+          ...originalGroup,
+          id: newGroupId
+        };
+      }
+    }
+    newSlab.groups = newGroups;
+    
     return newSlab;
+  };
+
+  // Helper: split disconnected groups into separate groups
+  const splitDisconnectedGroups = (slab: SlabData): SlabData => {
+    const newSlab = cloneSlab(slab);
+    const groupsToCheck = Object.keys(slab.groups).map(Number);
+    
+    // Track which groups need to be split
+    const groupsToSplit: {groupId: number, components: {row: number, col: number}[][]}[] = [];
+    
+    // First pass: identify groups that need splitting
+    for (const groupId of groupsToCheck) {
+      const components = findConnectedComponents(groupId, newSlab.cells);
+      if (components.length > 1) {
+        groupsToSplit.push({ groupId, components });
+      }
+    }
+    
+    // If no groups need splitting, return early
+    if (groupsToSplit.length === 0) {
+      return newSlab;
+    }
+    
+    // Second pass: split the groups
+    for (const { groupId, components } of groupsToSplit) {
+      const originalGroup = newSlab.groups[groupId];
+      if (!originalGroup) continue;
+      
+      // Keep the first component with the original group ID
+      // Create new groups for the remaining components
+      for (let i = 1; i < components.length; i++) {
+        const component = components[i];
+        const newGroupId = generateUniqueGroupId(newSlab.groups);
+        
+        // Update all cells in this component to use the new group ID
+        for (const cell of component) {
+          newSlab.cells[cell.row][cell.col] = {
+            ...newSlab.cells[cell.row][cell.col],
+            groupId: newGroupId
+          };
+        }
+        
+        // Create new group with same color as original
+        newSlab.groups[newGroupId] = {
+          id: newGroupId,
+          color: originalGroup.color
+        };
+      }
+    }
+    
+    // Final step: ensure all group IDs are within 0-35 range
+    return reassignGroupIds(newSlab);
   };
 
   // Push current slab into history
@@ -289,8 +379,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                         delete newGroups[adjGroupId];
                       }
                       newSlab.groups = newGroups;
-                      // Immediately check for and split disconnected groups
-                      return splitDisconnectedGroups(newSlab);
+                      return newSlab;
                     });
                     const next = new Set(prev);
                     next.add(cellKey);
@@ -322,8 +411,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                     delete newGroups[groupId];
                   }
                   newSlab.groups = newGroups;
-                  // Immediately check for and split disconnected groups
-                  return splitDisconnectedGroups(newSlab);
+                  return newSlab;
                 });
 
                 const next = new Set(prev);
@@ -351,6 +439,9 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
         setDragStartCell(null);
         preDragSnapshotRef.current = null;
         lastDragCellRef.current = null;
+        
+        // Now that dragging is complete, check for and split any disconnected groups
+        setSlab(prevSlab => splitDisconnectedGroups(prevSlab));
       }
     },
     onClick: ({ args }) => {
