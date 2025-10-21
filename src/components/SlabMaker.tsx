@@ -167,9 +167,16 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
       }
     }
     
-    // Assign new IDs within 0-35 range
+    // Only reassign groups that are outside the 0-35 range
+    const groupsToReassign = Array.from(allGroupIds).filter(id => id < 0 || id > 35);
+    const groupsToKeep = Array.from(allGroupIds).filter(id => id >= 0 && id <= 35);
+    
+    // Mark existing valid IDs as used
+    groupsToKeep.forEach(id => usedIds.add(id));
+    
+    // Assign new IDs for groups that need reassignment
     let nextId = 0;
-    for (const oldGroupId of allGroupIds) {
+    for (const oldGroupId of groupsToReassign) {
       // Find next available ID
       while (nextId <= 35 && usedIds.has(nextId)) {
         nextId++;
@@ -185,7 +192,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
       nextId++;
     }
     
-    // Update all cells with new group IDs
+    // Update cells with new group IDs (only for reassigned groups)
     for (let r = 0; r < 6; r++) {
       for (let c = 0; c < 6; c++) {
         const oldGroupId = newSlab.cells[r][c].groupId;
@@ -199,18 +206,18 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
       }
     }
     
-    // Update groups object with new IDs
-    const newGroups: Record<number, any> = {};
+    // Update groups object with new IDs (only for reassigned groups)
     for (const [oldGroupId, newGroupId] of groupMapping) {
       const originalGroup = newSlab.groups[oldGroupId];
       if (originalGroup) {
-        newGroups[newGroupId] = {
+        newSlab.groups[newGroupId] = {
           ...originalGroup,
           id: newGroupId
         };
+        // Remove the old group entry
+        delete newSlab.groups[oldGroupId];
       }
     }
-    newSlab.groups = newGroups;
     
     return newSlab;
   };
@@ -480,7 +487,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
         if (!originalGroup) return newSlab; // Safety check
         
         cellsInGroup.forEach((cell) => {
-          const newGroupId = 6 * cell.row + cell.col; // Use cell position as unique ID
+          const newGroupId = generateUniqueGroupId(newGroups); // Use proper ID generation
           
           // Update cell to point to new group
           newSlab.cells[cell.row][cell.col] = {
