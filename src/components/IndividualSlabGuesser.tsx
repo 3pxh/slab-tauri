@@ -44,7 +44,12 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
   }, [currentSlab]);
 
   const handleGuessSelect = (guess: 'star' | 'not-star') => {
-    setSelectedGuess(guess);
+    // If clicking the already selected button, deselect it
+    if (selectedGuess === guess) {
+      setSelectedGuess(null);
+    } else {
+      setSelectedGuess(guess);
+    }
   };
 
   const handleSubmit = async () => {
@@ -154,8 +159,10 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
           <button
             className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
               selectedGuess === 'not-star' 
-                ? 'bg-gray-300 border-4 border-gray-400 shadow-xl scale-110' 
-                : 'bg-gray-200 border-2 border-gray-300 hover:border-gray-400 hover:scale-105'
+                ? 'bg-red-300 border-4 border-red-400 shadow-xl scale-110' 
+                : selectedGuess === 'star'
+                  ? 'bg-gray-200 border-2 border-gray-300'
+                  : 'bg-red-100 border-2 border-red-300 hover:border-red-400 hover:bg-red-200 hover:scale-105'
             }`}
             onClick={() => handleGuessSelect('not-star')}
             disabled={guessSubmitted}
@@ -163,7 +170,7 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
           >
             <FiX 
               size={24} 
-              className={selectedGuess === 'not-star' ? 'text-black' : 'text-gray-500'} 
+              className={selectedGuess === 'not-star' ? 'text-red-800' : selectedGuess === 'star' ? 'text-gray-400' : 'text-red-600'} 
             />
           </button>
 
@@ -176,7 +183,7 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
                     ? 'bg-green-500 text-white hover:bg-green-600 hover:scale-105' 
                     : 'bg-red-500 text-white hover:bg-red-600 hover:scale-105'
                   : 'bg-blue-500 text-white hover:bg-blue-600 hover:scale-105'
-                : 'bg-gray-400 text-white cursor-not-allowed'
+                : 'bg-gray-400 text-white cursor-not-allowed opacity-0'
             }`}
             onClick={handleSubmit}
             disabled={selectedGuess === null}
@@ -204,7 +211,9 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
             className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
               selectedGuess === 'star' 
                 ? 'bg-yellow-300 border-4 border-yellow-400 shadow-xl scale-110' 
-                : 'bg-gray-200 border-2 border-gray-300 hover:border-gray-400 hover:scale-105'
+                : selectedGuess === 'not-star'
+                  ? 'bg-gray-200 border-2 border-gray-300'
+                  : 'bg-yellow-100 border-2 border-yellow-300 hover:border-yellow-400 hover:bg-yellow-200 hover:scale-105'
             }`}
             onClick={() => handleGuessSelect('star')}
             disabled={guessSubmitted}
@@ -212,7 +221,7 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
           >
             <FiStar 
               size={24} 
-              className={selectedGuess === 'star' ? 'text-black fill-black' : 'text-gray-500'} 
+              className={selectedGuess === 'star' ? 'text-yellow-800 fill-yellow-800' : selectedGuess === 'not-star' ? 'text-gray-400' : 'text-yellow-600'} 
             />
           </button>
         </div>
