@@ -300,6 +300,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
           colorblindMode={colorblindMode}
           getColorblindOverlay={getColorblindOverlay}
           levelAttempts={progress?.attempts || 0}
+          isCurrentSlabStar={evaluationResults.get(getSlabKey(slabsToGuess[currentGuessIndex])) || false}
         />
       ) : (
         <SlabMaker 
