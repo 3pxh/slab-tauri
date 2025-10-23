@@ -1,7 +1,5 @@
 import React from 'react';
 import { FiRotateCcw, FiRefreshCw } from 'react-icons/fi';
-import { FaArrowDownUpAcrossLine, FaLightbulb } from 'react-icons/fa6';
-import { PiShuffleBold, PiGavelFill } from 'react-icons/pi';
 import { useGesture } from '@use-gesture/react';
 import { SlabData, createSlab, Cell, COLORS, getGroup } from './Slab';
 import { deepCopy } from '../utils';
@@ -18,8 +16,6 @@ type SlabMakerProps = {
   flashGuessButton?: boolean;
   isInGuessSession?: boolean;
   initialSlab?: SlabData;
-  onShuffle?: () => void;
-  onSort?: () => void;
   colors?: string[];
   colorblindMode?: 'none' | 'icon' | 'number' | 'letter';
   getColorblindOverlay?: (colorIndex: number) => string | null;
@@ -38,8 +34,6 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   flashGuessButton = false, 
   isInGuessSession = false, 
   initialSlab, 
-  onShuffle, 
-  onSort, 
   colors = COLORS,
   colorblindMode = 'none',
   getColorblindOverlay,
@@ -757,9 +751,20 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
         ))}
       </div>
       
-      {/* Color Swatches */}
+      {/* Color Swatches with Undo/Reset */}
       <div className="mt-2 mb-2">
         <div className="flex justify-center gap-1 w-full">
+          {/* Undo button */}
+          <button
+            className={`px-2 py-2 rounded text-sm bg-gray-100 h-12 flex items-center justify-center ${history.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'}`}
+            onClick={handleUndo}
+            disabled={history.length === 0}
+            title={history.length === 0 ? 'Nothing to undo' : 'Undo last action'}
+          >
+            <FiRotateCcw size={16} />
+          </button>
+          
+          {/* Color swatches */}
           {colors.map((color, index) => (
             <button
               key={index}
@@ -776,61 +781,23 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
               title={`Color ${index}`}
             />
           ))}
+          
+          {/* Reset button */}
+          <button
+            className="px-2 py-2 rounded text-sm bg-gray-100 hover:bg-gray-200 h-12 flex items-center justify-center"
+            onClick={handleReset}
+            title="Reset to a new slab"
+          >
+            <FiRefreshCw size={16} />
+          </button>
         </div>
       </div>
       
       {/* Control Buttons */}
       {!hideControls && (
       <div className="mt-2">
-        <div className="flex justify-between items-center">
-          {/* Left group: Undo, Reset */}
-          <div className="flex gap-2">
-            <button
-              className={`px-3 py-2 rounded text-sm bg-gray-100 h-12 flex items-center justify-center ${history.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'}`}
-              onClick={handleUndo}
-              disabled={history.length === 0}
-              title={history.length === 0 ? 'Nothing to undo' : 'Undo last action'}
-            >
-              <FiRotateCcw size={16} />
-            </button>
-            <button
-              className="px-3 py-2 rounded text-sm bg-gray-100 hover:bg-gray-200 h-12 flex items-center justify-center"
-              onClick={handleReset}
-              title="Reset to a new slab"
-            >
-              <FiRefreshCw size={16} />
-            </button>
-          </div>
-          
-          {/* Center group: Shuffle, Sort */}
-          <div className="flex gap-2">
-            {onShuffle && (
-              <button
-                className="px-3 py-2 rounded text-sm bg-gray-100 hover:bg-gray-200 flex items-center justify-center h-12"
-                onClick={() => {
-                  if (puzzle) analytics.slabsShuffled(puzzle);
-                  onShuffle();
-                }}
-                title="Randomize slab order"
-              >
-                <PiShuffleBold size={16} />
-              </button>
-            )}
-            {onSort && (
-              <button
-                className="px-3 py-2 rounded text-sm bg-gray-100 hover:bg-gray-200 flex items-center justify-center h-12"
-                onClick={() => {
-                  if (puzzle) analytics.slabsSorted(puzzle);
-                  onSort();
-                }}
-                title="Sort by evaluation (black first, then white)"
-              >
-                <FaArrowDownUpAcrossLine size={16} />
-              </button>
-            )}
-          </div>
-          
-          {/* Right group: Create, Guess */}
+        <div className="flex justify-center items-center">
+          {/* Create, Guess buttons */}
           <div className="flex gap-2">
             <button
               className={`px-3 py-2 rounded text-sm h-12 flex items-center justify-center ${
@@ -844,7 +811,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
               }}
               title={isInGuessSession ? "Complete your guess first" : "Create puzzle from current slab"}
             >
-              <PiGavelFill size={24} />
+              <span className="text-sm font-medium">Evaluate Slab</span>
             </button>
             {onGuess && (
               <button
@@ -869,7 +836,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                       : "No guesses remaining"
                 }
               >
-                <FaLightbulb size={16} />
+                <span className="text-sm font-medium">Guess</span>
                 <span className="text-xs">
                   {`${guessCount}/${maxGuesses}`}
                 </span>
@@ -882,7 +849,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                 title="View puzzle rules"
                 aria-label="View puzzle rules"
               >
-                <span className="text-lg font-bold">?</span>
+                <span className="text-sm font-medium">Show Rule</span>
               </button>
             )}
           </div>

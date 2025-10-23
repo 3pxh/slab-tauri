@@ -1,6 +1,8 @@
 import React from 'react';
 import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2 } from 'react-icons/fi';
 import { FiStar } from 'react-icons/fi';
+import { PiShuffleBold } from 'react-icons/pi';
+import { FaArrowDownUpAcrossLine } from 'react-icons/fa6';
 import { useGesture } from '@use-gesture/react';
 import { Puzzle } from '../lib/supabase';
 import Slab, { SlabData, areSlabsEqual } from './Slab';
@@ -312,8 +314,6 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
           flashGuessButton={flashGuessButton}
           isInGuessSession={isInGuessSession}
           initialSlab={selectedSlabForMaker || undefined}
-          onShuffle={handleShuffle}
-          onSort={handleSort}
           colors={getCurrentColors()}
           colorblindMode={colorblindMode}
           getColorblindOverlay={getColorblindOverlay}
@@ -337,17 +337,19 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       {allSlabs.length > 0 && (
         <div ref={slabListRef}>
           <div className="bg-gray-200 p-2 rounded-lg">
-            <div 
-              className="flex flex-wrap gap-2 justify-center pr-4"
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                console.log('Container drop event');
-              }}
-            >
+            <div className="flex">
+              <div 
+                className="flex flex-wrap gap-2 justify-center flex-1"
+                style={{ alignContent: 'flex-start' }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  console.log('Container drop event');
+                }}
+              >
               {allSlabs.map((slab, index) => {
                 const key = getSlabKey(slab);
                 const evaluationResult = evaluationResults.get(key) || false;
@@ -360,13 +362,14 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                     data-slab-index={index}
                     {...bindGestures(index, slab)}
                     style={{
-                      width: 'calc(30% - 2px)',
-                      height: 'calc(30% - 2px)',
+                      width: '80px',
+                      height: '80px',
                       opacity: isDraggingThis ? 0.5 : 1,
                       transform: isDraggingThis ? 'scale(0.95)' : 'scale(1)',
                       transition: 'all 0.2s ease',
                       cursor: 'grab',
-                      touchAction: 'none'
+                      touchAction: 'none',
+                      flexShrink: 0
                     }}
                   >
                     <div 
@@ -392,7 +395,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                             filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
                           }}
                         >
-                          <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
+                          <FiStar size={12} className="fill-yellow-400 text-yellow-500" />
                         </div>
                       )}
                       {/* Archive button */}
@@ -416,6 +419,31 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                   </div>
                 );
               })}
+              </div>
+              
+              {/* Right gutter with shuffle and sort buttons */}
+              <div className="flex flex-col gap-2 ml-2">
+                <button
+                  className="px-2 py-2 rounded text-sm bg-gray-100 hover:bg-gray-200 flex items-center justify-center w-8 h-8"
+                  onClick={() => {
+                    if (puzzle) analytics.slabsShuffled(puzzle);
+                    handleShuffle();
+                  }}
+                  title="Randomize slab order"
+                >
+                  <PiShuffleBold size={14} />
+                </button>
+                <button
+                  className="px-2 py-2 rounded text-sm bg-gray-100 hover:bg-gray-200 flex items-center justify-center w-8 h-8"
+                  onClick={() => {
+                    if (puzzle) analytics.slabsSorted(puzzle);
+                    handleSort();
+                  }}
+                  title="Sort by evaluation (black first, then white)"
+                >
+                  <FaArrowDownUpAcrossLine size={14} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -448,8 +476,8 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                       key={index} 
                       className="flex flex-col relative"
                       style={{
-                        width: 'calc(30% - 2px)',
-                        height: 'calc(30% - 2px)',
+                        width: '80px',
+                        height: '80px',
                       }}
                       {...bindArchivedGestures(index, slab)}
                     >
@@ -467,17 +495,17 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                         />
                         {/* Star annotation for archived slabs */}
                         {evaluationResult && (
-                          <div 
-                            className="absolute"
-                            style={{
-                              top: '-4px',
-                              right: '-4px',
-                              color: '#000000',
-                              filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
-                            }}
-                          >
-                            <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
-                          </div>
+                        <div 
+                          className="absolute"
+                          style={{
+                            top: '-4px',
+                            right: '-4px',
+                            color: '#000000',
+                            filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
+                          }}
+                        >
+                          <FiStar size={12} className="fill-yellow-400 text-yellow-500" />
+                        </div>
                         )}
                         {/* Action buttons - only show when selected */}
                         {selectedSlabForMaker && areSlabsEqual(selectedSlabForMaker, slab) && (
