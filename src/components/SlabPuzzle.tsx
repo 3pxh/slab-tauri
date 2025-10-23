@@ -14,6 +14,7 @@ import { analytics, sessionTracker } from '../utils/analytics';
 import RuleDescriptionModal from './RuleDescriptionModal';
 import DifficultyIndicator from './DifficultyIndicator';
 import ScrollButton from './ScrollButton';
+import VictoryOverlay from './VictoryOverlay';
 
 
 type SlabPuzzleProps = {
@@ -70,6 +71,13 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     getCurrentColors,
     getColorblindOverlay,
   } = useSlabGameState(puzzle);
+
+  // Show victory overlay when player wins
+  React.useEffect(() => {
+    if (hasWon && !isInIndividualGuessMode) {
+      setShowVictoryOverlay(true);
+    }
+  }, [hasWon, isInIndividualGuessMode]);
 
   // Scroll detection for showing/hiding the scroll-to-slabs button
   React.useEffect(() => {
@@ -136,6 +144,9 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   
   // State for rule description modal
   const [showRuleModal, setShowRuleModal] = React.useState(false);
+  
+  // State for victory overlay
+  const [showVictoryOverlay, setShowVictoryOverlay] = React.useState(false);
 
   // Gesture handler for archived slabs (selection only, no drag)
   const bindArchivedGestures = useGesture({
@@ -220,6 +231,16 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
 
   const handleShowRuleModal = () => {
     setShowRuleModal(true);
+  };
+
+  const handleVictoryKeepPlaying = () => {
+    setShowVictoryOverlay(false);
+  };
+
+  const handleVictoryNextPuzzle = () => {
+    setShowVictoryOverlay(false);
+    // TODO: Implement next puzzle functionality
+    console.log('Next puzzle clicked - placeholder');
   };
 
 
@@ -547,6 +568,16 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
           )}
         </div>
       )}
+
+      {/* Victory Overlay */}
+      <VictoryOverlay
+        isOpen={showVictoryOverlay}
+        onKeepPlaying={handleVictoryKeepPlaying}
+        onNextPuzzle={handleVictoryNextPuzzle}
+        remainingGuesses={remainingGuesses}
+        puzzleName={puzzle.name}
+        ruleDescription={puzzle.rule_description || ''}
+      />
 
       {/* Rule Description Modal */}
       <RuleDescriptionModal

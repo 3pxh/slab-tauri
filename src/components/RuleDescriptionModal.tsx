@@ -53,8 +53,9 @@ const RuleDescriptionModal: React.FC<RuleDescriptionModalProps> = ({
                   Would you like to see the secret rule?
                 </p>
                 {remainingGuesses > 0 && (
-                  <p className="text-orange-600 font-medium text-sm">
-                    Are you sure? You still have {remainingGuesses} guess{remainingGuesses !== 1 ? 'es' : ''} left!
+                  <p className="text-gray-500 text-sm">
+                    You still have {remainingGuesses} guess{remainingGuesses !== 1 ? 'es' : ''} left. 
+                    You can check if it's really your rule or if you got lucky by guessing more before revealing the rule.
                   </p>
                 )}
               </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiStar, FiX, FiArrowRight, FiCheck, FiAward } from 'react-icons/fi';
+import { FiStar, FiX, FiArrowRight, FiCheck } from 'react-icons/fi';
 import { SlabData } from './Slab';
 import Slab from './Slab';
 import '../slabAnimations.css';
@@ -121,25 +121,12 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
               : 'bg-gray-500'
           }`}>
             <div className="text-center">
-              {correctCount === totalSlabs ? (
-                /* Win state */
-                <>
-                  <div className="flex justify-center mb-2">
-                    <FiAward className="text-white fill-yellow-300" size={48} />
-                  </div>
-                  <div className="text-2xl font-bold text-white">You Win!</div>
-                </>
-              ) : (
-                /* Results state */
-                <>
-                  <div className="text-4xl font-bold text-white mb-2">
-                    {correctCount}/{totalSlabs}
-                  </div>
-                  <div className="text-lg text-white">
-                    Correct
-                  </div>
-                </>
-              )}
+              <div className="text-4xl font-bold text-white mb-2">
+                {correctCount}/{totalSlabs}
+              </div>
+              <div className="text-lg text-white">
+                Correct
+              </div>
             </div>
           </div>
         ) : (
