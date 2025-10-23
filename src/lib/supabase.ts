@@ -35,6 +35,7 @@ export interface PuzzleDate {
   publish_date: string
   difficulty: number
   shown_examples: any[]
+  name: string
 }
 
 // Interface for the all_dates function response
@@ -130,7 +131,7 @@ export async function getAllDates(): Promise<GetAllDatesResponse> {
 export async function getAllDatesWithDifficulty(): Promise<GetAllDatesWithDifficultyResponse> {
   const { data, error } = await supabase
     .from('puzzles')
-    .select('publish_date, difficulty, shown_examples')
+    .select('publish_date, difficulty, shown_examples, name')
     .eq('creator_id', '3996a43b-86dd-4bda-8807-dc3d8e76e5a7')
     .order('publish_date', { ascending: false }) // Most recent first
 
@@ -141,7 +142,8 @@ export async function getAllDatesWithDifficulty(): Promise<GetAllDatesWithDiffic
   const puzzles = data?.map(row => ({
     publish_date: row.publish_date,
     difficulty: row.difficulty || 1, // Default to 1 if difficulty is null
-    shown_examples: row.shown_examples || []
+    shown_examples: row.shown_examples || [],
+    name: row.name || 'Untitled Puzzle' // Default name if null
   })) || []
 
   return {

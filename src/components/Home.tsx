@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import AppHeader from './AppHeader';
 import { analytics } from '../utils/analytics';
 import { signupForLaunch, getPuzzle, Puzzle } from '../lib/supabase';
+import DifficultyIndicator from './DifficultyIndicator';
 
 interface HomeProps {
   onTodayPuzzle: () => void;
@@ -177,8 +178,20 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
               <FiPlay size={24} />
             </div>
             <div className="col-span-2 text-left">
-              <div className="text-lg font-semibold">
-                {isLoadingPuzzle ? 'Loading puzzle...' :`Today: '${todaysPuzzle?.name}'` || "Today's Puzzle"}
+              <div className="text-lg font-semibold flex items-center gap-2">
+                <span>
+                  {isLoadingPuzzle ? 'Loading puzzle...' :`Today: '${todaysPuzzle?.name}'` || "Today's Puzzle"}
+                </span>
+                {/* Difficulty indicator */}
+                {todaysPuzzle?.difficulty && (
+                  <div className="inline-block bg-white/20 rounded px-2 py-1">
+                    <DifficultyIndicator 
+                      difficulty={todaysPuzzle.difficulty} 
+                      size="small"
+                      showTooltip={true}
+                    />
+                  </div>
+                )}
               </div>
               <div className="text-sm opacity-90">
                 {puzzleError ? 'Unable to load puzzle name' : 'Play the daily puzzle'}

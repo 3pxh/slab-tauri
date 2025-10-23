@@ -27,7 +27,6 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onHome }) => {
         setIsLoadingDates(true);
         const response = await getAllDatesWithDifficulty();
         if (response.success) {
-          console.log('Puzzles data:', response.puzzles);
           // Reverse the order so earliest puzzle (#1) is at the top
           setPuzzles(response.puzzles.reverse());
         }
@@ -58,17 +57,6 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onHome }) => {
         const shouldShowDown = !isAtBottom && puzzles.length > 0;
         const shouldShowUp = !isAtTop && puzzles.length > 0;
         
-        console.log('Container scroll detection:', {
-          scrollTop,
-          scrollHeight,
-          clientHeight,
-          isAtBottom,
-          isAtTop,
-          puzzlesLength: puzzles.length,
-          shouldShowDown,
-          shouldShowUp
-        });
-        
         setShowScrollDownButton(shouldShowDown);
         setShowScrollUpButton(shouldShowUp);
       } else {
@@ -83,16 +71,6 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onHome }) => {
         const shouldShowDown = !isAtBottom && puzzles.length > 0;
         const shouldShowUp = !isAtTop && puzzles.length > 0;
         
-        console.log('Window scroll detection:', {
-          scrollTop,
-          windowHeight,
-          documentHeight,
-          isAtBottom,
-          isAtTop,
-          puzzlesLength: puzzles.length,
-          shouldShowDown,
-          shouldShowUp
-        });
         
         setShowScrollDownButton(shouldShowDown);
         setShowScrollUpButton(shouldShowUp);
@@ -121,12 +99,9 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onHome }) => {
   }, [puzzles.length]);
 
   const scrollToBottom = () => {
-    console.log('Scrolling to bottom...');
-    
     // Target the specific scrollable puzzles list
     const puzzlesList = document.getElementById('puzzles-list');
     if (puzzlesList) {
-      console.log('Found puzzles list, scrolling to bottom');
       puzzlesList.scrollTo({
         top: puzzlesList.scrollHeight,
         behavior: 'smooth'
@@ -148,12 +123,9 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onHome }) => {
   };
 
   const scrollToTop = () => {
-    console.log('Scrolling to top...');
-    
     // Target the specific scrollable puzzles list
     const puzzlesList = document.getElementById('puzzles-list');
     if (puzzlesList) {
-      console.log('Found puzzles list, scrolling to top');
       puzzlesList.scrollTo({
         top: 0,
         behavior: 'smooth'
