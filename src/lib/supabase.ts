@@ -19,6 +19,7 @@ export interface Puzzle {
   created_at: string
   updated_at: string
   rule_description?: string
+  difficulty?: number
 }
 
 // Interface for the get_puzzle function response
@@ -29,10 +30,25 @@ export interface GetPuzzleResponse {
   message: string
 }
 
+// Interface for puzzle date with difficulty
+export interface PuzzleDate {
+  publish_date: string
+  difficulty: number
+  shown_examples: any[]
+}
+
 // Interface for the all_dates function response
 export interface GetAllDatesResponse {
   success: boolean
   dates: string[]
+  count: number
+  message: string
+}
+
+// Interface for the enhanced all_dates function response with difficulty
+export interface GetAllDatesWithDifficultyResponse {
+  success: boolean
+  puzzles: PuzzleDate[]
   count: number
   message: string
 }
@@ -107,6 +123,32 @@ export async function getAllDates(): Promise<GetAllDatesResponse> {
     dates: dates,
     count: dates.length,
     message: `Found ${dates.length} puzzle dates`
+  }
+}
+
+// Function to get all puzzle dates with difficulty for George's puzzles
+export async function getAllDatesWithDifficulty(): Promise<GetAllDatesWithDifficultyResponse> {
+  const { data, error } = await supabase
+    .from('puzzles')
+    .select('publish_date, difficulty, shown_examples')
+    .eq('creator_id', '3996a43b-86dd-4bda-8807-dc3d8e76e5a7')
+    .order('publish_date', { ascending: false }) // Most recent first
+
+  if (error) {
+    throw new Error(`Failed to get all dates with difficulty: ${error.message}`)
+  }
+
+  const puzzles = data?.map(row => ({
+    publish_date: row.publish_date,
+    difficulty: row.difficulty || 1, // Default to 1 if difficulty is null
+    shown_examples: row.shown_examples || []
+  })) || []
+
+  return {
+    success: true,
+    puzzles: puzzles,
+    count: puzzles.length,
+    message: `Found ${puzzles.length} puzzle dates with difficulty`
   }
 }
 

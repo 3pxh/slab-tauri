@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2, FiChevronDown } from 'react-icons/fi';
+import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2 } from 'react-icons/fi';
 import { FiStar } from 'react-icons/fi';
 import { useGesture } from '@use-gesture/react';
 import { Puzzle } from '../lib/supabase';
@@ -10,6 +10,8 @@ import IndividualSlabGuesser from './IndividualSlabGuesser';
 import { useSlabGameState } from '../hooks/useSlabGameState';
 import { analytics, sessionTracker } from '../utils/analytics';
 import RuleDescriptionModal from './RuleDescriptionModal';
+import DifficultyIndicator from './DifficultyIndicator';
+import ScrollButton from './ScrollButton';
 
 
 type SlabPuzzleProps = {
@@ -233,9 +235,19 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
           >
             <FiArrowLeft size={20} />
           </button>
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            {puzzle.name}
-          </h2>
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              {puzzle.name}
+            </h2>
+            {/* Difficulty indicator */}
+            {puzzle.difficulty && (
+              <DifficultyIndicator 
+                difficulty={puzzle.difficulty} 
+                size="medium"
+                showTooltip={true}
+              />
+            )}
+          </div>
           {/* Progress indicators */}
           {progress && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -311,16 +323,14 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       )}
 
       {/* Floating Scroll to Slabs Button */}
-      {showScrollToSlabs && (
-        <button
-          onClick={scrollToSlabList}
-          className="fixed bottom-2 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-110 flex items-center justify-center z-50"
-          title="Scroll to slab list"
-          aria-label="Scroll to slab list"
-        >
-          <FiChevronDown size={24} />
-        </button>
-      )}
+      <ScrollButton
+        onClick={scrollToSlabList}
+        isVisible={showScrollToSlabs}
+        direction="down"
+        position="center"
+        title="Scroll to slab list"
+        ariaLabel="Scroll to slab list"
+      />
 
       {/* All Slabs */}
       {allSlabs.length > 0 && (
