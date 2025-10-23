@@ -43,13 +43,25 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
     setGuessResult(null);
   }, [currentSlab]);
 
-  const handleGuessSelect = (guess: 'star' | 'not-star') => {
-    // If clicking the already selected button, deselect it
-    if (selectedGuess === guess) {
-      setSelectedGuess(null);
-    } else {
-      setSelectedGuess(guess);
+  const handleGuessSelect = async (guess: 'star' | 'not-star') => {
+    // If we're in the final results state, just close the session
+    if (currentIndex >= totalSlabs) {
+      await onWinNext();
+      return;
     }
+    
+    // If already submitted, don't do anything (use the next button instead)
+    if (guessSubmitted) {
+      return;
+    }
+    
+    // Immediately submit the guess and show result
+    setSelectedGuess(guess);
+    setGuessSubmitted(true);
+    
+    // Submit the guess and get the result
+    const result = await onGuessSubmit(guess === 'star');
+    setGuessResult(result);
   };
 
   const handleSubmit = async () => {
@@ -59,18 +71,8 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
       return;
     }
     
-    // Otherwise, handle normal guess flow
-    if (selectedGuess === null) return;
-    
-    if (!guessSubmitted) {
-      // First submit - show the result
-      setGuessSubmitted(true);
-      
-      // Submit the guess and get the result
-      const result = await onGuessSubmit(selectedGuess === 'star');
-      setGuessResult(result);
-    } else {
-      // Second submit - proceed to next slab
+    // If we have a submitted guess, proceed to next
+    if (guessSubmitted) {
       await onProceedToNext();
     }
   };
@@ -119,8 +121,8 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
             </div>
           </div>
         ) : (
-          /* Normal slab display */
-          <div className="w-48 h-48">
+          /* Normal slab display with result overlay */
+          <div className="w-48 h-48 relative">
             <Slab 
               slab={currentSlab} 
               size="medium" 
@@ -129,6 +131,23 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
               colorblindMode={colorblindMode}
               getColorblindOverlay={getColorblindOverlay}
             />
+            {/* Result overlay - show when guess is submitted */}
+            {guessSubmitted && guessResult !== null && (
+              <div className="absolute -top-4 -right-4 pointer-events-none">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow-lg ${
+                  // Show star if: (user guessed star AND was correct) OR (user guessed not-star AND was wrong)
+                  (selectedGuess === 'star' && guessResult) || (selectedGuess === 'not-star' && !guessResult)
+                    ? 'bg-yellow-500 text-white' 
+                    : 'bg-red-500 text-white'
+                }`}>
+                  {(selectedGuess === 'star' && guessResult) || (selectedGuess === 'not-star' && !guessResult) ? (
+                    <FiStar size={16} className="fill-current" />
+                  ) : (
+                    <FiX size={16} />
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -153,77 +172,69 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
           </button>
         </div>
       ) : (
-        /* Normal state - show all buttons */
+        /* Normal state - show buttons based on state */
         <div className="flex justify-center items-center gap-4 mb-6">
-          {/* Not star button */}
-          <button
-            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-              selectedGuess === 'not-star' 
-                ? 'bg-red-300 border-4 border-red-400 shadow-xl scale-110' 
-                : selectedGuess === 'star'
-                  ? 'bg-gray-200 border-2 border-gray-300'
-                  : 'bg-red-100 border-2 border-red-300 hover:border-red-400 hover:bg-red-200 hover:scale-105'
-            }`}
-            onClick={() => handleGuessSelect('not-star')}
-            disabled={guessSubmitted}
-            title="Guess: This is not a star"
-          >
-            <FiX 
-              size={24} 
-              className={selectedGuess === 'not-star' ? 'text-red-800' : selectedGuess === 'star' ? 'text-gray-400' : 'text-red-600'} 
-            />
-          </button>
+          {!guessSubmitted ? (
+            /* Show guess buttons when not submitted */
+            <>
+              {/* Not star button */}
+              <button
+                className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+                  selectedGuess === 'not-star' 
+                    ? 'bg-red-300 border-4 border-red-400 shadow-xl scale-110' 
+                    : selectedGuess === 'star'
+                      ? 'bg-gray-200 border-2 border-gray-300'
+                      : 'bg-red-100 border-2 border-red-300 hover:border-red-400 hover:bg-red-200 hover:scale-105'
+                }`}
+                onClick={() => handleGuessSelect('not-star')}
+                title="Guess: This is not a star"
+              >
+                <FiX 
+                  size={24} 
+                  className={selectedGuess === 'not-star' ? 'text-red-800' : selectedGuess === 'star' ? 'text-gray-400' : 'text-red-600'} 
+                />
+              </button>
 
-          {/* Submit/Proceed button */}
-          <button
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all relative ${
-              selectedGuess !== null
-                ? guessSubmitted 
-                  ? guessResult 
-                    ? 'bg-green-500 text-white hover:bg-green-600 hover:scale-105' 
-                    : 'bg-red-500 text-white hover:bg-red-600 hover:scale-105'
-                  : 'bg-blue-500 text-white hover:bg-blue-600 hover:scale-105'
-                : 'bg-gray-400 text-white cursor-not-allowed opacity-0'
-            }`}
-            onClick={handleSubmit}
-            disabled={selectedGuess === null}
-            title={guessSubmitted ? "Proceed to next slab" : "Submit your guess"}
-          >
-            <FiArrowRight size={20} />
-            {/* Visual indicator for correct/incorrect */}
-            {guessSubmitted && guessResult !== null && (
-              <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold">
+              {/* Star button */}
+              <button
+                className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+                  selectedGuess === 'star' 
+                    ? 'bg-yellow-300 border-4 border-yellow-400 shadow-xl scale-110' 
+                    : selectedGuess === 'not-star'
+                      ? 'bg-gray-200 border-2 border-gray-300'
+                      : 'bg-yellow-100 border-2 border-yellow-300 hover:border-yellow-400 hover:bg-yellow-200 hover:scale-105'
+                }`}
+                onClick={() => handleGuessSelect('star')}
+                title="Guess: This is a star"
+              >
+                <FiStar 
+                  size={24} 
+                  className={selectedGuess === 'star' ? 'text-yellow-800 fill-yellow-800' : selectedGuess === 'not-star' ? 'text-gray-400' : 'text-yellow-600'} 
+                />
+              </button>
+            </>
+          ) : (
+            /* Show next button with result feedback when submitted */
+            <button
+              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all relative ${
+                guessResult 
+                  ? 'bg-green-500 text-white hover:bg-green-600 hover:scale-105' 
+                  : 'bg-red-500 text-white hover:bg-red-600 hover:scale-105'
+              }`}
+              onClick={handleSubmit}
+              title="Proceed to next slab"
+            >
+              <FiArrowRight size={24} />
+              {/* Visual indicator for correct/incorrect */}
+              <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-white">
                 {guessResult ? (
-                  <div className="w-3 h-3 bg-white rounded-full flex items-center justify-center">
-                    <FiCheck size={10} className="text-green-500" />
-                  </div>
+                  <FiCheck size={16} className="text-green-500" />
                 ) : (
-                  <div className="w-3 h-3 bg-white rounded-full flex items-center justify-center">
-                    <FiX size={10} className="text-red-500" />
-                  </div>
+                  <FiX size={16} className="text-red-500" />
                 )}
               </div>
-            )}
-          </button>
-
-          {/* Star button */}
-          <button
-            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-              selectedGuess === 'star' 
-                ? 'bg-yellow-300 border-4 border-yellow-400 shadow-xl scale-110' 
-                : selectedGuess === 'not-star'
-                  ? 'bg-gray-200 border-2 border-gray-300'
-                  : 'bg-yellow-100 border-2 border-yellow-300 hover:border-yellow-400 hover:bg-yellow-200 hover:scale-105'
-            }`}
-            onClick={() => handleGuessSelect('star')}
-            disabled={guessSubmitted}
-            title="Guess: This is a star"
-          >
-            <FiStar 
-              size={24} 
-              className={selectedGuess === 'star' ? 'text-yellow-800 fill-yellow-800' : selectedGuess === 'not-star' ? 'text-gray-400' : 'text-yellow-600'} 
-            />
-          </button>
+            </button>
+          )}
         </div>
       )}
 

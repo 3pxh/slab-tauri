@@ -208,7 +208,7 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onHome }) => {
           {/* Puzzles List */}
           <div className="space-y-2 flex-1 overflow-y-auto" id="puzzles-list">
             {puzzles.map((puzzle, index) => {
-              const { dayOfWeek, fullDate, date } = formatDateForDisplay(puzzle.publish_date);
+              const { fullDate, date } = formatDateForDisplay(puzzle.publish_date);
               const isTodayPuzzle = isToday(puzzle.publish_date);
               // Calculate puzzle number (earliest puzzle = #1, most recent = highest number)
               // Since puzzles are now ordered chronologically (earliest first), 
@@ -234,7 +234,7 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onHome }) => {
                       
                       <div className="flex flex-col flex-1">
                         <div className={`font-semibold ${isTodayPuzzle ? 'text-blue-700' : 'text-gray-900'}`}>
-                          {dayOfWeek}
+                          {puzzle.name}
                         </div>
                         <div className={`text-sm ${isTodayPuzzle ? 'text-blue-600' : 'text-gray-600'}`}>
                           {fullDate}
