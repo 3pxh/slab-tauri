@@ -328,7 +328,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         onClick={scrollToSlabList}
         isVisible={showScrollToSlabs}
         direction="down"
-        position="center"
+        position="right"
         title="Scroll to slab list"
         ariaLabel="Scroll to slab list"
       />
