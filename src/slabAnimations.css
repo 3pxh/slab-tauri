@@ -1,0 +1,34 @@
+/* Slab animation keyframes */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+  20%, 40%, 60%, 80% { transform: translateX(2px); }
+}
+
+@keyframes sparkle {
+  0%, 100% { 
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1);
+  }
+  25% { 
+    transform: scale(1.05) rotate(1deg);
+    filter: brightness(1.2);
+  }
+  50% { 
+    transform: scale(1.1) rotate(0deg);
+    filter: brightness(1.4);
+  }
+  75% { 
+    transform: scale(1.05) rotate(-1deg);
+    filter: brightness(1.2);
+  }
+}
+
+/* Animation classes */
+.slab-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.slab-sparkle {
+  animation: sparkle 0.8s ease-in-out;
+}

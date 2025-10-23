@@ -2,6 +2,7 @@ import React from 'react';
 import { FiStar, FiX, FiArrowRight, FiCheck, FiAward } from 'react-icons/fi';
 import { SlabData } from './Slab';
 import Slab from './Slab';
+import '../slabAnimations.css';
 
 type IndividualSlabGuesserProps = {
   currentSlab: SlabData;
@@ -35,13 +36,27 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
   const [selectedGuess, setSelectedGuess] = React.useState<'star' | 'not-star' | null>(null);
   const [guessSubmitted, setGuessSubmitted] = React.useState(false);
   const [guessResult, setGuessResult] = React.useState<boolean | null>(null);
+  const [showAnimation, setShowAnimation] = React.useState(false);
 
   // Reset selection when slab changes
   React.useEffect(() => {
     setSelectedGuess(null);
     setGuessSubmitted(false);
     setGuessResult(null);
+    setShowAnimation(false);
   }, [currentSlab]);
+
+  // Trigger animation when guess result is set
+  React.useEffect(() => {
+    if (guessResult !== null) {
+      setShowAnimation(true);
+      // Remove animation class after animation completes
+      const timer = setTimeout(() => {
+        setShowAnimation(false);
+      }, 800); // Match the longest animation duration
+      return () => clearTimeout(timer);
+    }
+  }, [guessResult]);
 
   const handleGuessSelect = async (guess: 'star' | 'not-star') => {
     // If we're in the final results state, just close the session
@@ -122,7 +137,7 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
           </div>
         ) : (
           /* Normal slab display with result overlay */
-          <div className="w-48 h-48 relative">
+          <div className={`w-48 h-48 relative ${showAnimation ? (guessResult ? 'slab-sparkle' : 'slab-shake') : ''}`}>
             <Slab 
               slab={currentSlab} 
               size="medium" 
