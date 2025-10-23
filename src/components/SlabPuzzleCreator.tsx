@@ -74,6 +74,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   const [puzzleName, setPuzzleName] = React.useState(puzzle.name || '');
   const [evaluationFn, setEvaluationFn] = React.useState(puzzle.evaluate_fn || '');
   const [ruleDescription, setRuleDescription] = React.useState(puzzle.rule_description || '');
+  const [difficulty, setDifficulty] = React.useState(puzzle.difficulty || 1);
   const [isCreating, setIsCreating] = React.useState(false);
   const [shownExamples, setShownExamples] = React.useState<boolean[]>([]);
   const [hiddenExamples, setHiddenExamples] = React.useState<boolean[]>([]);
@@ -784,6 +785,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
           content_type: puzzle.content_type,
           evaluate_fn: evaluationFn.trim(),
           rule_description: ruleDescription.trim() || null,
+          difficulty: difficulty,
           shown_examples: serializedShownSlabs,
           hidden_examples: serializedHiddenSlabs,
           publish_date: puzzle.publish_date || new Date().toISOString(),
@@ -1018,6 +1020,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
         <div className="text-sm text-gray-600 mb-4">
           <p><strong>Content Type:</strong> {puzzle.content_type}</p>
           <p><strong>Puzzle ID:</strong> {puzzle.id}</p>
+          <p><strong>Difficulty:</strong> {difficulty}/5</p>
         </div>
         
         {/* Puzzle Name Field */}
@@ -1050,6 +1053,28 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
           />
           <p className="mt-1 text-xs text-gray-500">
             This description will be shown to players after they complete or fail the puzzle.
+          </p>
+        </div>
+
+        {/* Difficulty Field */}
+        <div className="mb-4">
+          <label htmlFor="difficulty" className="block text-sm font-medium text-gray-700 mb-1">
+            Difficulty Level
+          </label>
+          <select
+            id="difficulty"
+            value={difficulty}
+            onChange={(e) => setDifficulty(parseInt(e.target.value))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value={1}>1 - Very Easy</option>
+            <option value={2}>2 - Easy</option>
+            <option value={3}>3 - Medium</option>
+            <option value={4}>4 - Hard</option>
+            <option value={5}>5 - Very Hard</option>
+          </select>
+          <p className="mt-1 text-xs text-gray-500">
+            Choose the difficulty level for this puzzle (1 = easiest, 5 = hardest).
           </p>
         </div>
 
