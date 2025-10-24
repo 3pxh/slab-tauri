@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2 } from 'react-icons/fi';
+import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2, FiX } from 'react-icons/fi';
 import { FiStar } from 'react-icons/fi';
 import { PiShuffleBold } from 'react-icons/pi';
 import { FaArrowDownUpAcrossLine } from 'react-icons/fa6';
@@ -462,8 +462,8 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                         colorblindMode={colorblindMode}
                         getColorblindOverlay={getColorblindOverlay}
                       />
-                      {/* Star annotation directly on slab */}
-                      {evaluationResult && (
+                      {/* Evaluation annotation directly on slab */}
+                      {evaluationResult !== undefined && (
                         <div 
                           className="absolute"
                           style={{
@@ -473,7 +473,11 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                             filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
                           }}
                         >
-                          <FiStar size={12} className="fill-yellow-400 text-yellow-500" />
+                          {evaluationResult ? (
+                            <FiStar size={12} className="fill-yellow-400 text-yellow-500" />
+                          ) : (
+                            <FiX size={12} className="text-red-500" />
+                          )}
                         </div>
                       )}
                       {/* Archive button */}
@@ -571,8 +575,8 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                           colorblindMode={colorblindMode}
                           getColorblindOverlay={getColorblindOverlay}
                         />
-                        {/* Star annotation for archived slabs */}
-                        {evaluationResult && (
+                        {/* Evaluation annotation for archived slabs */}
+                        {evaluationResult !== undefined && (
                         <div 
                           className="absolute"
                           style={{
@@ -582,7 +586,11 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                             filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
                           }}
                         >
-                          <FiStar size={12} className="fill-yellow-400 text-yellow-500" />
+                          {evaluationResult ? (
+                            <FiStar size={12} className="fill-yellow-400 text-yellow-500" />
+                          ) : (
+                            <FiX size={12} className="text-red-500" />
+                          )}
                         </div>
                         )}
                         {/* Action buttons - only show when selected */}
