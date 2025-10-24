@@ -166,6 +166,61 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
 
 
 
+  // Function to calculate target index based on drop position
+  const calculateTargetIndex = (clientX: number, clientY: number, draggedIndex: number): number => {
+    const container = document.querySelector('[data-slab-container]') as HTMLElement;
+    if (!container) return draggedIndex;
+
+    const containerRect = container.getBoundingClientRect();
+    const slabElements = container.querySelectorAll('[data-slab-index]');
+    
+    if (slabElements.length === 0) return 0;
+
+    // Calculate which row the drop position is in
+    const slabSize = 80; // 80px width/height as defined in the component
+    const gap = 8; // 8px gap as defined by gap-2 class
+    const totalSlabWidth = slabSize + gap;
+    
+    // Find the row index
+    const relativeY = clientY - containerRect.top;
+    const rowIndex = Math.floor(relativeY / (slabSize + gap));
+    
+    // Find the column index within the row
+    const relativeX = clientX - containerRect.left;
+    const colIndex = Math.floor(relativeX / totalSlabWidth);
+    
+    // Calculate the target index
+    const slabsPerRow = Math.floor(containerRect.width / totalSlabWidth);
+    const targetIndex = Math.min(rowIndex * slabsPerRow + colIndex, allSlabs.length);
+    
+    // If dropping on a slab, determine if we should place before or after
+    const element = document.elementFromPoint(clientX, clientY);
+    if (element) {
+      const dropTarget = element.closest('[data-slab-index]');
+      if (dropTarget) {
+        const dropTargetIndex = parseInt(dropTarget.getAttribute('data-slab-index') || '0');
+        const dropTargetRect = dropTarget.getBoundingClientRect();
+        const dropTargetCenterX = dropTargetRect.left + dropTargetRect.width / 2;
+        
+        // If dropping on the left half of the target slab, place before it
+        // If dropping on the right half, place after it
+        if (clientX < dropTargetCenterX) {
+          return dropTargetIndex;
+        } else {
+          return dropTargetIndex + 1;
+        }
+      }
+    }
+    
+    // For empty space drops, use the calculated grid position
+    // Ensure we don't drop on the same position
+    if (targetIndex === draggedIndex) return draggedIndex;
+    if (targetIndex === draggedIndex + 1) return draggedIndex;
+    
+    // Adjust for the fact that we're removing the dragged item first
+    return targetIndex > draggedIndex ? targetIndex - 1 : targetIndex;
+  };
+
   // Universal gesture handler using react-use-gesture
   const bindGestures = useGesture({
     onDrag: ({ first, last, event, args }) => {
@@ -180,15 +235,10 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         const clientY = 'clientY' in event ? event.clientY : ('touches' in event ? event.touches?.[0]?.clientY : undefined);
         
         if (clientX !== undefined && clientY !== undefined) {
-          const element = document.elementFromPoint(clientX, clientY);
-          if (element) {
-            const dropTarget = element.closest('[data-slab-index]');
-            if (dropTarget) {
-              const dropIndex = parseInt(dropTarget.getAttribute('data-slab-index') || '0');
-              if (dropIndex !== index) {
-                reorderSlabs(index, dropIndex);
-              }
-            }
+          // Use the same calculation for all drops (on slabs or empty space)
+          const targetIndex = calculateTargetIndex(clientX, clientY, index);
+          if (targetIndex !== index && targetIndex >= 0 && targetIndex <= allSlabs.length) {
+            reorderSlabs(index, targetIndex);
           }
         }
         setLocalDraggedIndex(null);
@@ -368,6 +418,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
               <div 
                 className="flex flex-wrap gap-2 justify-center flex-1"
                 style={{ alignContent: 'flex-start' }}
+                data-slab-container
                 onDragOver={(e) => {
                   e.preventDefault();
                   e.dataTransfer.dropEffect = 'move';
