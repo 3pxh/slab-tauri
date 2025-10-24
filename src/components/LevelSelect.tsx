@@ -5,20 +5,18 @@ import AppHeader from './AppHeader';
 import DifficultyIndicator from './DifficultyIndicator';
 import Slab, { COLORS } from './Slab';
 import ScrollButton from './ScrollButton';
+import { useNavigation } from '../utils/navigation';
 
-interface LevelSelectProps {
-  onSelect: (date: Date) => void;
-  onTodayPuzzle: () => void;
-  onHome: () => void;
-}
+interface LevelSelectProps {}
 
 const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onHome }) => {
+const LevelSelect: React.FC<LevelSelectProps> = () => {
   const [puzzles, setPuzzles] = React.useState<PuzzleDate[]>([]);
   const [isLoadingDates, setIsLoadingDates] = React.useState(true);
   const [showScrollDownButton, setShowScrollDownButton] = React.useState(false);
   const [showScrollUpButton, setShowScrollUpButton] = React.useState(false);
+  const { goToPuzzle, goHome } = useNavigation();
 
   // Fetch available puzzle dates with difficulty on component mount
   React.useEffect(() => {
@@ -193,7 +191,7 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onHome }) => {
   return (
     <div className="w-full max-w-md mx-auto p-4 h-screen flex flex-col">
       {/* App Header */}
-      <AppHeader onBack={onHome} showBackButton={true} />
+      <AppHeader onBack={goHome} showBackButton={true} />
       
       {/* Loading State */}
         {isLoadingDates ? (
@@ -218,7 +216,7 @@ const LevelSelect: React.FC<LevelSelectProps> = ({ onSelect, onHome }) => {
               return (
                 <button
                   key={puzzle.publish_date}
-                  onClick={() => onSelect(date)}
+                  onClick={() => goToPuzzle(date)}
                   className={`w-full p-4 rounded-lg border-2 transition-all duration-200 text-left ${
                     isTodayPuzzle
                       ? 'border-blue-500 bg-blue-50 hover:bg-blue-100'
