@@ -17,7 +17,6 @@ type IndividualSlabGuesserProps = {
   colorblindMode: 'none' | 'icon' | 'number' | 'letter';
   getColorblindOverlay: (colorIndex: number) => string | null;
   levelAttempts: number;
-  isCurrentSlabStar: boolean;
 };
 
 const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
@@ -32,8 +31,7 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
   colors,
   colorblindMode,
   getColorblindOverlay,
-  levelAttempts,
-  isCurrentSlabStar
+  levelAttempts
 }) => {
   const [selectedGuess, setSelectedGuess] = React.useState<'star' | 'not-star' | null>(null);
   const [guessSubmitted, setGuessSubmitted] = React.useState(false);
@@ -72,11 +70,6 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
       return;
     }
     
-    // If we have incorrect attempts, skip the guessing step
-    if (incorrectCount >= 1) {
-      return;
-    }
-    
     // Immediately submit the guess and show result
     setSelectedGuess(guess);
     setGuessSubmitted(true);
@@ -93,8 +86,8 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
       return;
     }
     
-    // If we have a submitted guess OR we're skipping the guess step, proceed to next
-    if (guessSubmitted || incorrectCount >= 1) {
+    // If we have a submitted guess, proceed to next
+    if (guessSubmitted) {
       await onProceedToNext();
     }
   };
@@ -140,16 +133,16 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
               colorblindMode={colorblindMode}
               getColorblindOverlay={getColorblindOverlay}
             />
-            {/* Result overlay - show when guess is submitted OR when skipping guess step */}
-            {((guessSubmitted && guessResult !== null) || (incorrectCount >= 1 && !guessSubmitted)) && (
+            {/* Result overlay - show when guess is submitted */}
+            {guessSubmitted && guessResult !== null && (
               <div className="absolute -top-4 -right-4 pointer-events-none">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow-lg ${
-                  // Show star if: (user guessed star AND was correct) OR (user guessed not-star AND was wrong) OR (skipping and slab is a star)
-                  (selectedGuess === 'star' && guessResult) || (selectedGuess === 'not-star' && !guessResult) || (incorrectCount >= 1 && isCurrentSlabStar)
+                  // Show star if: (user guessed star AND was correct) OR (user guessed not-star AND was wrong)
+                  (selectedGuess === 'star' && guessResult) || (selectedGuess === 'not-star' && !guessResult)
                     ? 'bg-yellow-500 text-white' 
                     : 'bg-red-500 text-white'
                 }`}>
-                  {(selectedGuess === 'star' && guessResult) || (selectedGuess === 'not-star' && !guessResult) || (incorrectCount >= 1 && isCurrentSlabStar) ? (
+                  {(selectedGuess === 'star' && guessResult) || (selectedGuess === 'not-star' && !guessResult) ? (
                     <FiStar size={16} className="fill-current" />
                   ) : (
                     <FiX size={16} />
@@ -183,17 +176,8 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
       ) : (
         /* Normal state - show buttons based on state */
         <div className="flex justify-center items-center gap-4 mb-6">
-          {incorrectCount >= 1 ? (
-            /* Show progress arrow when skipping guess step */
-            <button
-              className="w-16 h-16 rounded-full flex items-center justify-center transition-all bg-blue-500 text-white hover:bg-blue-600 hover:scale-105"
-              onClick={handleSubmit}
-              title="Proceed to next slab"
-            >
-              <FiArrowRight size={24} />
-            </button>
-          ) : !guessSubmitted ? (
-            /* Show guess buttons when not submitted and no incorrect attempts */
+          {!guessSubmitted ? (
+            /* Show guess buttons when not submitted */
             <>
               {/* Not star button */}
               <button
