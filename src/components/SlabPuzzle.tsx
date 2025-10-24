@@ -200,13 +200,20 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       event.stopPropagation();
       handleSlabClick(slab);
     },
-    onPointerDown: ({ event }) => {
+    onPointerDown: ({ event, args }) => {
+      const [, slab] = args as [number, SlabData];
       // Check if the click is on the archive button and prevent gesture handling
       const target = event.target as HTMLElement;
       if (target.closest('[data-archive-button]')) {
         event.stopPropagation();
         // Don't handle archive here - let the button's onClick handle it
+        return;
       }
+      
+      // Immediately select the slab on touch down for mobile
+      // This provides instant feedback while still allowing drag functionality
+      event.stopPropagation();
+      handleSlabClick(slab);
     }
   }, {
     drag: {
