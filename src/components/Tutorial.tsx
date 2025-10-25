@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowRight, FiArrowLeft, FiRefreshCw, FiStar } from 'react-icons/fi';
+import { FiArrowRight, FiArrowLeft, FiRefreshCw, FiStar, FiX } from 'react-icons/fi';
 import { FaLightbulb } from 'react-icons/fa6';
 import AppHeader from './AppHeader';
 import { analytics } from '../utils/analytics';
@@ -262,8 +262,8 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
                                     size="small"
                                     className="shadow-md"
                                   />
-                                  {/* Star annotation exactly like in SlabPuzzle.tsx */}
-                                  {evaluationResult && (
+                                  {/* Evaluation annotation exactly like in SlabPuzzle.tsx */}
+                                  {evaluationResult !== undefined && (
                                     <div 
                                       className="absolute"
                                       style={{
@@ -273,7 +273,11 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
                                         filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
                                       }}
                                     >
-                                      <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
+                                      {evaluationResult ? (
+                                        <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
+                                      ) : (
+                                        <FiX size={16} className="text-red-500" />
+                                      )}
                                     </div>
                                   )}
                                 </div>

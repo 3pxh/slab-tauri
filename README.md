@@ -14,7 +14,8 @@ Write a block of javascript which could evaluate a Slab--it will get passed as a
 It should return true if...
 
 ## TODO
+- picture and quote per level
+- deep links
+- in app purchase
+- android
 
-- local persistent storage via sqlite (or possibly localstorage on web? make an adapter for both?); persist all the slabs created for various levels, plus guess attempts / win status
-- when creating a level show all the slabs created so far and allow adding them as examples
-- get unique device id https://github.com/SkipperNDT/tauri-plugin-machine-uid/blob/main/README.md and then allow creation of puzzles from the community -- gets stored with their device id and if giving the device id you can access your own; if you share it, you share via the uuid (maybe deeplinked) and if you know the uuid then you can load a puzzle (lock down the DB to not be viewable by unauthenticated users; all of this must be done through functions)

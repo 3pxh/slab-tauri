@@ -5,16 +5,13 @@ import AppHeader from './AppHeader';
 import { analytics } from '../utils/analytics';
 import { signupForLaunch, getPuzzle, Puzzle } from '../lib/supabase';
 import DifficultyIndicator from './DifficultyIndicator';
+import { useNavigation } from '../utils/navigation';
 
-interface HomeProps {
-  onTodayPuzzle: () => void;
-  onArchive: () => void;
-  onCreatePuzzle: () => void;
-  onTutorial: () => void;
-}
+interface HomeProps {}
 
-const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, onTutorial }) => {
+const Home: React.FC<HomeProps> = () => {
   const { isAnonymous, linkAccountWithEmail, isAuthenticated, signInWithPassword, signUpWithPassword } = useAuth();
+  const { goToTodayPuzzle, goToArchive, goToCreate, goToTutorial } = useNavigation();
   
   // State for today's puzzle
   const [todaysPuzzle, setTodaysPuzzle] = React.useState<Puzzle | null>(null);
@@ -168,7 +165,7 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
               publish_date: new Date().toISOString().split('T')[0], 
               is_daily: true 
             } as any);
-            onTodayPuzzle();
+            goToTodayPuzzle();
           }}
           className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
           disabled={isLoadingPuzzle}
@@ -204,7 +201,7 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
         <button
           onClick={() => {
             analytics.tutorialViewed();
-            onTutorial();
+            goToTutorial();
           }}
           className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
         >
@@ -223,7 +220,7 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
         <button
           onClick={() => {
             analytics.archiveViewed();
-            onArchive();
+            goToArchive();
           }}
           className="w-full bg-purple-500 hover:bg-purple-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
         >
@@ -242,7 +239,7 @@ const Home: React.FC<HomeProps> = ({ onTodayPuzzle, onArchive, onCreatePuzzle, o
         <button
           onClick={() => {
             analytics.puzzleCreatorViewed();
-            onCreatePuzzle();
+            goToCreate();
           }}
           className="w-full bg-green-500 hover:bg-green-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
         >

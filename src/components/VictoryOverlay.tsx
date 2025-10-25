@@ -8,6 +8,7 @@ type VictoryOverlayProps = {
   remainingGuesses: number;
   puzzleName: string;
   ruleDescription: string;
+  hasNextPuzzle: boolean;
 };
 
 const VictoryOverlay: React.FC<VictoryOverlayProps> = ({
@@ -16,7 +17,8 @@ const VictoryOverlay: React.FC<VictoryOverlayProps> = ({
   onNextPuzzle,
   remainingGuesses,
   puzzleName,
-  ruleDescription
+  ruleDescription,
+  hasNextPuzzle
 }) => {
   const [showRule, setShowRule] = React.useState(false);
 
@@ -69,10 +71,14 @@ const VictoryOverlay: React.FC<VictoryOverlayProps> = ({
           
           <button
             onClick={onNextPuzzle}
-            className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+            className={`w-full font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 ${
+              hasNextPuzzle 
+                ? 'bg-purple-500 hover:bg-purple-600 text-white' 
+                : 'bg-gray-500 hover:bg-gray-600 text-white'
+            }`}
           >
             <FiArrowRight size={20} />
-            Next Puzzle
+            {hasNextPuzzle ? 'Next Puzzle' : 'Browse Archive'}
           </button>
         </div>
 

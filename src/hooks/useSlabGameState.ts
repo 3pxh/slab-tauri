@@ -121,19 +121,62 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
   const COLORBLIND_NUMBERS = ['1', '2', '3', '4', '5', '6'];
   const COLORBLIND_LETTERS = ['R', 'O', 'Y', 'G', 'B', 'P']; // Red, Orange, Yellow, Green, Blue, Purple
 
+  // Reset all state when puzzle changes
+  useEffect(() => {
+    console.log('🔄 Puzzle changed, resetting state for puzzle:', puzzle.id);
+    hasInitializedRef.current = false;
+    
+    // Reset all state to initial values (but preserve user preferences like colorblindMode)
+    setAllSlabs([]);
+    setArchivedSlabs([]);
+    setRemainingGuesses(3);
+    setHasWon(false);
+    setShowGuessOverlay(false);
+    setPendingGuessedSlabs([]);
+    setIsInGuessSession(false);
+    setFlashGuessButton(false);
+    setSelectedSlabForMaker(null);
+    setShowArchivedSlabs(false);
+    setIsInIndividualGuessMode(false);
+    setCurrentGuessIndex(0);
+    setGuessCorrectCount(0);
+    setGuessIncorrectCount(0);
+    setSlabsToGuess([]);
+    setLastGuessResult(null);
+    setEvaluationResults(new Map());
+    // Note: colorblindMode is preserved as it's a user preference
+    console.log('🔄 State reset complete');
+  }, [puzzle.id]);
+
+  // Force re-initialization when progress changes (to handle progress loading)
+  useEffect(() => {
+    if (hasInitializedRef.current && progress !== null) {
+      console.log('🔄 Progress loaded, re-initializing for puzzle:', puzzle.id);
+      hasInitializedRef.current = false;
+    }
+  }, [progress, puzzle.id]);
+
   // Initialize state from puzzle and progress data
   useEffect(() => {
+    console.log('🚀 Initialization effect running for puzzle:', puzzle.id);
+    console.log('🚀 hasInitializedRef.current:', hasInitializedRef.current);
+    console.log('🚀 puzzle.shown_examples:', puzzle.shown_examples);
+    console.log('🚀 isLoading:', isLoading);
+    
     if (hasInitializedRef.current) {
+      console.log('🚀 Already initialized, skipping');
       return; // Prevent re-initialization
     }
     
     // We need at least the puzzle data to initialize
     if (!puzzle.shown_examples) {
+      console.log('🚀 No shown examples, skipping initialization');
       return;
     }
     
     // If we're still loading progress data, wait for it to complete
     if (isLoading) {
+      console.log('🚀 Still loading, skipping initialization');
       return;
     }
     
@@ -150,11 +193,17 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     let initialSlabsToGuess: SlabData[] = [];
     let initialLastGuessResult: boolean | null = null;
     
-    // Only override with saved progress if we have meaningful saved data
-    if (progress && progress.custom_data) {
+    console.log('🚀 Initial slabs from puzzle:', initialSlabs);
+    
+    // Only override with saved progress if we have meaningful saved data AND it's for the current puzzle
+    if (progress && progress.custom_data && progress.puzzle_id === puzzle.id) {
+      console.log('🚀 Found saved progress for current puzzle:', progress.custom_data);
       // Use saved slabs if available and not empty, otherwise fall back to shown examples
       if (progress.custom_data.savedSlabs && progress.custom_data.savedSlabs.length > 0) {
+        console.log('🚀 Using saved slabs instead of puzzle shown_examples:', progress.custom_data.savedSlabs);
         initialSlabs = progress.custom_data.savedSlabs;
+      } else {
+        console.log('🚀 No saved slabs, using puzzle shown_examples');
       }
       
       // Restore archived slabs if available
@@ -167,35 +216,41 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
         initialRemainingGuesses = progress.custom_data.remainingGuesses;
       }
       
-      // Restore hasWon state if available
+      // Restore win state if available
       if (typeof progress.custom_data.hasWon === 'boolean') {
         initialHasWon = progress.custom_data.hasWon;
       }
       
+      // Note: evaluationResults are not saved in progress, they get recalculated
       
-      // Restore individual guessing state if available
+      // Restore individual guess mode state if available
       if (typeof progress.custom_data.isInIndividualGuessMode === 'boolean') {
         initialIsInIndividualGuessMode = progress.custom_data.isInIndividualGuessMode;
       }
+      
       if (typeof progress.custom_data.currentGuessIndex === 'number') {
         initialCurrentGuessIndex = progress.custom_data.currentGuessIndex;
       }
+      
       if (typeof progress.custom_data.guessCorrectCount === 'number') {
         initialGuessCorrectCount = progress.custom_data.guessCorrectCount;
       }
+      
       if (typeof progress.custom_data.guessIncorrectCount === 'number') {
         initialGuessIncorrectCount = progress.custom_data.guessIncorrectCount;
       }
+      
       if (Array.isArray(progress.custom_data.slabsToGuess)) {
         initialSlabsToGuess = progress.custom_data.slabsToGuess;
       }
+      
       if (typeof progress.custom_data.lastGuessResult === 'boolean') {
         initialLastGuessResult = progress.custom_data.lastGuessResult;
       }
-    } else if (progress) {
-      // If we have progress but no custom_data, still restore basic progress info
-      initialRemainingGuesses = Math.max(0, 3 - progress.attempts);
-      initialHasWon = !!progress.completed_at;
+    } else if (progress && progress.puzzle_id !== puzzle.id) {
+      console.log('🚀 Found progress for different puzzle, ignoring:', progress.puzzle_id, 'vs', puzzle.id);
+    } else {
+      console.log('🚀 No progress data, using puzzle shown_examples');
     }
     
     // Set all initial state at once to prevent multiple renders
@@ -213,6 +268,8 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     
     // Mark as initialized
     hasInitializedRef.current = true;
+    console.log('🚀 Final slabs being set:', initialSlabs);
+    console.log('🚀 Initialization complete for puzzle:', puzzle.id);
   }, [puzzle.shown_examples, progress, isLoading]);
 
   // Pre-evaluate all slabs when puzzle loads (only after initialization)
