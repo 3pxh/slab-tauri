@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2 } from 'react-icons/fi';
+import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2, FiX } from 'react-icons/fi';
 import { FiStar } from 'react-icons/fi';
 import { PiShuffleBold } from 'react-icons/pi';
 import { FaArrowDownUpAcrossLine } from 'react-icons/fa6';
@@ -15,6 +15,8 @@ import RuleDescriptionModal from './RuleDescriptionModal';
 import DifficultyIndicator from './DifficultyIndicator';
 import ScrollButton from './ScrollButton';
 import VictoryOverlay from './VictoryOverlay';
+import { useNavigation } from '../utils/navigation';
+import { getAllDates } from '../lib/supabase';
 
 
 type SlabPuzzleProps = {
@@ -24,6 +26,8 @@ type SlabPuzzleProps = {
 };
 
 const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
+  const { goToPuzzle, goToArchive } = useNavigation();
+  
   // Track puzzle start
   React.useEffect(() => {
     analytics.puzzleStarted(puzzle);
@@ -76,8 +80,43 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   React.useEffect(() => {
     if (hasWon && !isInIndividualGuessMode) {
       setShowVictoryOverlay(true);
+      // Check if there's a next puzzle available
+      checkNextPuzzleAvailability();
     }
   }, [hasWon, isInIndividualGuessMode]);
+
+  const checkNextPuzzleAvailability = async () => {
+    try {
+      const response = await getAllDates();
+      
+      if (response.success && response.dates.length > 0) {
+        const sortedDates = response.dates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+        
+        const currentDate = new Date(puzzle.publish_date);
+        const currentDateStr = currentDate.toISOString().split('T')[0];
+        
+        // Try multiple date format comparisons
+        const currentDateStrAlt = puzzle.publish_date.split('T')[0];
+        
+        let currentIndex = sortedDates.findIndex(date => date === currentDateStr);
+        if (currentIndex === -1) {
+          currentIndex = sortedDates.findIndex(date => date === currentDateStrAlt);
+        }
+        if (currentIndex === -1) {
+          // Try comparing with the original publish_date
+          currentIndex = sortedDates.findIndex(date => date === puzzle.publish_date);
+        }
+        
+        const hasNext = currentIndex !== -1 && currentIndex < sortedDates.length - 1;
+        setHasNextPuzzle(hasNext);
+      } else {
+        setHasNextPuzzle(false);
+      }
+    } catch (error) {
+      console.error('Error checking next puzzle availability:', error);
+      setHasNextPuzzle(false);
+    }
+  };
 
   // Scroll detection for showing/hiding the scroll-to-slabs button
   React.useEffect(() => {
@@ -147,6 +186,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   
   // State for victory overlay
   const [showVictoryOverlay, setShowVictoryOverlay] = React.useState(false);
+  const [hasNextPuzzle, setHasNextPuzzle] = React.useState(true);
 
   // Gesture handler for archived slabs (selection only, no drag)
   const bindArchivedGestures = useGesture({
@@ -294,10 +334,51 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     setShowVictoryOverlay(false);
   };
 
-  const handleVictoryNextPuzzle = () => {
+  const handleVictoryNextPuzzle = async () => {
     setShowVictoryOverlay(false);
-    // TODO: Implement next puzzle functionality
-    console.log('Next puzzle clicked - placeholder');
+    
+    try {
+      // Get all available puzzle dates
+      const response = await getAllDates();
+      
+      if (response.success && response.dates.length > 0) {
+        // Sort dates in ascending order (oldest first)
+        const sortedDates = response.dates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+        
+        // Find the current puzzle's date
+        const currentDate = new Date(puzzle.publish_date);
+        const currentDateStr = currentDate.toISOString().split('T')[0];
+        
+        // Try multiple date format comparisons
+        const currentDateStrAlt = puzzle.publish_date.split('T')[0];
+        
+        let currentIndex = sortedDates.findIndex(date => date === currentDateStr);
+        if (currentIndex === -1) {
+          currentIndex = sortedDates.findIndex(date => date === currentDateStrAlt);
+        }
+        if (currentIndex === -1) {
+          // Try comparing with the original publish_date
+          currentIndex = sortedDates.findIndex(date => date === puzzle.publish_date);
+        }
+        
+        if (currentIndex !== -1 && currentIndex < sortedDates.length - 1) {
+          // Navigate to the next puzzle
+          const nextDateStr = sortedDates[currentIndex + 1];
+          const nextDate = new Date(nextDateStr);
+          goToPuzzle(nextDate);
+        } else {
+          // No next puzzle available, go to archive
+          goToArchive();
+        }
+      } else {
+        // No puzzles available, go to archive
+        goToArchive();
+      }
+    } catch (error) {
+      console.error('Error finding next puzzle:', error);
+      // Fallback to archive
+      goToArchive();
+    }
   };
 
 
@@ -462,8 +543,8 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                         colorblindMode={colorblindMode}
                         getColorblindOverlay={getColorblindOverlay}
                       />
-                      {/* Star annotation directly on slab */}
-                      {evaluationResult && (
+                      {/* Evaluation annotation directly on slab */}
+                      {evaluationResult !== undefined && (
                         <div 
                           className="absolute"
                           style={{
@@ -473,7 +554,11 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                             filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
                           }}
                         >
-                          <FiStar size={12} className="fill-yellow-400 text-yellow-500" />
+                          {evaluationResult ? (
+                            <FiStar size={12} className="fill-yellow-400 text-yellow-500" />
+                          ) : (
+                            <FiX size={12} className="text-red-500" />
+                          )}
                         </div>
                       )}
                       {/* Archive button */}
@@ -571,8 +656,8 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                           colorblindMode={colorblindMode}
                           getColorblindOverlay={getColorblindOverlay}
                         />
-                        {/* Star annotation for archived slabs */}
-                        {evaluationResult && (
+                        {/* Evaluation annotation for archived slabs */}
+                        {evaluationResult !== undefined && (
                         <div 
                           className="absolute"
                           style={{
@@ -582,7 +667,11 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                             filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
                           }}
                         >
-                          <FiStar size={12} className="fill-yellow-400 text-yellow-500" />
+                          {evaluationResult ? (
+                            <FiStar size={12} className="fill-yellow-400 text-yellow-500" />
+                          ) : (
+                            <FiX size={12} className="text-red-500" />
+                          )}
                         </div>
                         )}
                         {/* Action buttons - only show when selected */}
@@ -634,6 +723,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         remainingGuesses={remainingGuesses}
         puzzleName={puzzle.name}
         ruleDescription={puzzle.rule_description || ''}
+        hasNextPuzzle={hasNextPuzzle}
       />
 
       {/* Rule Description Modal */}

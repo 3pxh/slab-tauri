@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowLeft, FiArrowUp, FiArrowDown, FiStar } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowUp, FiArrowDown, FiStar, FiX } from 'react-icons/fi';
 import { Puzzle, getAllDates, getPuzzle, supabase, getUserSlabs, createSlab, deleteSlab, Slab as SlabRecord } from '../lib/supabase';
 import SlabMaker from './SlabMaker';
 import SlabComponent, { SlabData, areSlabsEqual } from './Slab';
@@ -1145,8 +1145,8 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
                   title="Click to move to front"
                 >
                   <SlabComponent slab={slab} size="small" />
-                  {/* Star annotation directly on slab */}
-                  {evaluationResults.length > index && evaluationResults[index] && (
+                  {/* Evaluation annotation directly on slab */}
+                  {evaluationResults.length > index && evaluationResults[index] !== undefined && (
                     <div 
                       className="absolute"
                       style={{
@@ -1156,7 +1156,11 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
                         filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
                       }}
                     >
-                      <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
+                      {evaluationResults[index] ? (
+                        <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
+                      ) : (
+                        <FiX size={16} className="text-red-500" />
+                      )}
                     </div>
                   )}
                 </div>
