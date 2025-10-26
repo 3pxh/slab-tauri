@@ -70,12 +70,12 @@ const PuzzlesList: React.FC<PuzzlesListProps> = ({ onHome }) => {
 
   const handleSharePuzzle = async (puzzleId: string, puzzleName: string) => {
     try {
-      const shareUrl = `${window.location.origin}${window.location.pathname}#/puzzle/${puzzleId}`;
+      const shareUrl = `${window.location.origin}/puzzle/shared/${puzzleId}`;
       await navigator.clipboard.writeText(shareUrl);
       alert(`Link to "${puzzleName}" copied to clipboard!`);
     } catch (err) {
       // Fallback for browsers that don't support clipboard API
-      const shareUrl = `${window.location.origin}${window.location.pathname}#/puzzle/${puzzleId}`;
+      const shareUrl = `${window.location.origin}/puzzle/shared/${puzzleId}`;
       const textArea = document.createElement('textarea');
       textArea.value = shareUrl;
       document.body.appendChild(textArea);
