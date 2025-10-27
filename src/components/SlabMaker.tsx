@@ -1,7 +1,7 @@
 import React from 'react';
 import { FiRotateCcw, FiRefreshCw } from 'react-icons/fi';
 import { useGesture } from '@use-gesture/react';
-import { SlabData, createSlab, Cell, COLORS, getGroup } from './Slab';
+import { SlabData, createSlab, Cell, COLORS, getGroup, mapColorIndex } from './Slab';
 import { deepCopy } from '../utils';
 import { analytics } from '../utils/analytics';
 
@@ -687,7 +687,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                 key={`${rowIndex}-${colIndex}`}
                 className="relative aspect-square w-full h-full flex items-center justify-center text-xs font-mono cursor-pointer transition-opacity select-none"
                 style={{
-                  backgroundColor: colors[getGroup(slab.groups, cell.groupId)?.color || 0],
+                  backgroundColor: colors[mapColorIndex(getGroup(slab.groups, cell.groupId)?.color || 0, colors)],
                   color: (getGroup(slab.groups, cell.groupId)?.color || 0) === 0 ? '#000' : '#fff',
                   ...getBorderStyles(rowIndex, colIndex),
                   touchAction: 'none'
@@ -698,16 +698,17 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
               >
                 {/* Colorblind overlay */}
                 {colorblindMode !== 'none' && getColorblindOverlay && (() => {
-                  const colorIndex = getGroup(slab.groups, cell.groupId)?.color || 0;
-                  const overlay = getColorblindOverlay(colorIndex);
+                  const originalColorIndex = getGroup(slab.groups, cell.groupId)?.color || 0;
+                  const mappedColorIndex = mapColorIndex(originalColorIndex, colors);
+                  const overlay = getColorblindOverlay(mappedColorIndex);
                   if (!overlay) return null;
                   
                   return (
                     <div 
                       className="absolute inset-0 flex items-center justify-center text-sm font-normal pointer-events-none"
                       style={{
-                        color: colorIndex === 0 ? '#000' : '#fff',
-                        textShadow: colorIndex === 0 ? '1px 1px 2px rgba(255,255,255,0.8)' : '1px 1px 2px rgba(0,0,0,0.8)',
+                        color: mappedColorIndex === 0 ? '#000' : '#fff',
+                        textShadow: mappedColorIndex === 0 ? '1px 1px 2px rgba(255,255,255,0.8)' : '1px 1px 2px rgba(0,0,0,0.8)',
                         zIndex: 2
                       }}
                     >

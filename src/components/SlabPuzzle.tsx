@@ -439,7 +439,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
             />
             {colorblindMode !== 'none' && (
               <span className="text-xs font-mono">
-                {colorblindMode === 'icon' ? '●≈▲' : colorblindMode === 'number' ? '123' : 'ROY'}
+                {colorblindMode === 'icon' ? '●≈▲' : colorblindMode === 'number' ? '123' : 'abc'}
               </span>
             )}
           </button>

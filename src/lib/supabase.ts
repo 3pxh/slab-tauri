@@ -20,6 +20,7 @@ export interface Puzzle {
   updated_at: string
   rule_description?: string
   difficulty?: number
+  colors?: string[]
 }
 
 // Interface for the get_puzzle function response

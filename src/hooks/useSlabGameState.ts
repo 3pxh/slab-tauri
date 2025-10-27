@@ -119,7 +119,7 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
   // Colorblind mode definitions
   const COLORBLIND_ICONS = ['●', '≈', '▲', '■', '♥', '⬡']; // circle, squiggles, triangle, square, heart, hexagon
   const COLORBLIND_NUMBERS = ['1', '2', '3', '4', '5', '6'];
-  const COLORBLIND_LETTERS = ['R', 'O', 'Y', 'G', 'B', 'P']; // Red, Orange, Yellow, Green, Blue, Purple
+  const COLORBLIND_LETTERS = ['a', 'b', 'c', 'd', 'e', 'f'];
 
   // Reset all state when puzzle changes
   useEffect(() => {
@@ -329,8 +329,9 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
   }, []);
 
   const getCurrentColors = useCallback((): string[] => {
-    return COLORS;
-  }, []);
+    // Use puzzle colors if available, otherwise fall back to default COLORS
+    return puzzle.colors && puzzle.colors.length > 0 ? puzzle.colors : COLORS;
+  }, [puzzle.colors]);
 
   const getColorblindOverlay = useCallback((colorIndex: number): string | null => {
     if (colorIndex === 0) return null; // Gray has no overlay

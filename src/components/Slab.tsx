@@ -28,6 +28,11 @@ export const COLORS = [
   '#8e24aa', // purple 600
 ];
 
+// Helper function to map color index to available colors using modulo
+export const mapColorIndex = (originalIndex: number, availableColors: string[]): number => {
+  return ((originalIndex % availableColors.length) + availableColors.length) % availableColors.length;
+};
+
 // Helper function to get group data
 export const getGroup = (groups: Record<number, Group>, groupId: number): Group | undefined => {
   return groups[groupId];
@@ -261,26 +266,27 @@ const Slab: React.FC<SlabProps> = ({
               key={`${rowIndex}-${colIndex}`}
               className="relative aspect-square w-full h-full flex items-center justify-center text-xs font-mono select-none"
               style={{
-                backgroundColor: colors[getGroup(slab.groups, cell.groupId)?.color || 0],
+                backgroundColor: colors[mapColorIndex(getGroup(slab.groups, cell.groupId)?.color || 0, colors)],
                 color: (getGroup(slab.groups, cell.groupId)?.color || 0) === 0 ? '#000' : '#fff',
                 ...getBorderStyles(rowIndex, colIndex, slab)
               }}
             >
               {/* Colorblind overlay */}
               {colorblindMode !== 'none' && getColorblindOverlay && (() => {
-                const colorIndex = getGroup(slab.groups, cell.groupId)?.color || 0;
-                const overlay = getColorblindOverlay(colorIndex);
+                const originalColorIndex = getGroup(slab.groups, cell.groupId)?.color || 0;
+                const mappedColorIndex = mapColorIndex(originalColorIndex, colors);
+                const overlay = getColorblindOverlay(mappedColorIndex);
                 if (!overlay) return null;
                 
-                const overlaySize = size === 'small' ? 'text-sm' : size === 'medium' ? 'text-base' : 'text-lg';
                 const overlayWeight = colorblindMode === 'letter' ? 'font-bold' : 'font-normal';
                 
                 return (
                   <div 
-                    className={`absolute inset-0 flex items-center justify-center ${overlaySize} ${overlayWeight} pointer-events-none`}
+                    className={`absolute inset-0 flex items-center justify-center ${overlayWeight} pointer-events-none`}
                     style={{
-                      color: colorIndex === 0 ? '#000' : '#fff',
-                      textShadow: colorIndex === 0 ? '1px 1px 2px rgba(255,255,255,0.8)' : '1px 1px 2px rgba(0,0,0,0.8)',
+                      fontSize: size === 'small' ? '8px' : size === 'medium' ? '16px' : '18px',
+                      color: mappedColorIndex === 0 ? '#000' : '#fff',
+                      textShadow: mappedColorIndex === 0 ? '1px 1px 2px rgba(255,255,255,0.8)' : '1px 1px 2px rgba(0,0,0,0.8)',
                       zIndex: 2
                     }}
                   >
