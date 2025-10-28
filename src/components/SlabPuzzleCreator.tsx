@@ -150,7 +150,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
                 const deserializedSlab = example;
                 allExamples.push({
                   ...deserializedSlab,
-                  id: Date.now() + Math.random() + index // Ensure unique IDs
+                  id: Date.now() + Math.random() + index // Ensure unique IDs for creator interface only
                 });
               });
             }
@@ -161,7 +161,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
                 const deserializedSlab = example;
                 allExamples.push({
                   ...deserializedSlab,
-                  id: Date.now() + Math.random() + index + 1000 // Ensure unique IDs
+                  id: Date.now() + Math.random() + index + 1000 // Ensure unique IDs for creator interface only
                 });
               });
             }

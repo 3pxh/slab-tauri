@@ -437,6 +437,17 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     }
   }, [puzzle.evaluate_fn, allSlabs, getSlabKey, evaluationResults, evaluateSlab]);
 
+  // Helper function to compare slabs ignoring the id property
+  const areSlabsEqualIgnoringId = useCallback((slab1: any, slab2: any): boolean => {
+    // Create copies without id property for comparison
+    const slab1ForComparison = { ...slab1 };
+    delete slab1ForComparison.id;
+    const slab2ForComparison = { ...slab2 };
+    delete slab2ForComparison.id;
+    
+    return areSlabsEqual(slab1ForComparison, slab2ForComparison);
+  }, []);
+
   // Get hidden examples that are not already in the current slabs list
   const getFilteredHiddenExamples = useCallback((): SlabData[] => {
     if (!puzzle.hidden_examples || puzzle.hidden_examples.length === 0) {
@@ -445,14 +456,25 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
 
     const hiddenSlabs = puzzle.hidden_examples;
     
-    // Filter out hidden examples that are already in allSlabs
+    // Get all slabs that have been guessed (from current state + saved progress)
+    const allGuessedSlabs = [...allSlabs];
+    if (progress && progress.custom_data && progress.custom_data.savedSlabs) {
+      // Add saved slabs that aren't already in allSlabs to avoid duplicates
+      progress.custom_data.savedSlabs.forEach(savedSlab => {
+        if (!allGuessedSlabs.some(existingSlab => areSlabsEqualIgnoringId(savedSlab, existingSlab))) {
+          allGuessedSlabs.push(savedSlab);
+        }
+      });
+    }
+    
+    // Filter out hidden examples that are already guessed
     const filteredHidden = hiddenSlabs.filter(hiddenSlab => 
-      !allSlabs.some(existingSlab => areSlabsEqual(hiddenSlab, existingSlab))
+      !allGuessedSlabs.some(existingSlab => areSlabsEqualIgnoringId(hiddenSlab, existingSlab))
     );
 
     // Return the first 5 filtered hidden examples
     return filteredHidden.slice(0, 5);
-  }, [puzzle.hidden_examples, allSlabs]);
+  }, [puzzle.hidden_examples, allSlabs, progress, areSlabsEqualIgnoringId]);
 
   // Get slabs to display in the guess overlay
   const getSlabsForOverlay = useCallback((): SlabData[] => {
