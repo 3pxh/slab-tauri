@@ -548,16 +548,16 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                         <div 
                           className="absolute"
                           style={{
-                            top: '-4px',
-                            right: '-4px',
+                            top: '-8px',
+                            right: '-8px',
                             color: '#000000',
                             filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
                           }}
                         >
                           {evaluationResult ? (
-                            <FiStar size={12} className="fill-yellow-400 text-yellow-500" />
+                            <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
                           ) : (
-                            <FiX size={12} className="text-red-500" />
+                            <FiX size={16} className="text-red-500" />
                           )}
                         </div>
                       )}
@@ -661,16 +661,16 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                         <div 
                           className="absolute"
                           style={{
-                            top: '-4px',
-                            right: '-4px',
+                            top: '-8px',
+                            right: '-8px',
                             color: '#000000',
                             filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
                           }}
                         >
                           {evaluationResult ? (
-                            <FiStar size={12} className="fill-yellow-400 text-yellow-500" />
+                          <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
                           ) : (
-                            <FiX size={12} className="text-red-500" />
+                          <FiX size={16} className="text-red-500" />
                           )}
                         </div>
                         )}

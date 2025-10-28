@@ -3,7 +3,7 @@ import { FiArrowRight, FiArrowLeft, FiRefreshCw, FiStar, FiX } from 'react-icons
 import { FaLightbulb } from 'react-icons/fa6';
 import AppHeader from './AppHeader';
 import { analytics } from '../utils/analytics';
-import SlabComponent, { SlabData, createRandomSlab, createSlab, COLORS } from './Slab';
+import SlabComponent, { SlabData, createRandomSlab, COLORS } from './Slab';
 import SlabMaker from './SlabMaker';
 import { getPuzzle, getAllDates, Puzzle } from '../lib/supabase';
 import { executeCodeSafely } from '../utils/sandbox';
@@ -20,41 +20,7 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
   const [isLoadingPuzzle, setIsLoadingPuzzle] = React.useState(false);
   const [evaluationResults, setEvaluationResults] = React.useState<Map<string, boolean>>(new Map());
   
-  // Create smiley face slab
-  const smileyFaceSlab = React.useMemo(() => {
-    const slab = createSlab();
-    
-    // Set all cells to yellow (color index 1)
-    for (let r = 0; r < 6; r++) {
-      for (let c = 0; c < 6; c++) {
-        const groupId = 0;
-        slab.cells[r][c] = { groupId };
-        slab.groups[groupId] = { id: groupId, color: 3 }; // Yellow
-      }
-    }
-    
-    // Create left eye (blue, color index 2)
-    const leftEyeGroupId = 100;
-    slab.cells[1][1] = { groupId: leftEyeGroupId };
-    slab.groups[leftEyeGroupId] = { id: leftEyeGroupId, color: 5 }; // Blue
-    
-    // Create right eye (blue, color index 2)
-    const rightEyeGroupId = 101;
-    slab.cells[1][4] = { groupId: rightEyeGroupId };
-    slab.groups[rightEyeGroupId] = { id: rightEyeGroupId, color: 5 }; // Blue
-    
-    // Create mouth (blue, color index 2)
-    const mouthGroupId = 102;
-    slab.cells[4][1] = { groupId: mouthGroupId };
-    slab.cells[4][2] = { groupId: mouthGroupId };
-    slab.cells[4][3] = { groupId: mouthGroupId };
-    slab.cells[4][4] = { groupId: mouthGroupId };
-    slab.cells[3][1] = { groupId: mouthGroupId };
-    slab.cells[3][4] = { groupId: mouthGroupId };
-    slab.groups[mouthGroupId] = { id: mouthGroupId, color: 5 }; // Blue
-    
-    return slab;
-  }, []);
+  // (smiley face slab removed)
 
   // Track tutorial start
   React.useEffect(() => {
@@ -138,7 +104,7 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
   const steps = [
     {
       title: "Welcome to Slab!",
-      content: "Slab is a fiendishly difficult daily puzzle game meant to tickle the sharpest minds. You play as a scientist trying to understand the world of slabs. Every day offers a different perspective and a new mystery to solve.",
+      content: "Slab is a daily puzzle game where each challenge offers a different perspective and a new mystery to solve.",
       showSlab: false
     },
     {
@@ -148,13 +114,13 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
     },
     {
       title: "How to make slabs",
-      content: "Drag, double-tap, and add colors.",
+      content: "Try to drag, double-tap, and add colors.",
       showSlab: false,
       showSlabMaker: true
     },
     {
-      title: "The Puzzle",
-      content: "There's a secret rule that decides which slabs pass. The rule might be anything, like 'it has to have a red cell' or 'no groups can be bigger than 4 cells' or 'a blue group must touch a yellow group', and every day's puzzle is different. You start with two examples, one that follows the rule and one that doesn't. Your job isn't to make perfect slabs, but to experiment: build different slabs to learn what the rule could be.",
+      title: "The Puzzles",
+      content: "Each puzzle has a secret rule that sorts slabs into stars and X's. The rule might be anything, like 'it has to have a red cell' or 'no groups can be bigger than 4 cells' or 'a blue group must touch a yellow group', and every day has a different rule. You start with a couple examples and need to make more slabs to learn about the rule by getting them judged. Your job isn't to make perfect slabs, but to experiment: build different slabs to learn what the rule could be.",
       showSlab: false,
       showExamples: true
     },
@@ -167,8 +133,7 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
     {
       title: "Have fun!",
       content: "Are you ready for the challenge?",
-      showSlab: false,
-      showSmileyFace: true
+      showSlab: false
     }
   ];
 
@@ -317,19 +282,7 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
                   </div>
                 )}
 
-                {/* Smiley Face Display (only for "Have fun!" step) */}
-                {step.showSmileyFace && (
-                  <div className="flex flex-col items-center gap-4 pb-8">
-                    <SlabComponent 
-                      slab={smileyFaceSlab} 
-                      size="large"
-                      className="shadow-lg"
-                    />
-                    <div className="text-sm text-gray-600 text-center">
-                      😊
-                    </div>
-                  </div>
-                )}
+                {/* (smiley face display removed) */}
               </div>
             ))}
           </div>
