@@ -6,6 +6,12 @@ import { analytics } from '../utils/analytics';
 import { signupForLaunch, getPuzzle, Puzzle } from '../lib/supabase';
 import DifficultyIndicator from './DifficultyIndicator';
 import { useNavigation } from '../utils/navigation';
+import {
+  initialize as iapInitialize,
+  getProducts as iapGetProducts,
+  purchase as iapPurchase,
+  restorePurchases as iapRestorePurchases,
+} from '@choochmeque/tauri-plugin-iap-api';
 
 interface HomeProps {}
 
@@ -74,6 +80,18 @@ const Home: React.FC<HomeProps> = () => {
   const [signupMessage, setSignupMessage] = React.useState('');
   const [isSigningUp, setIsSigningUp] = React.useState(false);
   const [hasSignedUp, setHasSignedUp] = React.useState(false);
+  const [isTauriEnv, setIsTauriEnv] = React.useState(false);
+  const [iapBusy, setIapBusy] = React.useState(false);
+  const [iapMessage, setIapMessage] = React.useState<string | null>(null);
+
+  // Detect Tauri and initialize IAP
+  React.useEffect(() => {
+    const isTauri = typeof window !== 'undefined' && typeof (window as any).__TAURI__ !== 'undefined';
+    setIsTauriEnv(isTauri);
+    if (isTauri) {
+      iapInitialize().catch(() => {});
+    }
+  }, []);
 
   const handleLinkAccount = async () => {
     if (!linkEmail.trim()) {
@@ -287,6 +305,78 @@ const Home: React.FC<HomeProps> = () => {
           )}
         </div>
       </div>
+
+      {/* IAP Dev Panel (visible only in Tauri) */}
+      {isTauriEnv && (
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="text-sm font-semibold text-blue-800 mb-2">In-App Purchases (dev)</div>
+          <div className="flex gap-2 mb-2">
+            <button
+              disabled={iapBusy}
+              onClick={async () => {
+                setIapBusy(true);
+                setIapMessage(null);
+                try {
+                  const res = await iapGetProducts(['premium'], 'inapp');
+                  const products = Array.isArray(res) ? res : (res as any)?.products ?? [];
+                  console.log('IAP products', products);
+                  setIapMessage(`Fetched ${products.length} product(s)`);
+                } catch (e: any) {
+                  setIapMessage(e?.message || 'Failed to fetch products');
+                } finally {
+                  setIapBusy(false);
+                }
+              }}
+              className="px-3 py-2 text-xs bg-blue-600 text-white rounded disabled:opacity-50"
+            >
+              Fetch Products
+            </button>
+            <button
+              disabled={iapBusy}
+              onClick={async () => {
+                setIapBusy(true);
+                setIapMessage(null);
+                try {
+                  const res = await iapPurchase('premium', 'inapp');
+                  console.log('IAP purchase result', res);
+                  setIapMessage(res ? 'Purchase attempted' : 'Purchase not started');
+                } catch (e: any) {
+                  setIapMessage(e?.message || 'Failed to purchase');
+                } finally {
+                  setIapBusy(false);
+                }
+              }}
+              className="px-3 py-2 text-xs bg-green-600 text-white rounded disabled:opacity-50"
+            >
+              Purchase "premium"
+            </button>
+            <button
+              disabled={iapBusy}
+              onClick={async () => {
+                setIapBusy(true);
+                setIapMessage(null);
+                try {
+                  const res = await iapRestorePurchases('inapp');
+                  const purchases = Array.isArray(res) ? res : (res as any)?.purchases ?? [];
+                  console.log('IAP restore purchases', purchases);
+                  setIapMessage(`Restored ${purchases.length} purchase(s)`);
+                } catch (e: any) {
+                  setIapMessage(e?.message || 'Failed to restore');
+                } finally {
+                  setIapBusy(false);
+                }
+              }}
+              className="px-3 py-2 text-xs bg-gray-700 text-white rounded disabled:opacity-50"
+            >
+              Restore
+            </button>
+          </div>
+          {iapMessage && (
+            <div className="text-xs text-blue-800">{iapMessage}</div>
+          )}
+          <div className="text-[10px] text-blue-700 mt-2">Check console for detailed IAP logs.</div>
+        </div>
+      )}
 
       {/* Save Progress Link - only show for anonymous users */}
       {isAuthenticated && isAnonymous && (
