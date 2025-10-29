@@ -380,11 +380,13 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
         setDragStartCell({ row, col });
         preDragSnapshotRef.current = cloneSlab(slab);
         lastDragCellRef.current = { row, col };
-        // Select the cell we're dragging from
-        setSelectedCell({ row, col });
-        // If there's an active color, apply it to the group we're dragging from
+        
         if (activeColor !== null) {
+          // When there's an active color, apply it without selecting
           applyColorToGroup(activeColor, { row, col });
+        } else {
+          // When no active color, select the cell we're dragging from
+          setSelectedCell({ row, col });
         }
       }
       
@@ -513,15 +515,17 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     },
     onClick: ({ args }) => {
       const [row, col] = args as [number, number];
-      // Single tap - select/deselect cell
-      if (selectedCell && selectedCell.row === row && selectedCell.col === col) {
-        // Tapping the selected cell again deselects it
-        setSelectedCell(null);
+      
+      if (activeColor !== null) {
+        // When there's an active color, just apply it without selecting
+        applyColorToGroup(activeColor, { row, col });
       } else {
-        setSelectedCell({ row, col });
-        // If there's an active color, apply it to the newly selected group
-        if (activeColor !== null) {
-          applyColorToGroup(activeColor, { row, col });
+        // When no active color, normal selection behavior
+        if (selectedCell && selectedCell.row === row && selectedCell.col === col) {
+          // Tapping the selected cell again deselects it
+          setSelectedCell(null);
+        } else {
+          setSelectedCell({ row, col });
         }
       }
     },
@@ -694,9 +698,10 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     } else {
       // Set this color as active
       setActiveColor(colorIndex);
-      // If a group is selected, apply the color immediately
+      // If a group is selected, apply the color immediately then clear selection
       if (selectedCell !== null) {
         applyColorToGroup(colorIndex);
+        setSelectedCell(null);
       }
     }
   };
