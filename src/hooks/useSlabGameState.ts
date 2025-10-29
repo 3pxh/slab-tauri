@@ -734,7 +734,6 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
 
   const handleWinNext = useCallback(async () => {
     // This is called when they click next after finishing all guesses (win or lose)
-    const currentSlab = slabsToGuess[currentGuessIndex - 1]; // Get the last slab since currentIndex is now >= totalSlabs
     const allCorrect = guessCorrectCount === slabsToGuess.length;
     
     // Close the guessing mode immediately for responsive UI
@@ -758,9 +757,9 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
         // Track progress: increment attempts
         await incrementAttempts(puzzle.id);
 
-        // Save state
+        // Save state (slabs are already in allSlabs from handleProceedToNext)
         const stateToSave = {
-          savedSlabs: [currentSlab, ...allSlabs],
+          savedSlabs: allSlabs,
           remainingGuesses: Math.max(0, remainingGuesses - 1),
           hasWon: allCorrect,
           isInIndividualGuessMode: false,
