@@ -49,6 +49,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   const [firstGroup, setFirstGroup] = React.useState<number | null>(null);
   const [dragStartCell, setDragStartCell] = React.useState<{row: number, col: number} | null>(null);
   const [selectedCell, setSelectedCell] = React.useState<{row: number, col: number} | null>(null);
+  const [activeColor, setActiveColor] = React.useState<number | null>(null);
 
   // Keep a snapshot from drag start to push at drag end
   const preDragSnapshotRef = React.useRef<SlabData | null>(null);
@@ -381,6 +382,10 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
         lastDragCellRef.current = { row, col };
         // Select the cell we're dragging from
         setSelectedCell({ row, col });
+        // If there's an active color, apply it to the group we're dragging from
+        if (activeColor !== null) {
+          applyColorToGroup(activeColor, { row, col });
+        }
       }
       
       // Handle drag movement - merge cells as we drag over them
@@ -514,6 +519,10 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
         setSelectedCell(null);
       } else {
         setSelectedCell({ row, col });
+        // If there's an active color, apply it to the newly selected group
+        if (activeColor !== null) {
+          applyColorToGroup(activeColor, { row, col });
+        }
       }
     },
     onDoubleClick: ({ event, args }) => {
@@ -650,8 +659,9 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   };
 
   // Apply color to selected group
-  const applyColorToGroup = (colorIndex: number) => {
-    if (selectedCell === null) return;
+  const applyColorToGroup = (colorIndex: number, cellCoords?: {row: number, col: number}) => {
+    const targetCell = cellCoords || selectedCell;
+    if (targetCell === null) return;
     // Persist snapshot before coloring
     pushHistory();
     
@@ -659,8 +669,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
       const newSlab = { ...prevSlab };
       const newGroups = { ...prevSlab.groups };
       
-      // Get the group ID from the selected cell
-      const selectedGroupId = prevSlab.cells[selectedCell.row][selectedCell.col].groupId;
+      // Get the group ID from the target cell
+      const selectedGroupId = prevSlab.cells[targetCell.row][targetCell.col].groupId;
       
       // Update the group's color
       const group = newGroups[selectedGroupId];
@@ -674,6 +684,21 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
       newSlab.groups = newGroups;
       return newSlab;
     });
+  };
+
+  // Handle color swatch click - toggle active color
+  const handleColorSwatchClick = (colorIndex: number) => {
+    if (activeColor === colorIndex) {
+      // If clicking the active color, deactivate it
+      setActiveColor(null);
+    } else {
+      // Set this color as active
+      setActiveColor(colorIndex);
+      // If a group is selected, apply the color immediately
+      if (selectedCell !== null) {
+        applyColorToGroup(colorIndex);
+      }
+    }
   };
 
 
@@ -769,18 +794,37 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
           {colors.map((color, index) => (
             <button
               key={index}
-              className={`flex-1 rounded cursor-pointer transition-all hover:scale-110 ${
-                selectedCell !== null ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              }`}
+              className="flex-1 rounded cursor-pointer transition-all hover:scale-110 relative"
               style={{ 
                 backgroundColor: color,
                 aspectRatio: '1',
                 maxWidth: '48px',
                 maxHeight: '48px'
               }}
-              onClick={() => applyColorToGroup(index)}
-              title={`Color ${index}`}
-            />
+              onClick={() => handleColorSwatchClick(index)}
+              title={
+                activeColor === index 
+                  ? `Active color ${index} - click to deactivate` 
+                  : `Color ${index} - click to activate`
+              }
+            >
+              {activeColor === index && (
+                <div 
+                  className="absolute inset-0 flex items-center justify-center"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  <div 
+                    className="rounded-full"
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      backgroundColor: 'white',
+                      opacity: 0.9
+                    }}
+                  />
+                </div>
+              )}
+            </button>
           ))}
           
           {/* Reset button */}
