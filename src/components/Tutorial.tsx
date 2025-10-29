@@ -1,6 +1,5 @@
 import React from 'react';
 import { FiArrowRight, FiArrowLeft, FiRefreshCw, FiStar, FiX } from 'react-icons/fi';
-import { FaLightbulb } from 'react-icons/fa6';
 import AppHeader from './AppHeader';
 import { analytics } from '../utils/analytics';
 import SlabComponent, { SlabData, createRandomSlab, COLORS } from './Slab';
@@ -271,8 +270,8 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
                       disabled
                       title="Guess button (disabled in tutorial)"
                     >
-                      <FaLightbulb size={32} />
-                      <span className="text-sm font-semibold mt-1">
+                      <span className="text-sm font-medium">Guess</span>
+                      <span className="text-xs">
                         3/3
                       </span>
                     </button>
