@@ -86,17 +86,15 @@ const VictoryOverlay: React.FC<VictoryOverlayProps> = ({
             </div>
           )}
           
-          <button
-            onClick={onNextPuzzle}
-            className={`w-full font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 ${
-              hasNextPuzzle 
-                ? 'bg-green-500 hover:bg-green-600 text-white' 
-                : 'bg-gray-500 hover:bg-gray-600 text-white'
-            }`}
-          >
-            <FiArrowRight size={20} />
-            {hasNextPuzzle ? 'Next Puzzle' : 'Browse Archive'}
-          </button>
+          {hasNextPuzzle && (
+            <button
+              onClick={onNextPuzzle}
+              className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+            >
+              <FiArrowRight size={20} />
+              Next Puzzle
+            </button>
+          )}
           
           <button
             onClick={onGoToArchive}
