@@ -17,6 +17,7 @@ import ScrollButton from './ScrollButton';
 import VictoryOverlay from './VictoryOverlay';
 import { useNavigation } from '../utils/navigation';
 import { getAllDates } from '../lib/supabase';
+import { puzzleProgressService } from '../lib/puzzleProgress';
 
 
 type SlabPuzzleProps = {
@@ -76,16 +77,17 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     getColorblindOverlay,
   } = useSlabGameState(puzzle);
 
-  // Show victory overlay when player wins
-  React.useEffect(() => {
-    if (hasWon && !isInIndividualGuessMode) {
-      setShowVictoryOverlay(true);
-      // Check if there's a next puzzle available
-      checkNextPuzzleAvailability();
+  const fetchSolvedPuzzlesCount = React.useCallback(async () => {
+    try {
+      const count = await puzzleProgressService.getSolvedPuzzlesCount();
+      setSolvedPuzzlesCount(count);
+    } catch (error) {
+      console.error('Failed to fetch solved puzzles count:', error);
+      // Don't set count on error, leave it undefined
     }
-  }, [hasWon, isInIndividualGuessMode]);
+  }, []);
 
-  const checkNextPuzzleAvailability = async () => {
+  const checkNextPuzzleAvailability = React.useCallback(async () => {
     try {
       const response = await getAllDates();
       
@@ -116,7 +118,18 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       console.error('Error checking next puzzle availability:', error);
       setHasNextPuzzle(false);
     }
-  };
+  }, [puzzle.publish_date]);
+
+  // Show victory overlay when player wins
+  React.useEffect(() => {
+    if (hasWon && !isInIndividualGuessMode) {
+      setShowVictoryOverlay(true);
+      // Check if there's a next puzzle available
+      checkNextPuzzleAvailability();
+      // Fetch solved puzzles count
+      fetchSolvedPuzzlesCount();
+    }
+  }, [hasWon, isInIndividualGuessMode, checkNextPuzzleAvailability, fetchSolvedPuzzlesCount]);
 
   // Scroll detection for showing/hiding the scroll-to-slabs button
   React.useEffect(() => {
@@ -187,6 +200,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   // State for victory overlay
   const [showVictoryOverlay, setShowVictoryOverlay] = React.useState(false);
   const [hasNextPuzzle, setHasNextPuzzle] = React.useState(true);
+  const [solvedPuzzlesCount, setSolvedPuzzlesCount] = React.useState<number | undefined>(undefined);
 
   // Gesture handler for archived slabs (selection only, no drag)
   const bindArchivedGestures = useGesture({
@@ -720,10 +734,13 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         isOpen={showVictoryOverlay}
         onKeepPlaying={handleVictoryKeepPlaying}
         onNextPuzzle={handleVictoryNextPuzzle}
+        onGoToArchive={goToArchive}
         remainingGuesses={remainingGuesses}
         puzzleName={puzzle.name}
         ruleDescription={puzzle.rule_description || ''}
         hasNextPuzzle={hasNextPuzzle}
+        solvedPuzzlesCount={solvedPuzzlesCount}
+        slabsCount={allSlabs.length}
       />
 
       {/* Rule Description Modal */}

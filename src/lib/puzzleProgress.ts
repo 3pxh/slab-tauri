@@ -223,6 +223,29 @@ export class PuzzleProgressService {
     }
   }
 
+  async getSolvedPuzzlesCount(): Promise<number> {
+    const authState = authService.getAuthState()
+    
+    if (!authState.isAuthenticated) {
+      return 0
+    }
+
+    // Join with puzzles table to filter by George's creator_id
+    const { count, error } = await supabase
+      .from('puzzle_progress')
+      .select('*, puzzles!inner(creator_id)', { count: 'exact', head: true })
+      .eq('user_id', authState.user.id)
+      .eq('puzzles.creator_id', '3996a43b-86dd-4bda-8807-dc3d8e76e5a7')
+      .gte('trophies', 1)
+
+    if (error) {
+      console.error('Failed to get solved puzzles count:', error)
+      return 0
+    }
+
+    return count || 0
+  }
+
   // Helper methods for common operations
   async incrementAttempts(puzzleId: string): Promise<PuzzleProgressDeserialized> {
     const existing = await this.getProgress(puzzleId)

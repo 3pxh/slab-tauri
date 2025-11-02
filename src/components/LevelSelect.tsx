@@ -1,4 +1,5 @@
 import React from 'react';
+import { FiAward } from 'react-icons/fi';
 import { getAllDatesWithDifficulty, PuzzleDate } from '../lib/supabase';
 import { isTodayUTC } from '../utils';
 import AppHeader from './AppHeader';
@@ -6,6 +7,9 @@ import DifficultyIndicator from './DifficultyIndicator';
 import Slab, { COLORS } from './Slab';
 import ScrollButton from './ScrollButton';
 import { useNavigation } from '../utils/navigation';
+import { puzzleProgressService } from '../lib/puzzleProgress';
+import { PuzzleProgress } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
 
 interface LevelSelectProps {}
 
@@ -16,7 +20,9 @@ const LevelSelect: React.FC<LevelSelectProps> = () => {
   const [isLoadingDates, setIsLoadingDates] = React.useState(true);
   const [showScrollDownButton, setShowScrollDownButton] = React.useState(false);
   const [showScrollUpButton, setShowScrollUpButton] = React.useState(false);
+  const [puzzleProgress, setPuzzleProgress] = React.useState<Map<string, PuzzleProgress>>(new Map());
   const { goToPuzzle, goHome } = useNavigation();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   // Fetch available puzzle dates with difficulty on component mount
   React.useEffect(() => {
@@ -37,6 +43,36 @@ const LevelSelect: React.FC<LevelSelectProps> = () => {
 
     fetchPuzzles();
   }, []);
+
+  // Fetch puzzle progress for all puzzles (only after auth is ready)
+  React.useEffect(() => {
+    // Wait for auth to finish loading before fetching progress
+    if (isAuthLoading) {
+      return;
+    }
+
+    const fetchProgress = async () => {
+      try {
+        const allProgress = await puzzleProgressService.getAllProgress();
+        // Create a map of puzzle_id to progress
+        const progressMap = new Map<string, PuzzleProgress>();
+        allProgress.forEach(progress => {
+          if (progress.trophies >= 1) {
+            progressMap.set(progress.puzzle_id, progress);
+          }
+        });
+        setPuzzleProgress(progressMap);
+      } catch (error) {
+        console.error('Failed to fetch puzzle progress:', error);
+        // Don't fail silently, but continue without progress data
+      }
+    };
+
+    // Only fetch if authenticated (anonymous users are also authenticated)
+    if (isAuthenticated) {
+      fetchProgress();
+    }
+  }, [isAuthenticated, isAuthLoading]);
 
   // Scroll detection for showing/hiding the scroll-to-bottom button
   React.useEffect(() => {
@@ -231,8 +267,11 @@ const LevelSelect: React.FC<LevelSelectProps> = () => {
                       </div>
                       
                       <div className="flex flex-col flex-1">
-                        <div className={`font-semibold ${isTodayPuzzle ? 'text-blue-700' : 'text-gray-900'}`}>
-                          {puzzle.name}
+                        <div className={`font-semibold flex items-center gap-2 ${isTodayPuzzle ? 'text-blue-700' : 'text-gray-900'}`}>
+                          <span>{puzzle.name}</span>
+                          {puzzleProgress.has(puzzle.id) && (
+                            <FiAward className="text-yellow-500 fill-yellow-300 flex-shrink-0" size={16} />
+                          )}
                         </div>
                         <div className={`text-sm ${isTodayPuzzle ? 'text-blue-600' : 'text-gray-600'}`}>
                           {fullDate}

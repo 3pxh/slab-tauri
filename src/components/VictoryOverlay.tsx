@@ -1,24 +1,30 @@
 import React from 'react';
-import { FiAward, FiEye, FiPlay, FiArrowRight } from 'react-icons/fi';
+import { FiAward, FiEye, FiArrowRight, FiArchive, FiX } from 'react-icons/fi';
 
 type VictoryOverlayProps = {
   isOpen: boolean;
   onKeepPlaying: () => void;
   onNextPuzzle: () => void;
+  onGoToArchive: () => void;
   remainingGuesses: number;
   puzzleName: string;
   ruleDescription: string;
   hasNextPuzzle: boolean;
+  solvedPuzzlesCount?: number;
+  slabsCount?: number;
 };
 
 const VictoryOverlay: React.FC<VictoryOverlayProps> = ({
   isOpen,
   onKeepPlaying,
   onNextPuzzle,
+  onGoToArchive,
   remainingGuesses,
   puzzleName,
   ruleDescription,
-  hasNextPuzzle
+  hasNextPuzzle,
+  solvedPuzzlesCount,
+  slabsCount
 }) => {
   const [showRule, setShowRule] = React.useState(false);
 
@@ -26,7 +32,16 @@ const VictoryOverlay: React.FC<VictoryOverlayProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in fade-in-0 zoom-in-95 duration-300">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in fade-in-0 zoom-in-95 duration-300 relative">
+        {/* Close Button */}
+        <button
+          onClick={onKeepPlaying}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200 p-1"
+          aria-label="Close"
+        >
+          <FiX size={24} />
+        </button>
+
         {/* Celebration Animation */}
         <div className="mb-6">
           <div className="flex justify-center mb-4">
@@ -39,8 +54,18 @@ const VictoryOverlay: React.FC<VictoryOverlayProps> = ({
             </div>
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Congratulations!</h1>
-          <p className="text-lg text-gray-600">You solved "{puzzleName}"!</p>
+          <p className="text-lg text-gray-600">
+            You solved {puzzleName}
+            {slabsCount !== undefined && ` with ${slabsCount} slab${slabsCount !== 1 ? 's' : ''}`}
+          </p>
         </div>
+
+        {/* Solved Puzzles Count */}
+        {solvedPuzzlesCount !== undefined && (
+          <div className="text-sm text-gray-600 bg-yellow-50 rounded-lg p-3 mb-6 border border-yellow-200">
+            <span className="font-semibold">You've solved {solvedPuzzlesCount} puzzle{solvedPuzzlesCount !== 1 ? 's' : ''}!</span>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="space-y-3 mb-6">
@@ -62,23 +87,23 @@ const VictoryOverlay: React.FC<VictoryOverlayProps> = ({
           )}
           
           <button
-            onClick={onKeepPlaying}
-            className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
-          >
-            <FiPlay size={20} />
-            Keep Playing
-          </button>
-          
-          <button
             onClick={onNextPuzzle}
             className={`w-full font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 ${
               hasNextPuzzle 
-                ? 'bg-purple-500 hover:bg-purple-600 text-white' 
+                ? 'bg-green-500 hover:bg-green-600 text-white' 
                 : 'bg-gray-500 hover:bg-gray-600 text-white'
             }`}
           >
             <FiArrowRight size={20} />
             {hasNextPuzzle ? 'Next Puzzle' : 'Browse Archive'}
+          </button>
+          
+          <button
+            onClick={onGoToArchive}
+            className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+          >
+            <FiArchive size={20} />
+            View Archive
           </button>
         </div>
 
@@ -86,7 +111,7 @@ const VictoryOverlay: React.FC<VictoryOverlayProps> = ({
         {remainingGuesses > 0 && !showRule && (
           <div className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
             You still have {remainingGuesses} guess{remainingGuesses !== 1 ? 'es' : ''} left. 
-            You can check if it's really your rule or if you got lucky by guessing more before revealing the rule.
+            Finish guessing before revealing the rule if you're feeling brave!
           </div>
         )}
       </div>
