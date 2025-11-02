@@ -795,42 +795,54 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
             <FiRotateCcw size={16} />
           </button>
           
-          {/* Color swatches */}
-          {colors.map((color, index) => (
-            <button
-              key={index}
-              className="flex-1 rounded cursor-pointer transition-all hover:scale-110 relative"
-              style={{ 
-                backgroundColor: color,
-                aspectRatio: '1',
-                maxWidth: '48px',
-                maxHeight: '48px'
-              }}
-              onClick={() => handleColorSwatchClick(index)}
-              title={
-                activeColor === index 
-                  ? `Active color ${index} - click to deactivate` 
-                  : `Color ${index} - click to activate`
+          {/* Color swatches - filter out duplicates, keeping first occurrence */}
+          {(() => {
+            const seen = new Set<string>();
+            const uniqueColorsWithIndex: Array<{color: string, originalIndex: number}> = [];
+            
+            colors.forEach((color, index) => {
+              if (!seen.has(color)) {
+                seen.add(color);
+                uniqueColorsWithIndex.push({ color, originalIndex: index });
               }
-            >
-              {activeColor === index && (
-                <div 
-                  className="absolute inset-0 flex items-center justify-center"
-                  style={{ pointerEvents: 'none' }}
-                >
+            });
+            
+            return uniqueColorsWithIndex.map(({ color, originalIndex }) => (
+              <button
+                key={originalIndex}
+                className="flex-1 rounded cursor-pointer transition-all hover:scale-110 relative"
+                style={{ 
+                  backgroundColor: color,
+                  aspectRatio: '1',
+                  maxWidth: '48px',
+                  maxHeight: '48px'
+                }}
+                onClick={() => handleColorSwatchClick(originalIndex)}
+                title={
+                  activeColor === originalIndex 
+                    ? `Active color ${originalIndex} - click to deactivate` 
+                    : `Color ${originalIndex} - click to activate`
+                }
+              >
+                {activeColor === originalIndex && (
                   <div 
-                    className="rounded-full"
-                    style={{
-                      width: '16px',
-                      height: '16px',
-                      backgroundColor: 'white',
-                      opacity: 0.9
-                    }}
-                  />
-                </div>
-              )}
-            </button>
-          ))}
+                    className="absolute inset-0 flex items-center justify-center"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    <div 
+                      className="rounded-full"
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        backgroundColor: 'white',
+                        opacity: 0.9
+                      }}
+                    />
+                  </div>
+                )}
+              </button>
+            ));
+          })()}
           
           {/* Reset button */}
           <button
