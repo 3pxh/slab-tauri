@@ -1,11 +1,12 @@
 import './index.css';
-import { createBrowserRouter, useLoaderData } from 'react-router';
+import { createBrowserRouter, useLoaderData, Outlet } from 'react-router';
 import Home from './components/Home';
 import LevelSelect from './components/LevelSelect';
 import SlabPuzzle from './components/SlabPuzzle';
 import SlabPuzzleCreator from './components/SlabPuzzleCreator';
 import PuzzlesList from './components/PuzzlesList';
 import Tutorial from './components/Tutorial';
+import { DeepLinkHandler } from './components/DeepLinkHandler';
 import { getPuzzle, getPuzzleByUuid, getAllDates } from './lib/supabase';
 import { createSlab } from './components/Slab';
 import { Puzzle } from './lib/supabase';
@@ -171,46 +172,59 @@ const ErrorBoundary = ({ error }: { error: Error }) => (
   </div>
 );
 
+// Root layout component that includes deep link handler
+const RootLayout = () => (
+  <>
+    <DeepLinkHandler />
+    <Outlet />
+  </>
+);
+
 // Router configuration
 const router = createBrowserRouter([
   {
-    path: '/',
-    element: <Home />,
-    errorElement: <ErrorBoundary error={new Error('Failed to load home page')} />
-  },
-  {
-    path: '/archive',
-    element: <LevelSelect />,
-    errorElement: <ErrorBoundary error={new Error('Failed to load archive')} />
-  },
-  {
-    path: '/puzzle/:date',
-    element: <PuzzleRoute />,
-    loader: loadPuzzle,
-    errorElement: <ErrorBoundary error={new Error('Failed to load puzzle')} />
-  },
-  {
-    path: '/puzzle/shared/:uuid',
-    element: <PuzzleRoute />,
-    loader: loadSharedPuzzle,
-    errorElement: <ErrorBoundary error={new Error('Failed to load shared puzzle')} />
-  },
-  {
-    path: '/create',
-    element: <CreateRoute />,
-    loader: () => ({ puzzle: createDummyPuzzle() }),
-    errorElement: <ErrorBoundary error={new Error('Failed to load puzzle creator')} />
-  },
-  {
-    path: '/puzzles',
-    element: <PuzzlesListRoute />,
-    errorElement: <ErrorBoundary error={new Error('Failed to load puzzles list')} />
-  },
-  {
-    path: '/tutorial',
-    element: <TutorialRoute />,
-    loader: loadFirstPuzzle,
-    errorElement: <ErrorBoundary error={new Error('Failed to load tutorial')} />
+    element: <RootLayout />,
+    children: [
+      {
+        path: '/',
+        element: <Home />,
+        errorElement: <ErrorBoundary error={new Error('Failed to load home page')} />
+      },
+      {
+        path: '/archive',
+        element: <LevelSelect />,
+        errorElement: <ErrorBoundary error={new Error('Failed to load archive')} />
+      },
+      {
+        path: '/puzzle/:date',
+        element: <PuzzleRoute />,
+        loader: loadPuzzle,
+        errorElement: <ErrorBoundary error={new Error('Failed to load puzzle')} />
+      },
+      {
+        path: '/puzzle/shared/:uuid',
+        element: <PuzzleRoute />,
+        loader: loadSharedPuzzle,
+        errorElement: <ErrorBoundary error={new Error('Failed to load shared puzzle')} />
+      },
+      {
+        path: '/create',
+        element: <CreateRoute />,
+        loader: () => ({ puzzle: createDummyPuzzle() }),
+        errorElement: <ErrorBoundary error={new Error('Failed to load puzzle creator')} />
+      },
+      {
+        path: '/puzzles',
+        element: <PuzzlesListRoute />,
+        errorElement: <ErrorBoundary error={new Error('Failed to load puzzles list')} />
+      },
+      {
+        path: '/tutorial',
+        element: <TutorialRoute />,
+        loader: loadFirstPuzzle,
+        errorElement: <ErrorBoundary error={new Error('Failed to load tutorial')} />
+      }
+    ]
   }
 ]);
 

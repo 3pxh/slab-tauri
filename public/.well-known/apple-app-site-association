@@ -1,0 +1,19 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appID": "4H25332LKW.com.hoqqanen.slab",
+        "paths": [
+          "*",
+          "/",
+          "/archive",
+          "/puzzle/*",
+          "/puzzle/shared/*",
+          "/create",
+          "/puzzles",
+          "/tutorial"
+        ]
+      }
+    ]
+  }
+}
