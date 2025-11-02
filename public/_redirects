@@ -1,2 +1,2 @@
-/.well-known/*    /.well-known/:splat    200
+/.well-known/*    200
 /*    /index.html   200
