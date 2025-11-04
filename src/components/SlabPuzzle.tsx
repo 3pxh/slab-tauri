@@ -56,6 +56,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     guessIncorrectCount,
     slabsToGuess,
     progress,
+    isLoading,
     
     // Actions
     handleSlabCreate,
@@ -120,16 +121,53 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     }
   }, [puzzle.publish_date]);
 
-  // Show victory overlay when player wins
+  // Track previous hasWon value to detect transitions (false -> true = new win)
+  const prevHasWonRef = React.useRef(false);
+  const isInitialLoadRef = React.useRef(true);
+  
+  // Reset victory overlay and previous hasWon when puzzle changes
   React.useEffect(() => {
-    if (hasWon && !isInIndividualGuessMode) {
+    setShowVictoryOverlay(false);
+    prevHasWonRef.current = false;
+    isInitialLoadRef.current = true; // Mark as initial load to ignore first transition
+  }, [puzzle.id]);
+
+  // Sync prevHasWonRef with hasWon after initial load completes (when progress finishes loading)
+  React.useEffect(() => {
+    if (!isLoading && isInitialLoadRef.current) {
+      // After progress loads, sync the ref with current hasWon value
+      // This ensures restored hasWon=true doesn't trigger overlay
+      prevHasWonRef.current = hasWon;
+      isInitialLoadRef.current = false;
+    }
+  }, [isLoading, hasWon]);
+
+  // Show/hide victory overlay based on win state transitions
+  React.useEffect(() => {
+    // Skip during initial load (prevents showing overlay from restored saved state)
+    if (isInitialLoadRef.current) {
+      return;
+    }
+    
+    // Only show overlay if hasWon transitions from false to true (new win, not restored state)
+    const isNewWin = hasWon && !prevHasWonRef.current;
+    
+    if (isNewWin && !isInIndividualGuessMode) {
       setShowVictoryOverlay(true);
       // Check if there's a next puzzle available
       checkNextPuzzleAvailability();
       // Fetch solved puzzles count
       fetchSolvedPuzzlesCount();
+    } else if (!hasWon) {
+      // Hide overlay when hasWon becomes false
+      setShowVictoryOverlay(false);
     }
-  }, [hasWon, isInIndividualGuessMode, checkNextPuzzleAvailability, fetchSolvedPuzzlesCount]);
+    
+    // Update previous value (but not during initial load)
+    if (!isInitialLoadRef.current) {
+      prevHasWonRef.current = hasWon;
+    }
+  }, [hasWon, isInIndividualGuessMode, isLoading, checkNextPuzzleAvailability, fetchSolvedPuzzlesCount]);
 
   // Scroll detection for showing/hiding the scroll-to-slabs button
   React.useEffect(() => {
