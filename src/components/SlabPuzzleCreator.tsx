@@ -1,6 +1,6 @@
 import React from 'react';
 import { FiArrowLeft, FiArrowUp, FiArrowDown, FiStar, FiX } from 'react-icons/fi';
-import { Puzzle, getAllDates, supabase, getUserSlabs, getAllVisibleSlabs, createSlab, Slab as SlabRecord } from '../lib/supabase';
+import { Puzzle, getAllDates, supabase, getAllVisibleSlabs, createSlab, Slab as SlabRecord } from '../lib/supabase';
 import SlabMaker from './SlabMaker';
 import SlabComponent, { SlabData, areSlabsEqual, serializeSlab, deserializeSlab } from './Slab';
 import { deepCopy, formatDateUTC } from '../utils';
@@ -78,10 +78,13 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   const [isCreating, setIsCreating] = React.useState(false);
   const [shownExamples, setShownExamples] = React.useState<boolean[]>([]);
   const [hiddenExamples, setHiddenExamples] = React.useState<boolean[]>([]);
-  const [evaluationResults, setEvaluationResults] = React.useState<boolean[]>([]);
-  const [isRunning, setIsRunning] = React.useState(false);
+  // Store evaluation results keyed by serialized slab data for stable caching
+  const [evaluationResults, setEvaluationResults] = React.useState<Map<string, boolean>>(new Map());
   const [displayDate, setDisplayDate] = React.useState(puzzle.publish_date);
   const [isLoadingHistory, setIsLoadingHistory] = React.useState(false);
+  const [slabsLoaded, setSlabsLoaded] = React.useState(false);
+  const [copyButtonText, setCopyButtonText] = React.useState('Copy Prompt and Load Slabs');
+  const copyButtonTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   
   // Authentication state
   const [email, setEmail] = React.useState('');
@@ -90,12 +93,17 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   const [isAuthLoading, setIsAuthLoading] = React.useState(false);
   const [authMessage, setAuthMessage] = React.useState('');
   
-  // Slab management state (for duplicate checking)
-  const [savedSlabs, setSavedSlabs] = React.useState<SlabRecord[]>([]);
   
   // Rule guide modal state
   const [showRuleGuideModal, setShowRuleGuideModal] = React.useState(false);
   const [ruleGuideText, setRuleGuideText] = React.useState('');
+
+  // Helper function to get a stable cache key from slab data
+  const getSlabCacheKey = (slab: SlabData): string => {
+    const { id, ...slabData } = slab as any; // Remove id if present
+    const serialized = serializeSlab(slabData);
+    return JSON.stringify(serialized);
+  };
 
   // Function to calculate the next date after the last puzzle date
   const calculateNextDate = (dates: string[]): string => {
@@ -201,7 +209,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
           if (newSlabsCount > 0) {
             setShownExamples(prevShown => [...prevShown, ...new Array(newSlabsCount).fill(false)]);
             setHiddenExamples(prevHidden => [...prevHidden, ...new Array(newSlabsCount).fill(false)]);
-            setEvaluationResults(prevResults => [...prevResults, ...new Array(newSlabsCount).fill(false)]);
+            // Evaluation results are now cached by slab data, so no need to initialize array
           }
           
           console.log(`Added ${newSlabsCount} new unique slabs to creator`);
@@ -214,6 +222,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       console.error('Failed to load visible slabs:', error);
     } finally {
       setIsLoadingHistory(false);
+      setSlabsLoaded(true); // Mark as loaded even on error to prevent retrying
     }
   };
 
@@ -241,21 +250,12 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
         setIsAuthenticated(false);
         setEmail('');
         setAuthMessage('');
-        setSavedSlabs([]); // Clear saved slabs on sign out
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load user slabs when authentication state changes (for duplicate checking)
-  React.useEffect(() => {
-    if (isAuthenticated) {
-      loadUserSlabs();
-    } else {
-      setSavedSlabs([]);
-    }
-  }, [isAuthenticated]);
 
   // Set the publish date automatically when component mounts
   React.useEffect(() => {
@@ -353,53 +353,12 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       setIsAuthenticated(false);
       setEmail('');
       setAuthMessage('');
-      setSavedSlabs([]); // Clear saved slabs on sign out
     } catch (error) {
       setAuthMessage(`Sign out failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsAuthLoading(false);
     }
   };
-
-  // Slab management functions
-  const loadUserSlabs = async () => {
-    if (!isAuthenticated) return;
-    
-    try {
-      const response = await getUserSlabs();
-      setSavedSlabs(response.slabs || []);
-    } catch (error) {
-      // Silently fail - this is just for duplicate checking
-      console.error('Failed to load slabs:', error);
-    }
-  };
-
-  // Function to check if a slab already exists in the database
-  const isSlabInDatabase = (slabData: SlabData): boolean => {
-    // Only check against saved slabs in database (compare only the slab JSON data)
-    return savedSlabs.some(savedSlab => areSlabsEqual(slabData, savedSlab.slab_data));
-  };
-
-  // Function to save a slab to database if it doesn't already exist
-  const saveSlabIfNotExists = async (slabData: SlabData) => {
-    if (!isAuthenticated) {
-      return;
-    }
-
-    // Check against saved slabs in database (compare only the slab JSON data)
-    if (isSlabInDatabase(slabData)) {
-      return;
-    }
-
-    try {
-      await createSlab(slabData);
-      // Reload slabs for duplicate checking
-      await loadUserSlabs();
-    } catch (error) {
-      console.error('Failed to save slab:', error);
-    }
-  };
-
 
   const handleSlabCreate = async (slab: SlabData) => {
     // Deep clone the slab to prevent reference sharing
@@ -437,49 +396,53 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
         }
         return prevHidden;
       });
-      setEvaluationResults(prevResults => {
-        if (currentLength > prevResults.length) {
-          return [false, ...prevResults]; // Add at beginning to match slab order
-        }
-        return prevResults;
-      });
       return prev;
     });
 
-        // Automatically save to database if user is authenticated
+    // Automatically save to database if user is authenticated
     if (isAuthenticated) {
       try {
         await createSlab(slab);
-        // Reload slabs for duplicate checking
-        await loadUserSlabs();
       } catch (error) {
         console.error('Slab created but failed to save to database:', error);
       }
     }
 
-    // Automatically run evaluation if there's an evaluation function
+    // Automatically run evaluation on the new slab only if there's an evaluation function
     if (evaluationFn.trim()) {
       // Use setTimeout to ensure state updates are complete before running evaluation
       setTimeout(async () => {
         try {
-          // Run evaluation on all slabs including the new one
-          const results = await Promise.all(
-            [...createdSlabs, slabWithId].map(async (slabToEvaluate) => {
-              try {
-                const result = await executeCodeSafely(evaluationFn, slabToEvaluate, 5000);
-                if (result.success) {
-                  return result.result;
-                } else {
-                  console.error('Error evaluating slab:', result.error);
-                  return false;
-                }
-              } catch (error) {
-                console.error('Error evaluating slab:', error);
-                return false;
-              }
-            })
-          );
-          setEvaluationResults(results);
+          // Only evaluate the new slab - use cached results for existing slabs
+          const cacheKey = getSlabCacheKey(slab);
+          
+          try {
+            const result = await executeCodeSafely(evaluationFn, slab, 5000);
+            if (result.success) {
+              // Update cache with the new result
+              setEvaluationResults(prev => {
+                const newMap = new Map(prev);
+                newMap.set(cacheKey, result.result);
+                return newMap;
+              });
+            } else {
+              console.error('Error evaluating new slab:', result.error);
+              // Cache false result on error
+              setEvaluationResults(prev => {
+                const newMap = new Map(prev);
+                newMap.set(cacheKey, false);
+                return newMap;
+              });
+            }
+          } catch (error) {
+            console.error('Error evaluating new slab:', error);
+            // Cache false result on error
+            setEvaluationResults(prev => {
+              const newMap = new Map(prev);
+              newMap.set(cacheKey, false);
+              return newMap;
+            });
+          }
         } catch (error) {
           console.error('Error running automatic evaluation:', error);
         }
@@ -524,11 +487,48 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       return [clickedHidden, ...newHidden];
     });
 
-    setEvaluationResults(prev => {
-      const newResults = [...prev];
-      const clickedResult = newResults.splice(index, 1)[0];
-      return [clickedResult, ...newResults];
+    // Evaluation results are keyed by slab data, so no need to reorder
+  };
+
+  const handleSortSlabs = () => {
+    // Create array of indices with their evaluation results
+    const slabsWithResults = createdSlabs.map((slab, index) => {
+      const cacheKey = getSlabCacheKey(slab);
+      const result = evaluationResults.get(cacheKey);
+      // Treat undefined as false for sorting purposes
+      return {
+        index,
+        slab,
+        result: result ?? false,
+        shown: shownExamples[index],
+        hidden: hiddenExamples[index]
+      };
     });
+
+    // Sort: true results first, then false results
+    slabsWithResults.sort((a, b) => {
+      // If both have same result, maintain original order
+      if (a.result === b.result) {
+        return a.index - b.index;
+      }
+      // True results come first
+      return a.result ? -1 : 1;
+    });
+
+    // Reorder slabs and corresponding arrays
+    const newSlabs: SlabWithId[] = [];
+    const newShown: boolean[] = [];
+    const newHidden: boolean[] = [];
+
+    slabsWithResults.forEach(({ slab, shown, hidden }) => {
+      newSlabs.push(slab);
+      newShown.push(shown);
+      newHidden.push(hidden);
+    });
+
+    setCreatedSlabs(newSlabs);
+    setShownExamples(newShown);
+    setHiddenExamples(newHidden);
   };
 
   const handleMoveSlabUp = (index: number) => {
@@ -556,12 +556,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       return newHidden;
     });
 
-    setEvaluationResults(prev => {
-      const newResults = [...prev];
-      const result = newResults.splice(index, 1)[0];
-      newResults.splice(index - 1, 0, result);
-      return newResults;
-    });
+    // Evaluation results are keyed by slab data, so no need to reorder
   };
 
   const handleMoveSlabDown = (index: number) => {
@@ -593,14 +588,20 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       return newHidden;
     });
 
-    setEvaluationResults(prev => {
-      if (index === prev.length - 1) return prev;
-      
-      const newResults = [...prev];
-      const result = newResults.splice(index, 1)[0];
-      newResults.splice(index + 1, 0, result);
-      return newResults;
-    });
+    // Evaluation results are keyed by slab data, so no need to reorder
+  };
+
+  const handleEvaluationFnBlur = async () => {
+    // Clear cache when evaluation function changes
+    setEvaluationResults(new Map());
+    
+    // Auto-run evaluation if there are slabs and a function
+    if (evaluationFn.trim() && createdSlabs.length > 0) {
+      // Use setTimeout to ensure blur event completes before running evaluation
+      setTimeout(() => {
+        handleRunEvaluation();
+      }, 0);
+    }
   };
 
   const handleRunEvaluation = async () => {
@@ -614,42 +615,78 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       return;
     }
 
-    setIsRunning(true);
     try {
-      // Run evaluation on each slab using secure sandbox
-      const results = await Promise.all(
+      // Read current cache
+      let currentCache: Map<string, boolean> = new Map();
+      setEvaluationResults(prev => {
+        currentCache = new Map(prev);
+        return prev;
+      });
+      
+      // Build new cache starting with existing cached results
+      const newCache = new Map<string, boolean>(currentCache);
+      
+      // Evaluate only slabs that aren't in cache
+      await Promise.all(
         createdSlabs.map(async (slab) => {
+          const cacheKey = getSlabCacheKey(slab);
+          
+          // Skip if already cached
+          if (newCache.has(cacheKey)) {
+            return;
+          }
+          
+          // Evaluate this slab
           try {
             const result = await executeCodeSafely(evaluationFn, slab, 5000);
             if (result.success) {
-              return result.result;
+              newCache.set(cacheKey, result.result);
             } else {
               console.error('Error evaluating slab:', result.error);
-              return false;
+              newCache.set(cacheKey, false);
             }
           } catch (error) {
             console.error('Error evaluating slab:', error);
-            return false;
+            newCache.set(cacheKey, false);
           }
         })
       );
-
-      setEvaluationResults(results);
+      
+      // Update cache with all results
+      setEvaluationResults(newCache);
+      
     } catch (error) {
       console.error('Error running evaluation:', error);
       alert(`Error in evaluation: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsRunning(false);
     }
   };
 
-  const handleCopyRulePrompt = () => {
+  const handleCopyRulePrompt = async () => {
+    // Load all slabs if they haven't been loaded yet
+    if (!slabsLoaded && !isLoadingHistory) {
+      await loadAllPuzzles();
+    }
+    
+    // Append rule description to the prompt if it exists
+    const promptText = ruleDescription.trim() 
+      ? `${RULE_CREATION_GUIDE} ${ruleDescription.trim()}`
+      : RULE_CREATION_GUIDE;
+    
     try {
+      // Clear any existing timeout
+      if (copyButtonTimeoutRef.current) {
+        clearTimeout(copyButtonTimeoutRef.current);
+      }
+      
       // Try modern clipboard API first
       if (navigator.clipboard && window.isSecureContext) {
         try {
-          navigator.clipboard.writeText(RULE_CREATION_GUIDE);
-          alert('Rule creation guide copied to clipboard!');
+          await navigator.clipboard.writeText(promptText);
+          setCopyButtonText('AI instructions copied');
+          copyButtonTimeoutRef.current = setTimeout(() => {
+            setCopyButtonText('Copy Prompt and Load Slabs');
+            copyButtonTimeoutRef.current = null;
+          }, 3000);
           return;
         } catch (clipboardError) {
           console.warn('Clipboard API failed, trying fallback:', clipboardError);
@@ -658,7 +695,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       
       // Fallback for mobile and non-secure contexts
       const textArea = document.createElement('textarea');
-      textArea.value = RULE_CREATION_GUIDE;
+      textArea.value = promptText;
       textArea.style.position = 'fixed';
       textArea.style.left = '-999999px';
       textArea.style.top = '-999999px';
@@ -669,7 +706,11 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       try {
         const successful = document.execCommand('copy');
         if (successful) {
-          alert('Rule creation guide copied to clipboard!');
+          setCopyButtonText('AI instructions copied');
+          copyButtonTimeoutRef.current = setTimeout(() => {
+            setCopyButtonText('Copy Rule Prompt');
+            copyButtonTimeoutRef.current = null;
+          }, 3000);
         } else {
           throw new Error('execCommand copy failed');
         }
@@ -677,13 +718,13 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
         console.error('execCommand failed:', execError);
         // Last resort: show the text in a modal for manual copying
         setShowRuleGuideModal(true);
-        setRuleGuideText(RULE_CREATION_GUIDE);
+        setRuleGuideText(promptText);
       } finally {
         document.body.removeChild(textArea);
       }
     } catch (error) {
       console.error('Failed to copy rule guide:', error);
-      alert('Failed to copy rule guide to clipboard');
+      // Don't show alert, just log the error
     }
   };
 
@@ -899,6 +940,15 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
           <p className="mt-1 text-xs text-gray-500">
             This description will be shown to players after they complete or fail the puzzle.
           </p>
+          <div className="mt-2">
+            <button
+              onClick={handleCopyRulePrompt}
+              disabled={!ruleDescription.trim()}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+            >
+              {copyButtonText}
+            </button>
+          </div>
         </div>
 
         {/* Difficulty Field */}
@@ -932,54 +982,260 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
             id="evaluation-fn"
             value={evaluationFn}
             onChange={(e) => setEvaluationFn(e.target.value)}
+            onBlur={handleEvaluationFnBlur}
             rows={4}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Enter evaluation function code..."
           />
-          <div className="mt-2 flex gap-2">
-            <button
-              onClick={handleRunEvaluation}
-              disabled={isRunning || !evaluationFn.trim() || createdSlabs.length === 0}
-              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
-            >
-              {isRunning ? 'Running...' : 'Run'}
-            </button>
-            <button
-              onClick={handleCopyRulePrompt}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
-            >
-              Copy Rule Prompt
-            </button>
-          </div>
           <p>
-              Copy the rule prompt to your clipboard and paste it into an AI with whatever rule idea you have. Copy the code it makes into the box. Make slabs and run it.
+            Add a rule description and copy the rule prompt to your clipboard and paste it into an AI. Copy the code it makes into the evaluation function box. Make slabs and the evaluation will run automatically when you finish editing.
           </p>
           <p>
             Hidden slabs are revealed in the order in which they are presented in the list below.
           </p>
         </div>
       </div>
-      
-      {/* Load History Button */}
-      <div className="mb-4">
-        <button
-          onClick={loadAllPuzzles}
-          disabled={isLoadingHistory}
-          className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
-        >
-          {isLoadingHistory ? 'Loading...' : 'Load All Visible Slabs'}
-        </button>
-      </div>
 
       {/* SlabMaker for creating slabs */}
       <div className="mb-8">
         <SlabMaker onCreate={handleSlabCreate} />
       </div>
+
+      {/* Example Count Summary */}
+      {createdSlabs.length > 0 && (
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">Example Summary</h4>
+            <div className="flex justify-between text-sm">
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-blue-600 rounded-full mr-2"></div>
+                <span className="text-gray-600">Shown Examples: <strong>{shownExamples.filter(Boolean).length}</strong></span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-red-600 rounded-full mr-2"></div>
+                <span className="text-gray-600">Hidden Examples: <strong>{hiddenExamples.filter(Boolean).length}</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Puzzle Button */}
+      <div className="mt-4">
+        <button
+          onClick={handleCreatePuzzle}
+          disabled={isCreating || !puzzleName.trim() || !evaluationFn.trim()}
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+        >
+          {isCreating ? 'Creating Puzzle...' : 'Create Puzzle'}
+        </button>
+      </div>
+
+      {/* Shown Examples Section */}
+      {createdSlabs.length > 0 && shownExamples.some(Boolean) && (
+        <div className="mt-8">
+          <h3 className="text-lg font-semibold mb-4">Shown Examples</h3>
+          <div className="flex flex-wrap gap-6">
+            {createdSlabs.map((slab, index) => {
+              if (!shownExamples[index]) return null;
+              return (
+                <div key={slab.id} className="flex flex-col items-center flex-shrink-0 p-2">
+                  <div className="mb-2 text-sm font-medium">Slab #{index + 1}</div>
+                  <div 
+                    onClick={() => handleSlabClick(index)}
+                    className="cursor-pointer hover:opacity-80 transition-opacity duration-200 relative"
+                    title="Click to move to front"
+                  >
+                    <SlabComponent slab={slab} size="small" />
+                    {/* Evaluation annotation directly on slab */}
+                    {(() => {
+                      const cacheKey = getSlabCacheKey(slab);
+                      const result = evaluationResults.get(cacheKey);
+                      return result !== undefined && (
+                        <div 
+                          className="absolute"
+                          style={{
+                            top: '-4px',
+                            right: '-4px',
+                            color: '#000000',
+                            filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
+                          }}
+                        >
+                          {result ? (
+                            <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
+                          ) : (
+                            <FiX size={16} className="text-red-500" />
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <div className="mt-3 flex flex-col gap-1">
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleShownExampleChange(index, !shownExamples[index])}
+                        className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                          shownExamples[index] 
+                            ? 'bg-blue-600 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        Shown
+                      </button>
+                      <button
+                        onClick={() => handleHiddenExampleChange(index, !hiddenExamples[index])}
+                        className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                          hiddenExamples[index] 
+                            ? 'bg-red-600 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        Hidden
+                      </button>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleMoveSlabUp(index)}
+                        disabled={index === 0}
+                        className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                          index === 0
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                        title="Move up"
+                      >
+                        <FiArrowUp size={12} />
+                      </button>
+                      <button
+                        onClick={() => handleMoveSlabDown(index)}
+                        disabled={index === createdSlabs.length - 1}
+                        className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                          index === createdSlabs.length - 1
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                        title="Move down"
+                      >
+                        <FiArrowDown size={12} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Guessing Slabs Section */}
+      {createdSlabs.length > 0 && hiddenExamples.some(Boolean) && (
+        <div className="mt-8">
+          <h3 className="text-lg font-semibold mb-4">Guessing Slabs</h3>
+          <div className="flex flex-wrap gap-6">
+            {createdSlabs.map((slab, index) => {
+              if (!hiddenExamples[index]) return null;
+              return (
+                <div key={slab.id} className="flex flex-col items-center flex-shrink-0 p-2">
+                  <div className="mb-2 text-sm font-medium">Slab #{index + 1}</div>
+                  <div 
+                    onClick={() => handleSlabClick(index)}
+                    className="cursor-pointer hover:opacity-80 transition-opacity duration-200 relative"
+                    title="Click to move to front"
+                  >
+                    <SlabComponent slab={slab} size="small" />
+                    {/* Evaluation annotation directly on slab */}
+                    {(() => {
+                      const cacheKey = getSlabCacheKey(slab);
+                      const result = evaluationResults.get(cacheKey);
+                      return result !== undefined && (
+                        <div 
+                          className="absolute"
+                          style={{
+                            top: '-4px',
+                            right: '-4px',
+                            color: '#000000',
+                            filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
+                          }}
+                        >
+                          {result ? (
+                            <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
+                          ) : (
+                            <FiX size={16} className="text-red-500" />
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <div className="mt-3 flex flex-col gap-1">
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleShownExampleChange(index, !shownExamples[index])}
+                        className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                          shownExamples[index] 
+                            ? 'bg-blue-600 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        Shown
+                      </button>
+                      <button
+                        onClick={() => handleHiddenExampleChange(index, !hiddenExamples[index])}
+                        className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                          hiddenExamples[index] 
+                            ? 'bg-red-600 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        Hidden
+                      </button>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleMoveSlabUp(index)}
+                        disabled={index === 0}
+                        className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                          index === 0
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                        title="Move up"
+                      >
+                        <FiArrowUp size={12} />
+                      </button>
+                      <button
+                        onClick={() => handleMoveSlabDown(index)}
+                        disabled={index === createdSlabs.length - 1}
+                        className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                          index === createdSlabs.length - 1
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                        title="Move down"
+                      >
+                        <FiArrowDown size={12} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       
       {/* Created Slabs Display */}
       {createdSlabs.length > 0 && (
         <div className="mt-8">
-          <h3 className="text-lg font-semibold mb-4">Created Slabs ({createdSlabs.length})</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Created Slabs ({createdSlabs.length})</h3>
+            <button
+              onClick={handleSortSlabs}
+              className="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-700 text-white font-medium rounded transition-colors duration-200"
+              title="Sort slabs by evaluation result (true first)"
+            >
+              Sort by Result
+            </button>
+          </div>
           <div className="flex flex-wrap gap-6">
             {createdSlabs.map((slab, index) => (
               <div key={slab.id} className="flex flex-col items-center flex-shrink-0 p-2">
@@ -991,23 +1247,27 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
                 >
                   <SlabComponent slab={slab} size="small" />
                   {/* Evaluation annotation directly on slab */}
-                  {evaluationResults.length > index && evaluationResults[index] !== undefined && (
-                    <div 
-                      className="absolute"
-                      style={{
-                        top: '-4px',
-                        right: '-4px',
-                        color: '#000000',
-                        filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
-                      }}
-                    >
-                      {evaluationResults[index] ? (
-                        <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
-                      ) : (
-                        <FiX size={16} className="text-red-500" />
-                      )}
-                    </div>
-                  )}
+                  {(() => {
+                    const cacheKey = getSlabCacheKey(slab);
+                    const result = evaluationResults.get(cacheKey);
+                    return result !== undefined && (
+                      <div 
+                        className="absolute"
+                        style={{
+                          top: '-4px',
+                          right: '-4px',
+                          color: '#000000',
+                          filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
+                        }}
+                      >
+                        {result ? (
+                          <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
+                        ) : (
+                          <FiX size={16} className="text-red-500" />
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="mt-3 flex flex-col gap-1">
                   <div className="flex gap-1">
@@ -1056,57 +1316,14 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
                       title="Move down"
                     >
                       <FiArrowDown size={12} />
-                    </button>
+                      </button>
+                    </div>
                   </div>
-                  {isAuthenticated && (
-                    <button
-                      onClick={() => saveSlabIfNotExists(slab)}
-                      disabled={isSlabInDatabase(slab)}
-                      className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
-                        isSlabInDatabase(slab)
-                          ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                          : 'bg-green-600 hover:bg-green-700 text-white'
-                      }`}
-                    >
-                      {isSlabInDatabase(slab) ? 'Already Saved' : 'Save to my slabs'}
-                    </button>
-                  )}
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       )}
-
-      {/* Example Count Summary */}
-      {createdSlabs.length > 0 && (
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Example Summary</h4>
-            <div className="flex justify-between text-sm">
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-blue-600 rounded-full mr-2"></div>
-                <span className="text-gray-600">Shown Examples: <strong>{shownExamples.filter(Boolean).length}</strong></span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-red-600 rounded-full mr-2"></div>
-                <span className="text-gray-600">Hidden Examples: <strong>{hiddenExamples.filter(Boolean).length}</strong></span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Puzzle Button */}
-      <div className="mt-4">
-        <button
-          onClick={handleCreatePuzzle}
-          disabled={isCreating || !puzzleName.trim() || !evaluationFn.trim()}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
-        >
-          {isCreating ? 'Creating Puzzle...' : 'Create Puzzle'}
-        </button>
-      </div>
 
 
       {/* Rule Guide Modal - Fallback for when clipboard fails */}
