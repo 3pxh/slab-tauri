@@ -51,7 +51,7 @@ export const DebugLogDisplay: React.FC = () => {
   const { logs, clearLogs } = useDebugLog();
 
   // Only show debug logs if the debug flag is enabled
-  const debugEnabled = __DEBUG_LOGS_ENABLED__;
+  const debugEnabled = false;
 
   if (!debugEnabled || logs.length === 0) {
     return null;
