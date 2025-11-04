@@ -4,6 +4,8 @@ import { useGesture } from '@use-gesture/react';
 import { SlabData, createSlab, Cell, COLORS, getGroup, mapColorIndex } from './Slab';
 import { deepCopy } from '../utils';
 import { analytics } from '../utils/analytics';
+import { createSlab as saveSlabToDatabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
 
 
 
@@ -42,6 +44,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   showRuleButton = false,
   onShowRuleModal
 }) => {
+  const { isAuthenticated } = useAuth();
   const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
   const [history, setHistory] = React.useState<SlabData[]>([]);
   const [, setIsDragging] = React.useState(false);
@@ -867,9 +870,19 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                   ? 'bg-gray-400 text-white' 
                   : 'bg-blue-500 text-white hover:bg-blue-600'
               }`}
-              onClick={() => {
+              onClick={async () => {
                 if (puzzle) analytics.slabCreated(puzzle, Object.keys(slab.groups).length);
                 onCreate(slab);
+                
+                // Automatically save slab to database if user is authenticated
+                if (isAuthenticated) {
+                  try {
+                    await saveSlabToDatabase(slab);
+                  } catch (error) {
+                    console.error('Failed to save slab to database:', error);
+                    // Don't show error to user - fail silently
+                  }
+                }
               }}
               title={isInGuessSession ? "Complete your guess first" : "Create puzzle from current slab"}
             >
