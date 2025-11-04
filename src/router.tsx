@@ -116,7 +116,7 @@ const loadFirstPuzzle = async () => {
 const createDummyPuzzle = (): Puzzle => ({
   id: 'create-mode',
   content_type: 'slab_puzzle',
-  name: 'Dummy Puzzle',
+  name: '',
   evaluate_fn: '',
   shown_examples: [],
   hidden_examples: [],

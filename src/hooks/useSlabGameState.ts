@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Puzzle } from '../lib/supabase';
-import { SlabData, areSlabsEqual, COLORS } from '../components/Slab';
+import { SlabData, areSlabsEqual, COLORS, deserializeSlab } from '../components/Slab';
 import { deepCopy } from '../utils';
 import { executeCodeSafely } from '../utils/sandbox';
 import { usePuzzleProgress } from './usePuzzleProgress';
@@ -80,6 +80,23 @@ export interface SlabGameActions {
   markCompleted: (puzzleId: string, score: number) => Promise<any>;
   updateCustomData: (puzzleId: string, data: any) => Promise<any>;
 }
+
+// Helper function to deserialize puzzle examples if needed
+const deserializePuzzleExamples = (examples: any[]): SlabData[] => {
+  if (!examples || !Array.isArray(examples)) {
+    return [];
+  }
+  
+  return examples.map((example: any) => {
+    // Check if the example is serialized (has 'grid' property) or deserialized (has 'cells' property)
+    const isSerialized = example && typeof example === 'object' && 'grid' in example && 'colors' in example;
+    if (isSerialized) {
+      return deserializeSlab(example);
+    }
+    // Already deserialized, use as-is
+    return example;
+  });
+};
 
 export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameActions {
   // Core game state
@@ -181,7 +198,8 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     }
     
     // Start with shown examples as the base state
-    let initialSlabs = puzzle.shown_examples;
+    // Deserialize them if they're in serialized format
+    let initialSlabs = deserializePuzzleExamples(puzzle.shown_examples || []);
     let initialArchivedSlabs: SlabData[] = [];
     let initialRemainingGuesses = 3;
     let initialHasWon = false;
@@ -282,9 +300,10 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
       }
 
       // Get all slabs that need evaluation (shown examples + hidden examples)
+      // Deserialize them if they're in serialized format
       const allSlabsToEvaluate = [
-        ...(puzzle.shown_examples || []),
-        ...(puzzle.hidden_examples || [])
+        ...deserializePuzzleExamples(puzzle.shown_examples || []),
+        ...deserializePuzzleExamples(puzzle.hidden_examples || [])
       ];
 
       // Filter out slabs that are already evaluated
@@ -454,7 +473,8 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
       return [];
     }
 
-    const hiddenSlabs = puzzle.hidden_examples;
+    // Deserialize hidden examples if they're in serialized format
+    const hiddenSlabs = deserializePuzzleExamples(puzzle.hidden_examples);
     
     // Get all slabs that have been guessed (from current state + saved progress)
     const allGuessedSlabs = [...allSlabs];

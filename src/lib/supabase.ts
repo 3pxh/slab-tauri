@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { SlabData } from '../components/Slab';
+import { SlabData, serializeSlab, deserializeSlab } from '../components/Slab';
 
 // Remote Supabase project configuration
 const supabaseUrl = 'https://gfdfhbulxqcjfmmufsmf.supabase.co'
@@ -184,19 +184,78 @@ export async function getUserSlabs(): Promise<SlabResponse> {
     throw new Error(`Failed to get user slabs: ${error.message}`)
   }
 
+  // Deserialize slabs if they're in serialized format
+  const deserializedSlabs = (data || []).map(slab => {
+    // Check if slab_data is serialized (has 'grid' property) or deserialized (has 'cells' property)
+    const slabData = slab.slab_data;
+    const isSerialized = slabData && typeof slabData === 'object' && 'grid' in slabData && 'colors' in slabData;
+    
+    if (isSerialized) {
+      return {
+        ...slab,
+        slab_data: deserializeSlab(slabData)
+      };
+    }
+    // Already deserialized, return as-is
+    return slab;
+  });
+
   return {
     success: true,
-    slabs: data || [],
-    message: `Found ${data?.length || 0} slabs`
+    slabs: deserializedSlabs,
+    message: `Found ${deserializedSlabs.length} slabs`
+  }
+}
+
+// Function to get all visible slabs (includes George's public slabs and user's own slabs)
+// RLS policies will automatically filter based on visibility rules
+export async function getAllVisibleSlabs(): Promise<SlabResponse> {
+  const { data, error } = await supabase
+    .from('slabs')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    throw new Error(`Failed to get visible slabs: ${error.message}`)
+  }
+
+  // Deserialize slabs if they're in serialized format
+  const deserializedSlabs = (data || []).map(slab => {
+    // Check if slab_data is serialized (has 'grid' property) or deserialized (has 'cells' property)
+    const slabData = slab.slab_data;
+    const isSerialized = slabData && typeof slabData === 'object' && 'grid' in slabData && 'colors' in slabData;
+    
+    if (isSerialized) {
+      return {
+        ...slab,
+        slab_data: deserializeSlab(slabData)
+      };
+    }
+    // Already deserialized, return as-is
+    return slab;
+  });
+
+  return {
+    success: true,
+    slabs: deserializedSlabs,
+    message: `Found ${deserializedSlabs.length} visible slabs`
   }
 }
 
 // Function to create a new slab
 export async function createSlab(slabData: any): Promise<SlabResponse> {
+  // Serialize the slab if it's in deserialized format (has 'cells' property)
+  const isDeserialized = slabData && typeof slabData === 'object' && 'cells' in slabData && 'groups' in slabData;
+  let serializedSlabData = slabData;
+  
+  if (isDeserialized) {
+    serializedSlabData = serializeSlab(slabData);
+  }
+  
   const { data, error } = await supabase
     .from('slabs')
     .insert([{ 
-      slab_data: slabData,
+      slab_data: serializedSlabData,
       creator_id: (await supabase.auth.getUser()).data.user?.id
     }])
     .select()
@@ -206,18 +265,38 @@ export async function createSlab(slabData: any): Promise<SlabResponse> {
     throw new Error(`Failed to create slab: ${error.message}`)
   }
 
+  // Deserialize the returned slab for consistency
+  const slabDataCheck = data.slab_data;
+  const isSerialized = slabDataCheck && typeof slabDataCheck === 'object' && 'grid' in slabDataCheck && 'colors' in slabDataCheck;
+  let deserializedData = data;
+  
+  if (isSerialized) {
+    deserializedData = {
+      ...data,
+      slab_data: deserializeSlab(slabDataCheck)
+    };
+  }
+
   return {
     success: true,
-    slab: data,
+    slab: deserializedData,
     message: 'Slab created successfully'
   }
 }
 
 // Function to update an existing slab
 export async function updateSlab(slabId: number, slabData: any): Promise<SlabResponse> {
+  // Serialize the slab if it's in deserialized format (has 'cells' property)
+  const isDeserialized = slabData && typeof slabData === 'object' && 'cells' in slabData && 'groups' in slabData;
+  let serializedSlabData = slabData;
+  
+  if (isDeserialized) {
+    serializedSlabData = serializeSlab(slabData);
+  }
+  
   const { data, error } = await supabase
     .from('slabs')
-    .update({ slab_data: slabData })
+    .update({ slab_data: serializedSlabData })
     .eq('id', slabId)
     .select()
     .single()
@@ -226,9 +305,21 @@ export async function updateSlab(slabId: number, slabData: any): Promise<SlabRes
     throw new Error(`Failed to update slab: ${error.message}`)
   }
 
+  // Deserialize the returned slab for consistency
+  const slabDataCheck = data.slab_data;
+  const isSerialized = slabDataCheck && typeof slabDataCheck === 'object' && 'grid' in slabDataCheck && 'colors' in slabDataCheck;
+  let deserializedData = data;
+  
+  if (isSerialized) {
+    deserializedData = {
+      ...data,
+      slab_data: deserializeSlab(slabDataCheck)
+    };
+  }
+
   return {
     success: true,
-    slab: data,
+    slab: deserializedData,
     message: 'Slab updated successfully'
   }
 }

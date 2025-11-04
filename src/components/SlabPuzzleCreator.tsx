@@ -1,8 +1,8 @@
 import React from 'react';
 import { FiArrowLeft, FiArrowUp, FiArrowDown, FiStar, FiX } from 'react-icons/fi';
-import { Puzzle, getAllDates, getPuzzle, supabase, getUserSlabs, createSlab, deleteSlab, Slab as SlabRecord } from '../lib/supabase';
+import { Puzzle, getAllDates, supabase, getUserSlabs, getAllVisibleSlabs, createSlab, Slab as SlabRecord } from '../lib/supabase';
 import SlabMaker from './SlabMaker';
-import SlabComponent, { SlabData, areSlabsEqual } from './Slab';
+import SlabComponent, { SlabData, areSlabsEqual, serializeSlab, deserializeSlab } from './Slab';
 import { deepCopy, formatDateUTC } from '../utils';
 import { executeCodeSafely } from '../utils/sandbox';
 
@@ -90,12 +90,8 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   const [isAuthLoading, setIsAuthLoading] = React.useState(false);
   const [authMessage, setAuthMessage] = React.useState('');
   
-  // Slab management state
+  // Slab management state (for duplicate checking)
   const [savedSlabs, setSavedSlabs] = React.useState<SlabRecord[]>([]);
-  const [isLoadingSlabs, setIsLoadingSlabs] = React.useState(false);
-  const [slabMessage, setSlabMessage] = React.useState('');
-  const [editingSlab, setEditingSlab] = React.useState<SlabRecord | null>(null);
-  const [isDetailsOpen, setIsDetailsOpen] = React.useState(false);
   
   // Rule guide modal state
   const [showRuleGuideModal, setShowRuleGuideModal] = React.useState(false);
@@ -118,72 +114,46 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
     return nextDate.toISOString();
   };
 
-  // Function to load all puzzles and their examples with deduplication
+  // Function to load all visible slabs from the slabs table with deduplication
   const loadAllPuzzles = async () => {
     setIsLoadingHistory(true);
     try {
-      const response = await getAllDates();
-      console.log('All puzzle dates:', response.dates);
+      const response = await getAllVisibleSlabs();
+      console.log('All visible slabs:', response.slabs);
       
-      if (response.dates.length === 0) {
-        console.log('No existing puzzles found');
+      if (!response.slabs || response.slabs.length === 0) {
+        console.log('No visible slabs found');
         return;
       }
       
-      // Sort dates in descending order (most recent first)
-      const sortedDates = response.dates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-      console.log('Loading puzzles for all dates:', sortedDates);
+      const allSlabs: SlabWithId[] = [];
       
-      const allExamples: SlabWithId[] = [];
+      // Convert slabs from database to SlabWithId format
+      response.slabs.forEach((slab: SlabRecord, index: number) => {
+        // Deserialize if needed (should already be deserialized by getAllVisibleSlabs, but be safe)
+        const slabData = slab.slab_data;
+        const isSerialized = slabData && typeof slabData === 'object' && 'grid' in slabData && 'colors' in slabData;
+        const deserializedSlab = isSerialized ? deserializeSlab(slabData) : slabData;
+        
+        allSlabs.push({
+          ...deserializedSlab,
+          id: Date.now() + Math.random() + index // Ensure unique IDs for creator interface only
+        });
+      });
       
-      // Fetch each puzzle and extract examples
-      for (const date of sortedDates) {
-        try {
-          const puzzleResponse = await getPuzzle(date);
-          if (puzzleResponse.success && puzzleResponse.puzzle) {
-            const puzzleData = puzzleResponse.puzzle;
-            console.log(`Loading examples from puzzle: ${puzzleData.name} (${date})`);
-            
-            // Add shown examples
-            if (puzzleData.shown_examples && puzzleData.shown_examples.length > 0) {
-              puzzleData.shown_examples.forEach((example: any, index: number) => {
-                const deserializedSlab = example;
-                allExamples.push({
-                  ...deserializedSlab,
-                  id: Date.now() + Math.random() + index // Ensure unique IDs for creator interface only
-                });
-              });
-            }
-            
-            // Add hidden examples
-            if (puzzleData.hidden_examples && puzzleData.hidden_examples.length > 0) {
-              puzzleData.hidden_examples.forEach((example: any, index: number) => {
-                const deserializedSlab = example;
-                allExamples.push({
-                  ...deserializedSlab,
-                  id: Date.now() + Math.random() + index + 1000 // Ensure unique IDs for creator interface only
-                });
-              });
-            }
-          }
-        } catch (error) {
-          console.error(`Failed to load puzzle for date ${date}:`, error);
-        }
-      }
-      
-      if (allExamples.length > 0) {
-        console.log(`Starting with ${allExamples.length} total examples from all puzzles`);
+      if (allSlabs.length > 0) {
+        console.log(`Starting with ${allSlabs.length} total slabs from database`);
         
         // Deduplicate slabs using the equality function
-        const uniqueExamples: SlabWithId[] = [];
+        const uniqueSlabs: SlabWithId[] = [];
         let duplicatesFound = 0;
         
-        for (const example of allExamples) {
-          const isDuplicate = uniqueExamples.some(existing => {
+        for (const slab of allSlabs) {
+          const isDuplicate = uniqueSlabs.some(existing => {
             // Compare slab data without the id field
-            const { id: _, ...exampleData } = example;
+            const { id: _, ...slabData } = slab;
             const { id: __, ...existingData } = existing;
-            const isEqual = areSlabsEqual(exampleData, existingData);
+            const isEqual = areSlabsEqual(slabData, existingData);
             if (isEqual) {
               duplicatesFound++;
             }
@@ -191,17 +161,17 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
           });
           
           if (!isDuplicate) {
-            uniqueExamples.push(example);
+            uniqueSlabs.push(slab);
           }
         }
         
-        console.log(`After deduplication: ${uniqueExamples.length} unique examples (${duplicatesFound} duplicates removed)`);
+        console.log(`After deduplication: ${uniqueSlabs.length} unique slabs (${duplicatesFound} duplicates removed)`);
         
         // Get current slabs and deduplicate against them
         setCreatedSlabs(prev => {
           console.log(`Current slabs in creator: ${prev.length}`);
           
-          const combined = [...prev, ...uniqueExamples];
+          const combined = [...prev, ...uniqueSlabs];
           const finalUnique: SlabWithId[] = [];
           let additionalDuplicates = 0;
           
@@ -234,14 +204,14 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
             setEvaluationResults(prevResults => [...prevResults, ...new Array(newSlabsCount).fill(false)]);
           }
           
-          console.log(`Added ${newSlabsCount} new unique examples to creator`);
+          console.log(`Added ${newSlabsCount} new unique slabs to creator`);
           
           return finalUnique;
         });
       }
       
     } catch (error) {
-      console.error('Failed to load puzzle history:', error);
+      console.error('Failed to load visible slabs:', error);
     } finally {
       setIsLoadingHistory(false);
     }
@@ -266,8 +236,6 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
         setIsAuthenticated(true);
         setEmail(session.user.email || '');
         setAuthMessage('');
-        // Load user's slabs when they sign in
-        loadUserSlabs();
       } else {
         setUser(null);
         setIsAuthenticated(false);
@@ -280,10 +248,12 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load user slabs when authentication state changes
+  // Load user slabs when authentication state changes (for duplicate checking)
   React.useEffect(() => {
     if (isAuthenticated) {
       loadUserSlabs();
+    } else {
+      setSavedSlabs([]);
     }
   }, [isAuthenticated]);
 
@@ -395,40 +365,12 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   const loadUserSlabs = async () => {
     if (!isAuthenticated) return;
     
-    setIsLoadingSlabs(true);
-    setSlabMessage('');
-    
     try {
       const response = await getUserSlabs();
       setSavedSlabs(response.slabs || []);
-      setSlabMessage(response.message);
     } catch (error) {
-      setSlabMessage(`Failed to load slabs: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsLoadingSlabs(false);
-    }
-  };
-
-
-
-  const deleteSlabFromDatabase = async (slabId: number) => {
-    if (!isAuthenticated) {
-      setSlabMessage('Please sign in to delete slabs');
-      return;
-    }
-
-    if (!confirm('Are you sure you want to delete this slab?')) {
-      return;
-    }
-
-    try {
-      const response = await deleteSlab(slabId);
-      setSlabMessage(response.message);
-      
-      // Reload slabs to remove the deleted one
-      await loadUserSlabs();
-    } catch (error) {
-      setSlabMessage(`Failed to delete slab: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Silently fail - this is just for duplicate checking
+      console.error('Failed to load slabs:', error);
     }
   };
 
@@ -441,38 +383,23 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   // Function to save a slab to database if it doesn't already exist
   const saveSlabIfNotExists = async (slabData: SlabData) => {
     if (!isAuthenticated) {
-      setSlabMessage('Please sign in to save slabs');
       return;
     }
 
     // Check against saved slabs in database (compare only the slab JSON data)
     if (isSlabInDatabase(slabData)) {
-      setSlabMessage('This slab is already saved in your database');
       return;
     }
 
     try {
       await createSlab(slabData);
-      setSlabMessage('Slab saved to database');
-      // Reload slabs to show the new one
+      // Reload slabs for duplicate checking
       await loadUserSlabs();
     } catch (error) {
-      setSlabMessage(`Failed to save slab: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Failed to save slab:', error);
     }
   };
 
-  const loadSlabIntoCreator = (slab: SlabRecord) => {
-    const slabWithId: SlabWithId = { 
-      ...deepCopy(slab.slab_data),
-      id: Date.now() + Math.random() 
-    };
-    
-    setCreatedSlabs(prev => [...prev, slabWithId]);
-    setShownExamples(prev => [...prev, false]);
-    setHiddenExamples(prev => [...prev, false]);
-    setEvaluationResults(prev => [...prev, false]);
-    setSlabMessage(`Loaded slab "${slab.id}" into puzzle creator`);
-  };
 
   const handleSlabCreate = async (slab: SlabData) => {
     // Deep clone the slab to prevent reference sharing
@@ -488,7 +415,6 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
         return areSlabsEqual(slab, existingData);
       });
       if (isDuplicate) {
-        setSlabMessage('This slab already exists in the list');
         return prev; // Don't add duplicate
       }
       
@@ -520,15 +446,14 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       return prev;
     });
 
-    // Automatically save to database if user is authenticated
+        // Automatically save to database if user is authenticated
     if (isAuthenticated) {
       try {
         await createSlab(slab);
-        setSlabMessage('Slab created and saved to database');
-        // Reload slabs to show the new one in the saved slabs section
+        // Reload slabs for duplicate checking
         await loadUserSlabs();
       } catch (error) {
-        setSlabMessage(`Slab created but failed to save to database: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error('Slab created but failed to save to database:', error);
       }
     }
 
@@ -774,9 +699,16 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       const shownSlabs = createdSlabs.filter((_, index) => shownExamples[index]);
       const hiddenSlabs = createdSlabs.filter((_, index) => hiddenExamples[index]);
 
-      // Slabs are now natively serializable (no conversion needed)
-      const serializedShownSlabs = shownSlabs;
-      const serializedHiddenSlabs = hiddenSlabs;
+      // Serialize slabs before saving to database
+      // Remove the id field before serializing (it's only for the creator interface)
+      const serializedShownSlabs = shownSlabs.map(slab => {
+        const { id, ...slabData } = slab;
+        return serializeSlab(slabData);
+      });
+      const serializedHiddenSlabs = hiddenSlabs.map(slab => {
+        const { id, ...slabData } = slab;
+        return serializeSlab(slabData);
+      });
 
       const { data, error } = await supabase
         .from('puzzles')
@@ -931,97 +863,10 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
         </div>
       </div>
 
-      {/* Saved Slabs Management */}
-      {isAuthenticated && (
-        <details 
-          className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200"
-          open={isDetailsOpen}
-          onToggle={(e) => setIsDetailsOpen(e.currentTarget.open)}
-        >
-          <summary className="flex items-center justify-between cursor-pointer">
-            <div className="flex items-center space-x-2">
-              <span 
-                className="text-green-600 transition-transform duration-200"
-                style={{ transform: isDetailsOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
-              >
-                ▶
-              </span>
-              <h3 className="text-lg font-semibold text-green-800">My Saved Slabs</h3>
-            </div>
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                loadUserSlabs();
-              }}
-              disabled={isLoadingSlabs}
-              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-1 px-3 rounded-md transition-colors duration-200 text-sm"
-            >
-              {isLoadingSlabs ? 'Loading...' : 'Refresh'}
-            </button>
-          </summary>
-          
-          {slabMessage && (
-            <div className={`p-2 rounded-md text-sm mb-3 mt-3 ${
-              slabMessage.includes('Failed') || slabMessage.includes('Please sign in')
-                ? 'bg-red-100 text-red-700 border border-red-200'
-                : 'bg-green-100 text-green-700 border border-green-200'
-            }`}>
-              {slabMessage}
-            </div>
-          )}
-
-          {savedSlabs.length > 0 ? (
-            <div className="flex flex-wrap gap-4 mt-3">
-              {savedSlabs.map((slab) => (
-                <div key={slab.id} className="bg-white p-4 rounded-lg border border-green-200 flex-shrink-0">
-                  <div className="mb-2">
-                    <SlabComponent slab={slab.slab_data} size="small" />
-                  </div>
-                  <div className="text-xs text-gray-500 mb-2">
-                    ID: {slab.id} • {new Date(slab.created_at).toLocaleDateString()}
-                  </div>
-                  <div className="flex flex-col space-y-1">
-                    <button
-                      onClick={() => loadSlabIntoCreator(slab)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium py-1 px-2 rounded transition-colors duration-200"
-                    >
-                      Load
-                    </button>
-                    <div className="flex space-x-1">
-                      <button
-                        onClick={() => setEditingSlab(slab)}
-                        className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-medium py-1 px-2 rounded transition-colors duration-200"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => deleteSlabFromDatabase(slab.id)}
-                        className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium py-1 px-2 rounded transition-colors duration-200"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-4 text-gray-500 mt-3">
-              <p>No saved slabs yet. Create some slabs and save them to see them here!</p>
-            </div>
-          )}
-        </details>
-      )}
 
       {/* Puzzle Information */}
       <div className="mb-4 p-3 bg-gray-100 rounded-lg">
         <h2 className="text-lg font-semibold mb-2">Creating Puzzle for {formatDateUTC(displayDate)}</h2>
-        <div className="text-sm text-gray-600 mb-4">
-          <p><strong>Content Type:</strong> {puzzle.content_type}</p>
-          <p><strong>Puzzle ID:</strong> {puzzle.id}</p>
-          <p><strong>Difficulty:</strong> {difficulty}/5</p>
-        </div>
         
         {/* Puzzle Name Field */}
         <div className="mb-4">
@@ -1122,7 +967,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
           disabled={isLoadingHistory}
           className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
         >
-          {isLoadingHistory ? 'Loading...' : 'Load All Public Slabs'}
+          {isLoadingHistory ? 'Loading...' : 'Load All Visible Slabs'}
         </button>
       </div>
 
@@ -1263,39 +1108,6 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
         </button>
       </div>
 
-      {/* Edit Slab Modal */}
-      {editingSlab && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Edit Slab</h3>
-            <div className="mb-4">
-              <SlabComponent slab={editingSlab.slab_data} size="medium" />
-            </div>
-            <div className="text-sm text-gray-600 mb-4">
-              <p><strong>ID:</strong> {editingSlab.id}</p>
-              <p><strong>Created:</strong> {new Date(editingSlab.created_at).toLocaleString()}</p>
-              <p><strong>Updated:</strong> {new Date(editingSlab.updated_at).toLocaleString()}</p>
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => {
-                  loadSlabIntoCreator(editingSlab);
-                  setEditingSlab(null);
-                }}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
-              >
-                Load into Creator
-              </button>
-              <button
-                onClick={() => setEditingSlab(null)}
-                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Rule Guide Modal - Fallback for when clipboard fails */}
       {showRuleGuideModal && (

@@ -4,7 +4,7 @@ import { getAllDatesWithDifficulty, PuzzleDate } from '../lib/supabase';
 import { isTodayUTC } from '../utils';
 import AppHeader from './AppHeader';
 import DifficultyIndicator from './DifficultyIndicator';
-import Slab, { COLORS } from './Slab';
+import Slab, { COLORS, deserializeSlab } from './Slab';
 import ScrollButton from './ScrollButton';
 import { useNavigation } from '../utils/navigation';
 import { puzzleProgressService } from '../lib/puzzleProgress';
@@ -290,10 +290,14 @@ const LevelSelect: React.FC<LevelSelectProps> = () => {
                     {/* Shown slabs */}
                     <div className="flex items-center gap-2 ml-4">
                       {puzzle.shown_examples && puzzle.shown_examples.length > 0 ? (
-                        puzzle.shown_examples.slice(0, 2).map((slabData, index) => (
+                        puzzle.shown_examples.slice(0, 2).map((slabData: any, index) => {
+                          // Deserialize if needed
+                          const isSerialized = slabData && typeof slabData === 'object' && 'grid' in slabData && 'colors' in slabData;
+                          const deserializedSlab = isSerialized ? deserializeSlab(slabData) : slabData;
+                          return (
                           <div key={index} className="w-8 h-8 flex-shrink-0">
                             <Slab 
-                              slab={slabData} 
+                              slab={deserializedSlab} 
                               size="small" 
                               className="w-full h-full"
                               colors={COLORS}
@@ -301,7 +305,8 @@ const LevelSelect: React.FC<LevelSelectProps> = () => {
                               getColorblindOverlay={() => null}
                             />
                           </div>
-                        ))
+                          );
+                        })
                       ) : (
                         <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs">
                           ?

@@ -2,7 +2,7 @@ import React from 'react';
 import { FiArrowRight, FiArrowLeft, FiRefreshCw, FiStar, FiX } from 'react-icons/fi';
 import AppHeader from './AppHeader';
 import { analytics } from '../utils/analytics';
-import SlabComponent, { SlabData, createRandomSlab, COLORS } from './Slab';
+import SlabComponent, { SlabData, createRandomSlab, COLORS, deserializeSlab } from './Slab';
 import SlabMaker from './SlabMaker';
 import { getPuzzle, getAllDates, Puzzle } from '../lib/supabase';
 import { executeCodeSafely } from '../utils/sandbox';
@@ -52,9 +52,12 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
               
               for (const example of puzzleResponse.puzzle.shown_examples) {
                 try {
-                  const result = await executeCodeSafely(puzzleResponse.puzzle.evaluate_fn, example, 5000);
+                  // Deserialize if needed
+                  const isSerialized = example && typeof example === 'object' && 'grid' in example && 'colors' in example;
+                  const deserializedExample = isSerialized ? deserializeSlab(example) : example;
+                  const result = await executeCodeSafely(puzzleResponse.puzzle.evaluate_fn, deserializedExample, 5000);
                   if (result.success) {
-                    const key = JSON.stringify(example);
+                    const key = JSON.stringify(deserializedExample);
                     results.set(key, result.result);
                   }
                 } catch (error) {
@@ -214,15 +217,18 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
                           Here are some examples from the first puzzle:
                         </div>
                         <div className="flex flex-wrap justify-center gap-3">
-                          {firstPuzzle.shown_examples.slice(0, 3).map((example, index) => {
-                            const key = JSON.stringify(example);
+                          {firstPuzzle.shown_examples.slice(0, 3).map((example: any, index) => {
+                            // Deserialize if needed
+                            const isSerialized = example && typeof example === 'object' && 'grid' in example && 'colors' in example;
+                            const deserializedExample = isSerialized ? deserializeSlab(example) : example;
+                            const key = JSON.stringify(deserializedExample);
                             const evaluationResult = evaluationResults.get(key) || false;
                             
                             return (
                               <div key={index} className="flex flex-col items-center gap-2">
                                 <div className="relative">
                                   <SlabComponent 
-                                    slab={example} 
+                                    slab={deserializedExample} 
                                     size="small"
                                     className="shadow-md"
                                   />
