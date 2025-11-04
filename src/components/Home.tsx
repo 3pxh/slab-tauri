@@ -6,6 +6,7 @@ import { analytics } from '../utils/analytics';
 import { signupForLaunch, getPuzzle, Puzzle } from '../lib/supabase';
 import DifficultyIndicator from './DifficultyIndicator';
 import { useNavigation } from '../utils/navigation';
+import { DebugLogDisplay } from './DebugLog';
 
 interface HomeProps {}
 
@@ -300,6 +301,9 @@ const Home: React.FC<HomeProps> = () => {
           </button>
         </div>
       )}
+
+      {/* Debug Logs */}
+      <DebugLogDisplay />
 
       {/* Footer */}
       <div className="mt-8 text-center text-sm text-gray-500">

@@ -8,6 +8,7 @@ export default defineConfig(async () => ({
   plugins: [react()],
   define: {
     // Build-time feature flags - these get replaced at build time
+    __DEBUG_LOGS_ENABLED__: false,
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

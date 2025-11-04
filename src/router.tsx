@@ -7,6 +7,7 @@ import SlabPuzzleCreator from './components/SlabPuzzleCreator';
 import PuzzlesList from './components/PuzzlesList';
 import Tutorial from './components/Tutorial';
 import { DeepLinkHandler } from './components/DeepLinkHandler';
+import { DebugLogProvider } from './components/DebugLog';
 import { getPuzzle, getPuzzleByUuid, getAllDates } from './lib/supabase';
 import { createSlab } from './components/Slab';
 import { Puzzle } from './lib/supabase';
@@ -174,10 +175,10 @@ const ErrorBoundary = ({ error }: { error: Error }) => (
 
 // Root layout component that includes deep link handler
 const RootLayout = () => (
-  <>
+  <DebugLogProvider>
     <DeepLinkHandler />
     <Outlet />
-  </>
+  </DebugLogProvider>
 );
 
 // Router configuration
