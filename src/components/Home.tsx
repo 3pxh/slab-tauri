@@ -7,6 +7,7 @@ import { signupForLaunch, getPuzzle, Puzzle } from '../lib/supabase';
 import DifficultyIndicator from './DifficultyIndicator';
 import { useNavigation } from '../utils/navigation';
 import { DebugLogDisplay } from './DebugLog';
+import SignInModal from './SignInModal';
 
 interface HomeProps {}
 
@@ -63,11 +64,6 @@ const Home: React.FC<HomeProps> = () => {
     }
   }, []);
   const [showLinkAccount, setShowLinkAccount] = React.useState(false);
-  const [linkEmail, setLinkEmail] = React.useState('');
-  const [linkPassword, setLinkPassword] = React.useState('');
-  const [linkMessage, setLinkMessage] = React.useState('');
-  const [isLinking, setIsLinking] = React.useState(false);
-  const [authMode, setAuthMode] = React.useState<'email' | 'password'>('email');
   
   // Email signup state
   const [showEmailSignup, setShowEmailSignup] = React.useState(false);
@@ -76,51 +72,6 @@ const Home: React.FC<HomeProps> = () => {
   const [isSigningUp, setIsSigningUp] = React.useState(false);
   const [hasSignedUp, setHasSignedUp] = React.useState(false);
 
-  const handleLinkAccount = async () => {
-    if (!linkEmail.trim()) {
-      setLinkMessage('Please enter an email address');
-      return;
-    }
-
-    if (authMode === 'password' && !linkPassword.trim()) {
-      setLinkMessage('Please enter a password');
-      return;
-    }
-
-    setIsLinking(true);
-    setLinkMessage('');
-    
-    try {
-      let result;
-      
-      if (authMode === 'email') {
-        // Use the existing linkAccountWithEmail function for email link authentication
-        result = await linkAccountWithEmail(linkEmail.trim());
-      } else {
-        // For password mode, try to sign in first, then sign up if that fails
-        try {
-          result = await signInWithPassword(linkEmail.trim(), linkPassword);
-        } catch (signInError) {
-          // If sign in fails, try to sign up
-          result = await signUpWithPassword(linkEmail.trim(), linkPassword);
-        }
-      }
-      
-      setLinkMessage(result.message);
-      
-      if (result.success) {
-        analytics.accountLinked();
-        setShowLinkAccount(false);
-        setLinkEmail('');
-        setLinkPassword('');
-        setAuthMode('email');
-      }
-    } catch (error) {
-      setLinkMessage(`Failed to authenticate: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsLinking(false);
-    }
-  };
 
   const handleEmailSignup = async () => {
     if (!signupEmail.trim()) {
@@ -323,104 +274,16 @@ const Home: React.FC<HomeProps> = () => {
       </div>
 
       {/* Account Linking Modal */}
-      {showLinkAccount && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center gap-2 mb-4">
-              <FiMail size={20} />
-              <h3 className="text-lg font-semibold">Save Your Progress / Sign In</h3>
-            </div>
-            <p className="text-gray-600 mb-4">
-              {authMode === 'email' 
-                ? "Add an email address to save your progress permanently. If you already have an account with this email, we'll send you a sign-in link instead."
-                : "Sign in with your email and password, or create a new account if you don't have one yet."
-              }
-            </p>
-            
-            {/* Authentication Mode Toggle */}
-            <div className="mb-4">
-              <div className="flex bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setAuthMode('email')}
-                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                    authMode === 'email' 
-                      ? 'bg-white text-blue-600 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-800'
-                  }`}
-                  disabled={isLinking}
-                >
-                  Email Link
-                </button>
-                <button
-                  onClick={() => setAuthMode('password')}
-                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                    authMode === 'password' 
-                      ? 'bg-white text-blue-600 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-800'
-                  }`}
-                  disabled={isLinking}
-                >
-                  Use Password
-                </button>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <input
-                type="email"
-                value={linkEmail}
-                onChange={(e) => setLinkEmail(e.target.value)}
-                placeholder="Enter your email address"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={isLinking}
-              />
-            </div>
-            
-            {authMode === 'password' && (
-              <div className="mb-4">
-                <input
-                  type="password"
-                  value={linkPassword}
-                  onChange={(e) => setLinkPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={isLinking}
-                />
-              </div>
-            )}
-            
-            {linkMessage && (
-              <div className={`mb-4 p-3 rounded-md text-sm ${
-                linkMessage.includes('success') || linkMessage.includes('Check your email') || linkMessage.includes('Signed in') || linkMessage.includes('Account created') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-              }`}>
-                {linkMessage}
-              </div>
-            )}
-            <div className="flex gap-3">
-              <button
-                onClick={handleLinkAccount}
-                disabled={isLinking || !linkEmail.trim() || (authMode === 'password' && !linkPassword.trim())}
-                className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLinking ? 'Processing...' : (authMode === 'email' ? 'Send Email Link' : 'Sign In / Sign Up')}
-              </button>
-              <button
-                onClick={() => {
-                  setShowLinkAccount(false);
-                  setLinkEmail('');
-                  setLinkPassword('');
-                  setLinkMessage('');
-                  setAuthMode('email');
-                }}
-                disabled={isLinking}
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SignInModal
+        isOpen={showLinkAccount}
+        onClose={() => setShowLinkAccount(false)}
+        linkAccountWithEmail={linkAccountWithEmail}
+        signInWithPassword={signInWithPassword}
+        signUpWithPassword={signUpWithPassword}
+        onSuccess={() => {
+          analytics.accountLinked();
+        }}
+      />
 
       {/* Email Signup Modal */}
       {showEmailSignup && (
