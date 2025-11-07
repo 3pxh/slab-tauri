@@ -542,3 +542,29 @@ export async function signupForLaunch(email: string): Promise<EmailSignupRespons
   const data = await response.json()
   return data
 }
+
+// Version check interfaces and functions
+export interface VersionInfo {
+  minimumVersion: string;
+  iosUrl: string;
+  androidUrl: string;
+}
+
+// Function to get version information
+export async function getVersionInfo(): Promise<VersionInfo> {
+  const response = await fetch(`${supabaseUrl}/functions/v1/version`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${supabaseAnonKey}`,
+    }
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || 'Failed to fetch version information')
+  }
+
+  const data = await response.json()
+  return data
+}

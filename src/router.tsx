@@ -8,6 +8,7 @@ import PuzzlesList from './components/PuzzlesList';
 import Tutorial from './components/Tutorial';
 import Logs from './components/Logs';
 import { DeepLinkHandler } from './components/DeepLinkHandler';
+import { VersionCheck } from './components/VersionCheck';
 import { DebugLogProvider } from './components/DebugLog';
 import { getPuzzle, getPuzzleByUuid, getAllDates } from './lib/supabase';
 import { createSlab } from './components/Slab';
@@ -174,9 +175,10 @@ const ErrorBoundary = ({ error }: { error: Error }) => (
   </div>
 );
 
-// Root layout component that includes deep link handler
+// Root layout component that includes deep link handler and version check
 const RootLayout = () => (
   <DebugLogProvider>
+    <VersionCheck />
     <DeepLinkHandler />
     <Outlet />
   </DebugLogProvider>
