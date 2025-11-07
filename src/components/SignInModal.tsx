@@ -59,7 +59,7 @@ const SignInModal: React.FC<SignInModalProps> = ({
       
       if (result.success) {
         // For email mode, if a sign-in link was sent, show confirmation instead of closing
-        if (authMode === 'email' && result.action === 'signin_sent') {
+        if (authMode === 'email' && 'action' in result && result.action === 'signin_sent') {
           setEmailLinkSent(true);
         } else {
           // For password mode or successful account linking, close the modal

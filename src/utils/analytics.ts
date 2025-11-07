@@ -173,6 +173,10 @@ export const analytics = {
     trackEvent('Tutorial Completed');
   },
 
+  tutorialSkipped: () => {
+    trackEvent('Tutorial Skipped');
+  },
+
   puzzleCreatorViewed: () => {
     trackEvent('Puzzle Creator Viewed');
   },

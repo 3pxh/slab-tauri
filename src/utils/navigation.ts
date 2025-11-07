@@ -30,7 +30,7 @@ export const useNavigation = () => {
     goToPuzzlesList: () => navigate('/puzzles'),
     
     // Navigate to tutorial
-    goToTutorial: () => navigate('/tutorial'),
+    goToTutorial: () => navigate('/tutorial', { replace: true }),
     
     // Navigate to logs
     goToLogs: () => navigate('/logs'),
