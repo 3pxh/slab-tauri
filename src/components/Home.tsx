@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiCalendar, FiPlus, FiPlay, FiMail, FiBell, FiBookOpen } from 'react-icons/fi';
+import { FiCalendar, FiPlus, FiPlay, FiMail, FiBell, FiBookOpen, FiBarChart2 } from 'react-icons/fi';
 import { useAuth } from '../hooks/useAuth';
 import AppHeader from './AppHeader';
 import { analytics } from '../utils/analytics';
@@ -9,11 +9,16 @@ import { useNavigation } from '../utils/navigation';
 import { DebugLogDisplay } from './DebugLog';
 import SignInModal from './SignInModal';
 
+const GEORGE_USER_ID = '3996a43b-86dd-4bda-8807-dc3d8e76e5a7';
+
 interface HomeProps {}
 
 const Home: React.FC<HomeProps> = () => {
-  const { isAnonymous, linkAccountWithEmail, isAuthenticated, signInWithPassword, signUpWithPassword } = useAuth();
-  const { goToTodayPuzzle, goToArchive, goToCreate, goToTutorial } = useNavigation();
+  const { isAnonymous, linkAccountWithEmail, isAuthenticated, signInWithPassword, signUpWithPassword, user } = useAuth();
+  const { goToTodayPuzzle, goToArchive, goToCreate, goToTutorial, goToLogs } = useNavigation();
+  
+  // Check if current user is George
+  const isGeorge = user?.id === GEORGE_USER_ID;
   
   // State for today's puzzle
   const [todaysPuzzle, setTodaysPuzzle] = React.useState<Puzzle | null>(null);
@@ -205,6 +210,26 @@ const Home: React.FC<HomeProps> = () => {
             </div>
           </div>
         </button>
+
+        {/* Logs Button - only visible to George */}
+        {isGeorge && (
+          <button
+            onClick={() => {
+              goToLogs();
+            }}
+            className="w-full bg-gray-600 hover:bg-gray-700 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
+          >
+            <div className="grid grid-cols-3 gap-4 items-center">
+              <div className="flex justify-end">
+                <FiBarChart2 size={24} />
+              </div>
+              <div className="col-span-2 text-left">
+                <div className="text-lg font-semibold">Analytics</div>
+                <div className="text-sm opacity-90">View logs and stats</div>
+              </div>
+            </div>
+          </button>
+        )}
       </div>
 
       {/* Email Signup Section */}

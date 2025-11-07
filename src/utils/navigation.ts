@@ -32,6 +32,9 @@ export const useNavigation = () => {
     // Navigate to tutorial
     goToTutorial: () => navigate('/tutorial'),
     
+    // Navigate to logs
+    goToLogs: () => navigate('/logs'),
+    
     // Navigate back
     goBack: () => navigate(-1),
     

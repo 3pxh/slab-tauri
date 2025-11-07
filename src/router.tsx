@@ -6,6 +6,7 @@ import SlabPuzzle from './components/SlabPuzzle';
 import SlabPuzzleCreator from './components/SlabPuzzleCreator';
 import PuzzlesList from './components/PuzzlesList';
 import Tutorial from './components/Tutorial';
+import Logs from './components/Logs';
 import { DeepLinkHandler } from './components/DeepLinkHandler';
 import { DebugLogProvider } from './components/DebugLog';
 import { getPuzzle, getPuzzleByUuid, getAllDates } from './lib/supabase';
@@ -224,6 +225,11 @@ const router = createBrowserRouter([
         element: <TutorialRoute />,
         loader: loadFirstPuzzle,
         errorElement: <ErrorBoundary error={new Error('Failed to load tutorial')} />
+      },
+      {
+        path: '/logs',
+        element: <Logs />,
+        errorElement: <ErrorBoundary error={new Error('Failed to load logs')} />
       }
     ]
   }
