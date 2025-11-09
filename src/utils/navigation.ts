@@ -35,6 +35,9 @@ export const useNavigation = () => {
     // Navigate to logs
     goToLogs: () => navigate('/logs'),
     
+    // Navigate to about
+    goToAbout: () => navigate('/about'),
+    
     // Navigate back
     goBack: () => navigate(-1),
     

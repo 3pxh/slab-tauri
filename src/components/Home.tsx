@@ -1,9 +1,9 @@
 import React from 'react';
-import { FiCalendar, FiPlus, FiPlay, FiMail, FiBell, FiBookOpen, FiBarChart2 } from 'react-icons/fi';
+import { FiCalendar, FiPlus, FiPlay, FiMail, FiBookOpen, FiBarChart2 } from 'react-icons/fi';
 import { useAuth } from '../hooks/useAuth';
 import AppHeader from './AppHeader';
 import { analytics } from '../utils/analytics';
-import { signupForLaunch, getPuzzle, Puzzle } from '../lib/supabase';
+import { getPuzzle, Puzzle } from '../lib/supabase';
 import DifficultyIndicator from './DifficultyIndicator';
 import { useNavigation } from '../utils/navigation';
 import { DebugLogDisplay } from './DebugLog';
@@ -35,13 +35,8 @@ const Home: React.FC<HomeProps> = () => {
   const [isLoadingPuzzle, setIsLoadingPuzzle] = React.useState(true);
   const [puzzleError, setPuzzleError] = React.useState<string | null>(null);
   
-  // Email signup state
+  // State for account linking
   const [showLinkAccount, setShowLinkAccount] = React.useState(false);
-  const [showEmailSignup, setShowEmailSignup] = React.useState(false);
-  const [signupEmail, setSignupEmail] = React.useState('');
-  const [signupMessage, setSignupMessage] = React.useState('');
-  const [isSigningUp, setIsSigningUp] = React.useState(false);
-  const [hasSignedUp, setHasSignedUp] = React.useState(false);
   
   // State for anonymous account warning modal
   const [showAnonymousWarning, setShowAnonymousWarning] = React.useState(false);
@@ -133,14 +128,6 @@ const Home: React.FC<HomeProps> = () => {
 
     fetchTodaysPuzzle();
   }, []);
-
-  // Check if user has already signed up for email notifications
-  React.useEffect(() => {
-    const hasSignedUpForLaunch = localStorage.getItem('slab_email_signup');
-    if (hasSignedUpForLaunch === 'true') {
-      setHasSignedUp(true);
-    }
-  }, []);
   
   const handleWelcomeSkip = () => {
     if (user) {
@@ -192,35 +179,6 @@ const Home: React.FC<HomeProps> = () => {
     );
   }
 
-
-  const handleEmailSignup = async () => {
-    if (!signupEmail.trim()) {
-      setSignupMessage('Please enter an email address');
-      return;
-    }
-
-    setIsSigningUp(true);
-    setSignupMessage('');
-    
-    try {
-      const result = await signupForLaunch(signupEmail.trim());
-      setSignupMessage(result.message);
-      
-      if (result.success) {
-        analytics.emailSignupCompleted();
-        setShowEmailSignup(false);
-        setSignupEmail('');
-        setHasSignedUp(true);
-        // Remember in localStorage that user has signed up
-        localStorage.setItem('slab_email_signup', 'true');
-      }
-    } catch (error) {
-      setSignupMessage(`Failed to sign up: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsSigningUp(false);
-    }
-  };
-
   return (
     <div className="w-full max-w-md mx-auto p-4">
       {/* App Header */}
@@ -269,25 +227,6 @@ const Home: React.FC<HomeProps> = () => {
           </div>
         </button>
 
-        {/* Tutorial Button */}
-        <button
-          onClick={() => {
-            analytics.tutorialViewed();
-            goToTutorial();
-          }}
-          className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
-        >
-          <div className="grid grid-cols-3 gap-4 items-center">
-            <div className="flex justify-end">
-              <FiBookOpen size={24} />
-            </div>
-            <div className="col-span-2 text-left">
-              <div className="text-lg font-semibold">Tutorial</div>
-              <div className="text-sm opacity-90">Learn to play!</div>
-            </div>
-          </div>
-        </button>
-
         {/* Archive Button */}
         <button
           onClick={() => {
@@ -303,6 +242,25 @@ const Home: React.FC<HomeProps> = () => {
             <div className="col-span-2 text-left">
               <div className="text-lg font-semibold">Archive</div>
               <div className="text-sm opacity-90">Browse past puzzles</div>
+            </div>
+          </div>
+        </button>
+
+        {/* Tutorial Button */}
+        <button
+          onClick={() => {
+            analytics.tutorialViewed();
+            goToTutorial();
+          }}
+          className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
+        >
+          <div className="grid grid-cols-3 gap-4 items-center">
+            <div className="flex justify-end">
+              <FiBookOpen size={24} />
+            </div>
+            <div className="col-span-2 text-left">
+              <div className="text-lg font-semibold">Tutorial</div>
+              <div className="text-sm opacity-90">Learn to play!</div>
             </div>
           </div>
         </button>
@@ -347,39 +305,6 @@ const Home: React.FC<HomeProps> = () => {
         )}
       </div>
 
-      {/* Email Signup Section */}
-      <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
-        <div className="text-center">
-          {hasSignedUp ? (
-            <>
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <FiBell size={16} className="text-green-600" />
-                <span className="text-sm font-medium text-green-700">We'll let you know when we launch!</span>
-              </div>
-              <p className="text-xs text-gray-600">
-                We'll notify you when the full app launches. Thanks for your interest.
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <FiBell size={16} className="text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">Get notified when there's an app!</span>
-              </div>
-              <p className="text-xs text-gray-600 mb-3">
-                Enter your email to be the first to know when the full app is ready.
-              </p>
-              <button
-                onClick={() => setShowEmailSignup(true)}
-                className="w-full bg-gray-600 hover:bg-gray-700 text-white text-sm py-2 px-4 rounded-md transition-colors duration-200"
-              >
-                Notify me
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
       {/* Save Progress Link - only show for anonymous users */}
       {isAuthenticated && isAnonymous && (
         <div className="mt-6 text-center">
@@ -393,25 +318,21 @@ const Home: React.FC<HomeProps> = () => {
         </div>
       )}
 
+      {/* Made with love */}
+      <div className="mt-6 text-center text-sm text-gray-500">
+        Made with ❤️ by{' '}
+        <a 
+          href="https://hoqqanen.com" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-blue-700 hover:text-gray-900 underline"
+        >
+          George Hoqqanen
+        </a>
+      </div>
+
       {/* Debug Logs */}
       <DebugLogDisplay />
-
-      {/* Footer */}
-      <div className="mt-8 text-center text-sm text-gray-500">
-      <p className="text-xs text-gray-600 text-center">
-          Follow along on{' '}
-          <a 
-            href="https://bsky.app/profile/slab17.bsky.social" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:text-blue-800 underline"
-          >
-            Bluesky
-          </a>
-          {' '}or reach out to{' '}
-          hi at slab17 ɗоt com
-        </p>
-      </div>
 
       {/* Account Linking Modal */}
       <SignInModal
@@ -458,58 +379,6 @@ const Home: React.FC<HomeProps> = () => {
                 className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
               >
                 Remind Me Later
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Email Signup Modal */}
-      {showEmailSignup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center gap-2 mb-4">
-              <FiBell size={20} />
-              <h3 className="text-lg font-semibold">Get Launch Notifications</h3>
-            </div>
-            <p className="text-gray-600 mb-4">
-              We'll send you an email when the full app launches. No spam, just one notification when we're ready!
-            </p>
-            <div className="mb-4">
-              <input
-                type="email"
-                value={signupEmail}
-                onChange={(e) => setSignupEmail(e.target.value)}
-                placeholder="Enter your email address"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                disabled={isSigningUp}
-              />
-            </div>
-            {signupMessage && (
-              <div className={`mb-4 p-3 rounded-md text-sm ${
-                signupMessage.includes('Thanks') || signupMessage.includes('already') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-              }`}>
-                {signupMessage}
-              </div>
-            )}
-            <div className="flex gap-3">
-              <button
-                onClick={handleEmailSignup}
-                disabled={isSigningUp || !signupEmail.trim()}
-                className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSigningUp ? 'Signing up...' : 'Notify me'}
-              </button>
-              <button
-                onClick={() => {
-                  setShowEmailSignup(false);
-                  setSignupEmail('');
-                  setSignupMessage('');
-                }}
-                disabled={isSigningUp}
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-              >
-                Cancel
               </button>
             </div>
           </div>

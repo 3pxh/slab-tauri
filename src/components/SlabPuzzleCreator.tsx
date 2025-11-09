@@ -1,16 +1,18 @@
 import React from 'react';
-import { FiArrowLeft, FiArrowUp, FiArrowDown, FiStar, FiX } from 'react-icons/fi';
+import { FiArrowLeft, FiStar, FiX, FiChevronUp, FiChevronDown } from 'react-icons/fi';
 import { Puzzle, getAllDates, supabase, getAllVisibleSlabs, createSlab, Slab as SlabRecord } from '../lib/supabase';
 import SlabMaker from './SlabMaker';
 import SlabComponent, { SlabData, areSlabsEqual, serializeSlab, deserializeSlab } from './Slab';
 import { deepCopy, formatDateUTC } from '../utils';
 import { executeCodeSafely } from '../utils/sandbox';
 
+const GEORGE_USER_ID = '3996a43b-86dd-4bda-8807-dc3d8e76e5a7';
+
 // Global rule creation guide text
 const RULE_CREATION_GUIDE = `SLAB RULE CREATION GUIDE FOR LLMs
 =====================================
 
-This guide explains how to create evaluation rules for the SLAB puzzle game. These rules are JavaScript functions that determine whether a given slab configuration should return true (marked with a duck) or false.
+This guide explains how to create evaluation rules for the SLAB puzzle game. These rules are JavaScript functions that determine whether a given slab configuration should return true or false.
 
 SLAB DATA STRUCTURE
 -------------------
@@ -93,6 +95,8 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   const [isAuthLoading, setIsAuthLoading] = React.useState(false);
   const [authMessage, setAuthMessage] = React.useState('');
   
+  // Check if current user is George
+  const isGeorge = user?.id === GEORGE_USER_ID;
   
   // Rule guide modal state
   const [showRuleGuideModal, setShowRuleGuideModal] = React.useState(false);
@@ -531,65 +535,6 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
     setHiddenExamples(newHidden);
   };
 
-  const handleMoveSlabUp = (index: number) => {
-    if (index === 0) return; // Already at the top
-    
-    setCreatedSlabs(prev => {
-      const newSlabs = [...prev];
-      const slab = newSlabs.splice(index, 1)[0];
-      newSlabs.splice(index - 1, 0, slab);
-      return newSlabs;
-    });
-
-    // Reorder the corresponding state arrays
-    setShownExamples(prev => {
-      const newShown = [...prev];
-      const shown = newShown.splice(index, 1)[0];
-      newShown.splice(index - 1, 0, shown);
-      return newShown;
-    });
-
-    setHiddenExamples(prev => {
-      const newHidden = [...prev];
-      const hidden = newHidden.splice(index, 1)[0];
-      newHidden.splice(index - 1, 0, hidden);
-      return newHidden;
-    });
-
-    // Evaluation results are keyed by slab data, so no need to reorder
-  };
-
-  const handleMoveSlabDown = (index: number) => {
-    setCreatedSlabs(prev => {
-      if (index === prev.length - 1) return prev; // Already at the bottom
-      
-      const newSlabs = [...prev];
-      const slab = newSlabs.splice(index, 1)[0];
-      newSlabs.splice(index + 1, 0, slab);
-      return newSlabs;
-    });
-
-    // Reorder the corresponding state arrays
-    setShownExamples(prev => {
-      if (index === prev.length - 1) return prev;
-      
-      const newShown = [...prev];
-      const shown = newShown.splice(index, 1)[0];
-      newShown.splice(index + 1, 0, shown);
-      return newShown;
-    });
-
-    setHiddenExamples(prev => {
-      if (index === prev.length - 1) return prev;
-      
-      const newHidden = [...prev];
-      const hidden = newHidden.splice(index, 1)[0];
-      newHidden.splice(index + 1, 0, hidden);
-      return newHidden;
-    });
-
-    // Evaluation results are keyed by slab data, so no need to reorder
-  };
 
   const handleEvaluationFnBlur = async () => {
     // Clear cache when evaluation function changes
@@ -728,6 +673,40 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
     }
   };
 
+  const scrollToTop = () => {
+    // The page scrolls on #root, not window (see index.css)
+    const rootElement = document.getElementById('root');
+    if (rootElement) {
+      rootElement.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    } else {
+      // Fallback to window scroll
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const scrollToBottom = () => {
+    // The page scrolls on #root, not window (see index.css)
+    const rootElement = document.getElementById('root');
+    if (rootElement) {
+      rootElement.scrollTo({
+        top: rootElement.scrollHeight,
+        behavior: 'smooth'
+      });
+    } else {
+      // Fallback to window scroll
+      window.scrollTo({
+        top: document.documentElement.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   const handleCreatePuzzle = async () => {
     if (!puzzleName.trim() || !evaluationFn.trim()) {
       alert('Please fill in both puzzle name and evaluation function');
@@ -786,19 +765,13 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
     return (
       <div className="p-4 w-full max-w-7xl mx-auto">
         {/* Back to Home Button */}
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4">
           <button
             onClick={onHome}
             className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors"
           >
             <FiArrowLeft size={20} />
             <span>Back to Home</span>
-          </button>
-          <button
-            onClick={onViewPuzzles}
-            className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-          >
-            View My Puzzles
           </button>
         </div>
 
@@ -857,6 +830,24 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Scroll Buttons - Always Visible */}
+        <button
+          onClick={scrollToTop}
+          className="fixed top-2 right-2 w-12 h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-110 flex items-center justify-center z-50"
+          title="Scroll to top"
+          aria-label="Scroll to top of page"
+        >
+          <FiChevronUp size={24} />
+        </button>
+        <button
+          onClick={scrollToBottom}
+          className="fixed bottom-2 right-2 w-12 h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-110 flex items-center justify-center z-50"
+          title="Scroll to bottom"
+          aria-label="Scroll to bottom of page"
+        >
+          <FiChevronDown size={24} />
+        </button>
       </div>
     );
   }
@@ -864,7 +855,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   return (
     <div className="p-4 w-full max-w-7xl mx-auto">
       {/* Back to Home Button */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4">
         <button
           onClick={onHome}
           className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors"
@@ -872,43 +863,46 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
           <FiArrowLeft size={20} />
           <span>Back to Home</span>
         </button>
+      </div>
+
+      {/* Authentication Section - Only show when authenticated and user is George */}
+      {isGeorge && (
+        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <h3 className="text-lg font-semibold mb-3 text-blue-800">Authentication</h3>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-medium">✓</span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700">Signed in as</p>
+                <p className="text-sm text-gray-600">{user?.email}</p>
+              </div>
+            </div>
+            <button
+              onClick={handleSignOut}
+              disabled={isAuthLoading}
+              className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+            >
+              {isAuthLoading ? 'Signing out...' : 'Sign Out'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* View My Puzzles Button - Centered */}
+      <div className="mb-4 flex justify-center">
         <button
           onClick={onViewPuzzles}
-          className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          className="px-6 py-3 text-base font-medium bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
         >
           View My Puzzles
         </button>
       </div>
 
-      {/* Authentication Section - Only show when authenticated */}
-      <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-        <h3 className="text-lg font-semibold mb-3 text-blue-800">Authentication</h3>
-        
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-medium">✓</span>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-700">Signed in as</p>
-              <p className="text-sm text-gray-600">{user?.email}</p>
-            </div>
-          </div>
-          <button
-            onClick={handleSignOut}
-            disabled={isAuthLoading}
-            className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
-          >
-            {isAuthLoading ? 'Signing out...' : 'Sign Out'}
-          </button>
-        </div>
-      </div>
-
-
       {/* Puzzle Information */}
       <div className="mb-4 p-3 bg-gray-100 rounded-lg">
-        <h2 className="text-lg font-semibold mb-2">Creating Puzzle for {formatDateUTC(displayDate)}</h2>
-        
         {/* Puzzle Name Field */}
         <div className="mb-4">
           <label htmlFor="puzzle-name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -935,11 +929,8 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
             onChange={(e) => setRuleDescription(e.target.value)}
             rows={3}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Enter a plain English description of the puzzle rule..."
+            placeholder="Enter a description of the puzzle rule (e.g. 'no red groups', 'all blue groups have at least three cells')"
           />
-          <p className="mt-1 text-xs text-gray-500">
-            This description will be shown to players after they complete or fail the puzzle.
-          </p>
           <div className="mt-2">
             <button
               onClick={handleCopyRulePrompt}
@@ -951,10 +942,36 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
           </div>
         </div>
 
+        {/* Evaluation Function Field */}
+        <div className="mb-4">
+          <p className='mb-2'>
+            Paste the rule prompt into an AI. It will write some code. Copy the code into the evaluation function box below. Make slabs and check that they get stars and x's in accord with your description.
+          </p>
+          <label htmlFor="evaluation-fn" className="block text-sm font-medium text-gray-700 mb-1">
+            Evaluation Function
+          </label>
+          <textarea
+            id="evaluation-fn"
+            value={evaluationFn}
+            onChange={(e) => setEvaluationFn(e.target.value)}
+            onBlur={handleEvaluationFnBlur}
+            rows={4}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Enter evaluation function code..."
+          />
+          
+          <p className='mt-2'>
+            Hidden slabs are revealed 5 at a time in the order in which they are presented in the list below, so make 15 of them if you want to give 3 guesses worth. All shown slabs are available when starting a level (it's recommended to make 2, one which follows the rule and one which doesn't).
+          </p>
+          <p className='mt-2'>
+            Clicking on a slab will bring it to the front of the list.
+          </p>
+        </div>
+
         {/* Difficulty Field */}
         <div className="mb-4">
           <label htmlFor="difficulty" className="block text-sm font-medium text-gray-700 mb-1">
-            Difficulty Level
+            Estimated Difficulty Level
           </label>
           <select
             id="difficulty"
@@ -968,31 +985,6 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
             <option value={4}>4 - Hard</option>
             <option value={5}>5 - Very Hard</option>
           </select>
-          <p className="mt-1 text-xs text-gray-500">
-            Choose the difficulty level for this puzzle (1 = easiest, 5 = hardest).
-          </p>
-        </div>
-
-        {/* Evaluation Function Field */}
-        <div className="mb-4">
-          <label htmlFor="evaluation-fn" className="block text-sm font-medium text-gray-700 mb-1">
-            Evaluation Function
-          </label>
-          <textarea
-            id="evaluation-fn"
-            value={evaluationFn}
-            onChange={(e) => setEvaluationFn(e.target.value)}
-            onBlur={handleEvaluationFnBlur}
-            rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Enter evaluation function code..."
-          />
-          <p>
-            Add a rule description and copy the rule prompt to your clipboard and paste it into an AI. Copy the code it makes into the evaluation function box. Make slabs and the evaluation will run automatically when you finish editing.
-          </p>
-          <p>
-            Hidden slabs are revealed in the order in which they are presented in the list below.
-          </p>
         </div>
       </div>
 
@@ -1022,31 +1014,48 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
 
       {/* Create Puzzle Button */}
       <div className="mt-4">
-        <button
-          onClick={handleCreatePuzzle}
-          disabled={isCreating || !puzzleName.trim() || !evaluationFn.trim()}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
-        >
-          {isCreating ? 'Creating Puzzle...' : 'Create Puzzle'}
-        </button>
+        {(() => {
+          const hiddenCount = hiddenExamples.filter(Boolean).length;
+          const neededCount = 15 - hiddenCount;
+          const hasEnoughHidden = hiddenCount >= 15;
+          const isDisabled = isCreating || !puzzleName.trim() || !evaluationFn.trim() || !hasEnoughHidden;
+          
+          let buttonText = 'Create Puzzle';
+          if (isCreating) {
+            buttonText = 'Creating Puzzle...';
+          } else if (!hasEnoughHidden) {
+            buttonText = `Need ${neededCount} more hidden slab${neededCount === 1 ? '' : 's'}`;
+          }
+          
+          return (
+            <button
+              onClick={handleCreatePuzzle}
+              disabled={isDisabled}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+            >
+              {buttonText}
+            </button>
+          );
+        })()}
       </div>
 
       {/* Shown Examples Section */}
       {createdSlabs.length > 0 && shownExamples.some(Boolean) && (
         <div className="mt-8">
           <h3 className="text-lg font-semibold mb-4">Shown Examples</h3>
-          <div className="flex flex-wrap gap-6">
+          <div className="flex flex-wrap gap-2">
             {createdSlabs.map((slab, index) => {
               if (!shownExamples[index]) return null;
               return (
-                <div key={slab.id} className="flex flex-col items-center flex-shrink-0 p-2">
-                  <div className="mb-2 text-sm font-medium">Slab #{index + 1}</div>
+                <div key={slab.id} className="flex flex-col items-center flex-shrink-0">
+                  <div className="mb-1 text-xs font-medium">#{index + 1}</div>
                   <div 
                     onClick={() => handleSlabClick(index)}
                     className="cursor-pointer hover:opacity-80 transition-opacity duration-200 relative"
+                    style={{ width: '80px', height: '80px' }}
                     title="Click to move to front"
                   >
-                    <SlabComponent slab={slab} size="small" />
+                    <SlabComponent slab={slab} size="small" className="w-full h-full" />
                     {/* Evaluation annotation directly on slab */}
                     {(() => {
                       const cacheKey = getSlabCacheKey(slab);
@@ -1070,55 +1079,27 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
                       );
                     })()}
                   </div>
-                  <div className="mt-3 flex flex-col gap-1">
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => handleShownExampleChange(index, !shownExamples[index])}
-                        className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
-                          shownExamples[index] 
-                            ? 'bg-blue-600 text-white' 
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                      >
-                        Shown
-                      </button>
-                      <button
-                        onClick={() => handleHiddenExampleChange(index, !hiddenExamples[index])}
-                        className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
-                          hiddenExamples[index] 
-                            ? 'bg-red-600 text-white' 
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                      >
-                        Hidden
-                      </button>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => handleMoveSlabUp(index)}
-                        disabled={index === 0}
-                        className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
-                          index === 0
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                        title="Move up"
-                      >
-                        <FiArrowUp size={12} />
-                      </button>
-                      <button
-                        onClick={() => handleMoveSlabDown(index)}
-                        disabled={index === createdSlabs.length - 1}
-                        className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
-                          index === createdSlabs.length - 1
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                        title="Move down"
-                      >
-                        <FiArrowDown size={12} />
-                      </button>
-                    </div>
+                  <div className="mt-3 flex gap-1">
+                    <button
+                      onClick={() => handleShownExampleChange(index, !shownExamples[index])}
+                      className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                        shownExamples[index] 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Shown
+                    </button>
+                    <button
+                      onClick={() => handleHiddenExampleChange(index, !hiddenExamples[index])}
+                      className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                        hiddenExamples[index] 
+                          ? 'bg-red-600 text-white' 
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Hidden
+                    </button>
                   </div>
                 </div>
               );
@@ -1131,18 +1112,19 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       {createdSlabs.length > 0 && hiddenExamples.some(Boolean) && (
         <div className="mt-8">
           <h3 className="text-lg font-semibold mb-4">Guessing Slabs</h3>
-          <div className="flex flex-wrap gap-6">
+          <div className="flex flex-wrap gap-2">
             {createdSlabs.map((slab, index) => {
               if (!hiddenExamples[index]) return null;
               return (
-                <div key={slab.id} className="flex flex-col items-center flex-shrink-0 p-2">
-                  <div className="mb-2 text-sm font-medium">Slab #{index + 1}</div>
+                <div key={slab.id} className="flex flex-col items-center flex-shrink-0">
+                  <div className="mb-1 text-xs font-medium">#{index + 1}</div>
                   <div 
                     onClick={() => handleSlabClick(index)}
                     className="cursor-pointer hover:opacity-80 transition-opacity duration-200 relative"
+                    style={{ width: '80px', height: '80px' }}
                     title="Click to move to front"
                   >
-                    <SlabComponent slab={slab} size="small" />
+                    <SlabComponent slab={slab} size="small" className="w-full h-full" />
                     {/* Evaluation annotation directly on slab */}
                     {(() => {
                       const cacheKey = getSlabCacheKey(slab);
@@ -1166,55 +1148,27 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
                       );
                     })()}
                   </div>
-                  <div className="mt-3 flex flex-col gap-1">
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => handleShownExampleChange(index, !shownExamples[index])}
-                        className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
-                          shownExamples[index] 
-                            ? 'bg-blue-600 text-white' 
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                      >
-                        Shown
-                      </button>
-                      <button
-                        onClick={() => handleHiddenExampleChange(index, !hiddenExamples[index])}
-                        className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
-                          hiddenExamples[index] 
-                            ? 'bg-red-600 text-white' 
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                      >
-                        Hidden
-                      </button>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => handleMoveSlabUp(index)}
-                        disabled={index === 0}
-                        className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
-                          index === 0
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                        title="Move up"
-                      >
-                        <FiArrowUp size={12} />
-                      </button>
-                      <button
-                        onClick={() => handleMoveSlabDown(index)}
-                        disabled={index === createdSlabs.length - 1}
-                        className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
-                          index === createdSlabs.length - 1
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                        title="Move down"
-                      >
-                        <FiArrowDown size={12} />
-                      </button>
-                    </div>
+                  <div className="mt-3 flex gap-1">
+                    <button
+                      onClick={() => handleShownExampleChange(index, !shownExamples[index])}
+                      className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                        shownExamples[index] 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Shown
+                    </button>
+                    <button
+                      onClick={() => handleHiddenExampleChange(index, !hiddenExamples[index])}
+                      className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                        hiddenExamples[index] 
+                          ? 'bg-red-600 text-white' 
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Hidden
+                    </button>
                   </div>
                 </div>
               );
@@ -1236,16 +1190,17 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
               Sort by Result
             </button>
           </div>
-          <div className="flex flex-wrap gap-6">
+          <div className="flex flex-wrap gap-2">
             {createdSlabs.map((slab, index) => (
-              <div key={slab.id} className="flex flex-col items-center flex-shrink-0 p-2">
-                <div className="mb-2 text-sm font-medium">Slab #{index + 1}</div>
+              <div key={slab.id} className="flex flex-col items-center flex-shrink-0">
+                <div className="mb-1 text-xs font-medium">#{index + 1}</div>
                 <div 
                   onClick={() => handleSlabClick(index)}
                   className="cursor-pointer hover:opacity-80 transition-opacity duration-200 relative"
+                  style={{ width: '80px', height: '80px' }}
                   title="Click to move to front"
                 >
-                  <SlabComponent slab={slab} size="small" />
+                  <SlabComponent slab={slab} size="small" className="w-full h-full" />
                   {/* Evaluation annotation directly on slab */}
                   {(() => {
                     const cacheKey = getSlabCacheKey(slab);
@@ -1269,57 +1224,29 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
                     );
                   })()}
                 </div>
-                <div className="mt-3 flex flex-col gap-1">
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => handleShownExampleChange(index, !shownExamples[index])}
-                      className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
-                        shownExamples[index] 
-                          ? 'bg-blue-600 text-white' 
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      Shown
-                    </button>
-                    <button
-                      onClick={() => handleHiddenExampleChange(index, !hiddenExamples[index])}
-                      className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
-                        hiddenExamples[index] 
-                          ? 'bg-red-600 text-white' 
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      Hidden
-                    </button>
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => handleMoveSlabUp(index)}
-                      disabled={index === 0}
-                      className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
-                        index === 0
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                      title="Move up"
-                    >
-                      <FiArrowUp size={12} />
-                    </button>
-                    <button
-                      onClick={() => handleMoveSlabDown(index)}
-                      disabled={index === createdSlabs.length - 1}
-                      className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
-                        index === createdSlabs.length - 1
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                      title="Move down"
-                    >
-                      <FiArrowDown size={12} />
-                      </button>
-                    </div>
-                  </div>
+                <div className="mt-3 flex gap-1">
+                  <button
+                    onClick={() => handleShownExampleChange(index, !shownExamples[index])}
+                    className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                      shownExamples[index] 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Shown
+                  </button>
+                  <button
+                    onClick={() => handleHiddenExampleChange(index, !hiddenExamples[index])}
+                    className={`px-2 py-1 text-xs font-medium rounded transition-colors duration-200 ${
+                      hiddenExamples[index] 
+                        ? 'bg-red-600 text-white' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Hidden
+                  </button>
                 </div>
+              </div>
               ))}
           </div>
         </div>
@@ -1384,6 +1311,24 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
           </div>
         </div>
       )}
+
+      {/* Scroll Buttons - Always Visible */}
+      <button
+        onClick={scrollToTop}
+        className="fixed top-2 right-2 w-12 h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-110 flex items-center justify-center z-50"
+        title="Scroll to top"
+        aria-label="Scroll to top of page"
+      >
+        <FiChevronUp size={24} />
+      </button>
+      <button
+        onClick={scrollToBottom}
+        className="fixed bottom-2 right-2 w-12 h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-110 flex items-center justify-center z-50"
+        title="Scroll to bottom"
+        aria-label="Scroll to bottom of page"
+      >
+        <FiChevronDown size={24} />
+      </button>
     </div>
   );
 };

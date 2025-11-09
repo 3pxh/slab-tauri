@@ -36,7 +36,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         />
         <div>
           <h1 className={`${titleClass} font-bold text-gray-800`}>Slab 17</h1>
-          <p className="text-sm text-gray-600 italic">the philosopher's puzzle game</p>
+          <p className="text-sm text-gray-600 italic">a philosophical puzzle game</p>
         </div>
       </div>
     </div>

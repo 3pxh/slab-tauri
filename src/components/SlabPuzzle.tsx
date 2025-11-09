@@ -169,15 +169,52 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     }
   }, [hasWon, isInIndividualGuessMode, isLoading, checkNextPuzzleAvailability, fetchSolvedPuzzlesCount]);
 
+  // Scroll detection for scroll-to-top button (always active, independent)
+  React.useEffect(() => {
+    const checkScrollTop = () => {
+      // The page scrolls on #root, not window (see index.css)
+      const rootElement = document.getElementById('root');
+      const scrollTop = rootElement?.scrollTop 
+        || window.pageYOffset 
+        || document.documentElement.scrollTop 
+        || document.body.scrollTop 
+        || 0;
+      const shouldShowUp = scrollTop > 50;
+      setShowScrollToTop(shouldShowUp);
+    };
+
+    // Initial check
+    checkScrollTop();
+
+    // Listen to scroll on #root element (the actual scrollable container)
+    const rootElement = document.getElementById('root');
+    if (rootElement) {
+      rootElement.addEventListener('scroll', checkScrollTop, { passive: true });
+    }
+    
+    // Also listen to window scroll as fallback
+    window.addEventListener('scroll', checkScrollTop, { passive: true });
+    window.addEventListener('resize', checkScrollTop, { passive: true });
+
+    return () => {
+      if (rootElement) {
+        rootElement.removeEventListener('scroll', checkScrollTop);
+      }
+      window.removeEventListener('scroll', checkScrollTop);
+      window.removeEventListener('resize', checkScrollTop);
+    };
+  }, []); // Empty deps - always runs once on mount
+
   // Scroll detection for showing/hiding the scroll-to-slabs button
   React.useEffect(() => {
     const checkScrollVisibility = () => {
+      // Check scroll-to-slabs button visibility (only if refs exist)
       if (!slabListRef.current || !containerRef.current) return;
       const slabListRect = slabListRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const isSlabListVisible = slabListRect.top < 0 || slabListRect.bottom < viewportHeight + 5;
-      const shouldShow = allSlabs.length > 0 && !isSlabListVisible;
-      setShowScrollToSlabs(shouldShow);
+      const shouldShowDown = allSlabs.length > 0 && !isSlabListVisible;
+      setShowScrollToSlabs(shouldShowDown);
     };
 
     // Find the actual scrollable element
@@ -229,6 +266,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   
   // State for scroll-to-slab functionality
   const [showScrollToSlabs, setShowScrollToSlabs] = React.useState(false);
+  const [showScrollToTop, setShowScrollToTop] = React.useState(false);
   const slabListRef = React.useRef<HTMLDivElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   
@@ -374,6 +412,23 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       slabListRef.current.scrollIntoView({ 
         behavior: 'smooth', 
         block: 'start' 
+      });
+    }
+  };
+
+  const scrollToTop = () => {
+    // The page scrolls on #root, not window (see index.css)
+    const rootElement = document.getElementById('root');
+    if (rootElement) {
+      rootElement.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    } else {
+      // Fallback to window scroll
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
       });
     }
   };
@@ -533,7 +588,15 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         />
       )}
 
-      {/* Floating Scroll to Slabs Button */}
+      {/* Floating Scroll Buttons */}
+      <ScrollButton
+        onClick={scrollToTop}
+        isVisible={showScrollToTop}
+        direction="up"
+        position="right"
+        title="Scroll to top"
+        ariaLabel="Scroll to top of page"
+      />
       <ScrollButton
         onClick={scrollToSlabList}
         isVisible={showScrollToSlabs}

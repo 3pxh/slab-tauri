@@ -1,11 +1,11 @@
 import React from 'react';
 import { FiArrowRight, FiArrowLeft, FiRefreshCw, FiStar, FiX } from 'react-icons/fi';
-import AppHeader from './AppHeader';
 import { analytics } from '../utils/analytics';
 import SlabComponent, { SlabData, createRandomSlab, COLORS, deserializeSlab } from './Slab';
 import SlabMaker from './SlabMaker';
 import { getPuzzle, getAllDates, Puzzle } from '../lib/supabase';
 import { executeCodeSafely } from '../utils/sandbox';
+import favicon from '../assets/favicon.png';
 
 interface TutorialProps {
   onFirstPuzzle: () => void;
@@ -15,11 +15,48 @@ interface TutorialProps {
 const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
   const [currentStep, setCurrentStep] = React.useState(0);
   const [randomSlab, setRandomSlab] = React.useState<SlabData>(() => createRandomSlab());
+  const [finalPanelSlab, setFinalPanelSlab] = React.useState<SlabData>(() => createRandomSlab());
   const [firstPuzzle, setFirstPuzzle] = React.useState<Puzzle | null>(null);
   const [isLoadingPuzzle, setIsLoadingPuzzle] = React.useState(false);
   const [evaluationResults, setEvaluationResults] = React.useState<Map<string, boolean>>(new Map());
   
   // (smiley face slab removed)
+
+  const steps = [
+    {
+      title: "Welcome to Slab!",
+      content: "Slab is a daily puzzle game where each challenge offers a different perspective and a new mystery to solve.",
+      showSlab: false
+    },
+    {
+      title: "This is a Slab",
+      content: "Slabs are grids divided into colorful regions.",
+      showSlab: true
+    },
+    {
+      title: "How to make slabs",
+      content: "Try to drag, double-tap, and add colors.",
+      showSlab: false,
+      showSlabMaker: true
+    },
+    {
+      title: "The Puzzles",
+      content: "Each puzzle has a secret rule that sorts slabs into stars and X's. The rule might be anything, like 'it has to have a red cell' or 'no groups can be bigger than 4 cells' or 'a blue group must touch a yellow group', and every day has a different rule. You start with a couple examples and need to make more slabs to learn about the rule by getting them judged. Your job isn't to make perfect slabs, but to experiment: build different slabs to learn what the rule could be.",
+      showSlab: false,
+      showExamples: true
+    },
+    {
+      title: "How to Win",
+      content: "When you think you understand what the rule is, try guessing. You'll see 5 slabs. If you correctly guess which ones pass the rule, you win! You get 3 tries, and you can't build new slabs while you have a guess in progress.",
+      showSlab: false,
+      showGuessButton: true
+    },
+    {
+      title: "Have fun!",
+      content: "Are you ready for the challenge?",
+      showSlab: false
+    }
+  ];
 
   // Track tutorial start
   React.useEffect(() => {
@@ -84,6 +121,18 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
     setRandomSlab(createRandomSlab());
   };
 
+  // Randomize slab on final panel every second
+  React.useEffect(() => {
+    const isFinalPanel = currentStep === steps.length - 1;
+    if (!isFinalPanel) return;
+
+    const interval = setInterval(() => {
+      setFinalPanelSlab(createRandomSlab());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentStep]);
+
   // Generic next handler
   const handleNext = () => {
     if (currentStep === steps.length - 1) {
@@ -103,42 +152,6 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
     }
   };
 
-  const steps = [
-    {
-      title: "Welcome to Slab!",
-      content: "Slab is a daily puzzle game where each challenge offers a different perspective and a new mystery to solve.",
-      showSlab: false
-    },
-    {
-      title: "This is a Slab",
-      content: "Slabs are grids divided into colorful regions.",
-      showSlab: true
-    },
-    {
-      title: "How to make slabs",
-      content: "Try to drag, double-tap, and add colors.",
-      showSlab: false,
-      showSlabMaker: true
-    },
-    {
-      title: "The Puzzles",
-      content: "Each puzzle has a secret rule that sorts slabs into stars and X's. The rule might be anything, like 'it has to have a red cell' or 'no groups can be bigger than 4 cells' or 'a blue group must touch a yellow group', and every day has a different rule. You start with a couple examples and need to make more slabs to learn about the rule by getting them judged. Your job isn't to make perfect slabs, but to experiment: build different slabs to learn what the rule could be.",
-      showSlab: false,
-      showExamples: true
-    },
-    {
-      title: "How to Win",
-      content: "When you think you understand what the rule is, try guessing. You'll see 5 slabs. If you correctly guess which ones pass the rule, you win! You get 3 tries, and you can't build new slabs while you have a guess in progress.",
-      showSlab: false,
-      showGuessButton: true
-    },
-    {
-      title: "Have fun!",
-      content: "Are you ready for the challenge?",
-      showSlab: false
-    }
-  ];
-
 
   return (
     <div className="w-full max-w-md mx-auto h-full flex flex-col">
@@ -155,17 +168,19 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
                 key={index}
                 className="w-full flex-shrink-0 flex flex-col items-center px-4 justify-start overflow-y-auto pb-8"
               >
-                {/* App Header */}
-                <div className="pt-4 pb-0 w-full">
-                  <AppHeader 
-                    titleSize="large" 
-                    showBackButton={true}
-                    onBack={onHome}
-                  />
-                </div>
+                {/* App Icon (only on first panel) */}
+                {index === 0 && (
+                  <div className="mb-6 flex justify-center mt-4">
+                    <img 
+                      src={favicon} 
+                      alt="Slab! App Icon" 
+                      className="w-32 h-32 rounded-lg"
+                    />
+                  </div>
+                )}
 
                 {/* Step Title */}
-                <h2 className="text-4xl font-bold text-gray-800 mb-4 text-center">
+                <h2 className="text-4xl font-bold text-gray-800 mb-4 text-center mt-4">
                   {step.title}
                 </h2>
 
@@ -287,7 +302,16 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
                   </div>
                 )}
 
-                {/* (smiley face display removed) */}
+                {/* Randomizing Slab Display (only for "Have fun!" step) */}
+                {index === steps.length - 1 && (
+                  <div className="flex flex-col items-center gap-4 pb-8">
+                    <SlabComponent 
+                      slab={finalPanelSlab} 
+                      size="medium"
+                      className="shadow-lg"
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -311,20 +335,18 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
         {/* Action Buttons */}
         <div className="flex gap-3">
           {/* Back Button */}
-          {currentStep > 0 && (
-            <button
-              onClick={handleBack}
-              className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg p-4 transition-colors duration-200 flex items-center justify-center gap-2"
-            >
-              <FiArrowLeft size={20} />
-              <span className="text-lg font-semibold">Back</span>
-            </button>
-          )}
+          <button
+            onClick={currentStep === 0 ? onHome : handleBack}
+            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg p-4 transition-colors duration-200 flex items-center justify-center gap-2"
+          >
+            <FiArrowLeft size={20} />
+            <span className="text-lg font-semibold">Back</span>
+          </button>
 
           {/* Next/Play Button */}
           <button
             onClick={handleNext}
-            className={`${currentStep > 0 ? 'flex-1' : 'w-full'} bg-blue-500 hover:bg-blue-600 text-white rounded-lg p-4 transition-colors duration-200 shadow-lg flex items-center justify-center gap-2`}
+            className="flex-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg p-4 transition-colors duration-200 shadow-lg flex items-center justify-center gap-2"
           >
             <span className="text-lg font-semibold">
               {currentStep === steps.length - 1 ? 'Play' : 'Next'}
