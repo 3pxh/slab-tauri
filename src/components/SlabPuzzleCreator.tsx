@@ -3,7 +3,7 @@ import { FiArrowLeft, FiStar, FiX, FiChevronUp, FiChevronDown } from 'react-icon
 import { Puzzle, getAllDates, supabase, getAllVisibleSlabs, createSlab, Slab as SlabRecord } from '../lib/supabase';
 import SlabMaker from './SlabMaker';
 import SlabComponent, { SlabData, areSlabsEqual, serializeSlab, deserializeSlab } from './Slab';
-import { deepCopy, formatDateUTC } from '../utils';
+import { deepCopy } from '../utils';
 import { executeCodeSafely } from '../utils/sandbox';
 
 const GEORGE_USER_ID = '3996a43b-86dd-4bda-8807-dc3d8e76e5a7';
@@ -82,7 +82,6 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   const [hiddenExamples, setHiddenExamples] = React.useState<boolean[]>([]);
   // Store evaluation results keyed by serialized slab data for stable caching
   const [evaluationResults, setEvaluationResults] = React.useState<Map<string, boolean>>(new Map());
-  const [displayDate, setDisplayDate] = React.useState(puzzle.publish_date);
   const [isLoadingHistory, setIsLoadingHistory] = React.useState(false);
   const [slabsLoaded, setSlabsLoaded] = React.useState(false);
   const [copyButtonText, setCopyButtonText] = React.useState('Copy Prompt and Load Slabs');
@@ -274,14 +273,12 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
         
         // Update both the puzzle object and the display state
         puzzle.publish_date = nextDate;
-        setDisplayDate(nextDate);
         console.log('Set puzzle publish_date to:', puzzle.publish_date);
       } catch (error) {
         console.error('Failed to fetch dates, using current date:', error);
         // Fallback to current date if fetching fails
         const fallbackDate = new Date().toISOString();
         puzzle.publish_date = fallbackDate;
-        setDisplayDate(fallbackDate);
         console.log('Fallback: Set puzzle publish_date to current date:', puzzle.publish_date);
       }
     };
