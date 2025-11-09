@@ -24,6 +24,35 @@ const LevelSelect: React.FC<LevelSelectProps> = () => {
   const { goToPuzzle, goHome } = useNavigation();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
+  // Helper function to check if a date is today or before (in UTC)
+  const isTodayOrBefore = (dateString: string) => {
+    let date: Date;
+    
+    if (dateString.includes('T') || dateString.includes(' ')) {
+      date = new Date(dateString);
+    } else {
+      date = new Date(dateString + 'T00:00:00Z');
+    }
+    
+    if (isNaN(date.getTime())) {
+      return false;
+    }
+    
+    const now = new Date();
+    const puzzleDate = new Date(Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate()
+    ));
+    const today = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate()
+    ));
+    
+    return puzzleDate <= today;
+  };
+
   // Fetch available puzzle dates with difficulty on component mount
   React.useEffect(() => {
     const fetchPuzzles = async () => {
@@ -31,8 +60,11 @@ const LevelSelect: React.FC<LevelSelectProps> = () => {
         setIsLoadingDates(true);
         const response = await getAllDatesWithDifficulty();
         if (response.success) {
-          // Reverse the order so earliest puzzle (#1) is at the top
-          setPuzzles(response.puzzles.reverse());
+          // Filter out puzzles after today, then reverse the order so earliest puzzle (#1) is at the top
+          const filteredPuzzles = response.puzzles.filter(puzzle => 
+            isTodayOrBefore(puzzle.publish_date)
+          );
+          setPuzzles(filteredPuzzles.reverse());
         }
       } catch (error) {
         console.error('Failed to fetch available puzzles:', error);
