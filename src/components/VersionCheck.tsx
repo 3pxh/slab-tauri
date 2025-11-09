@@ -25,8 +25,6 @@ function compareVersions(v1: string, v2: string): number {
 export const VersionCheck = () => {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [storeUrl, setStoreUrl] = useState<string>('');
-  const [currentVersion, setCurrentVersion] = useState<string>('');
-  const [minimumVersion, setMinimumVersion] = useState<string>('');
 
   useEffect(() => {
     const checkVersion = async () => {
@@ -39,14 +37,12 @@ export const VersionCheck = () => {
       try {
         // Get current app version
         const appVersion = await getVersion();
-        setCurrentVersion(appVersion);
 
         // Detect platform from user agent
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
         // Fetch version info from Supabase function
         const versionInfo = await getVersionInfo();
-        setMinimumVersion(versionInfo.minimumVersion);
 
         // Compare versions
         if (compareVersions(appVersion, versionInfo.minimumVersion) < 0) {
