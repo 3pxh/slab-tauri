@@ -179,7 +179,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         || document.documentElement.scrollTop 
         || document.body.scrollTop 
         || 0;
-      const shouldShowUp = scrollTop > 50;
+      const shouldShowUp = scrollTop > 150;
       setShowScrollToTop(shouldShowUp);
     };
 
