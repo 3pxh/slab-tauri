@@ -1,7 +1,7 @@
 # SLAB!
 
 ## [Play](https://slab17.com)
-Play for free online as much as you like, make puzzles, have fun.
+[Play for free online](https://slab17.com) as much as you like, make puzzles, have fun.
 
 ## About
 See [technical teardown](https://www.hoqqanen.com/2025/11/09/slab-technical-teardown/)
