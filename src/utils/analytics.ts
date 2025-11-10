@@ -93,6 +93,32 @@ export const trackEvent = async (eventName: string, props?: Record<string, strin
   }
 };
 
+// Query analytics data
+export const getPuzzleWinsLast24Hours = async (): Promise<number> => {
+  try {
+    // Calculate timestamp for 24 hours ago
+    const twentyFourHoursAgo = new Date();
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+    
+    // Query logs table for 'Puzzle Won' events in the past 24 hours
+    const { count, error } = await supabase
+      .from('logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_name', 'Puzzle Won')
+      .gte('time', twentyFourHoursAgo.toISOString());
+
+    if (error) {
+      console.warn('Failed to query puzzle wins:', error);
+      return 0;
+    }
+
+    return count || 0;
+  } catch (error) {
+    console.warn('Failed to query puzzle wins:', error);
+    return 0;
+  }
+};
+
 // Game-specific tracking functions
 export const analytics = {
   // Session tracking

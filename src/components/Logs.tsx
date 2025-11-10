@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useNavigation } from '../utils/navigation';
 import { useAuth } from '../hooks/useAuth';
 import AppHeader from './AppHeader';
+import { getPuzzleWinsLast24Hours } from '../utils/analytics';
 
 const GEORGE_USER_ID = '3996a43b-86dd-4bda-8807-dc3d8e76e5a7';
 
@@ -14,6 +15,8 @@ const Logs: React.FC<LogsProps> = () => {
   const { user } = useAuth();
   const [uniqueUsers1Day, setUniqueUsers1Day] = React.useState<number | null>(null);
   const [uniqueUsers7Days, setUniqueUsers7Days] = React.useState<number | null>(null);
+  const [puzzleWins24Hours, setPuzzleWins24Hours] = React.useState<number | null>(null);
+  const [slabsCreated24Hours, setSlabsCreated24Hours] = React.useState<number | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -66,6 +69,24 @@ const Logs: React.FC<LogsProps> = () => {
 
         setUniqueUsers1Day(unique1Day);
         setUniqueUsers7Days(unique7Days);
+
+        // Fetch puzzle wins in the past 24 hours
+        const wins: number = await getPuzzleWinsLast24Hours();
+        setPuzzleWins24Hours(wins);
+
+        // Query for slabs created in the past 24 hours
+        const { count: slabsCount, error: slabsError } = await supabase
+          .from('logs')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_name', 'Slab Created')
+          .gte('time', oneDayAgo.toISOString());
+
+        if (slabsError) {
+          console.warn('Failed to fetch slabs created:', slabsError);
+          setSlabsCreated24Hours(0);
+        } else {
+          setSlabsCreated24Hours(slabsCount || 0);
+        }
       } catch (err) {
         console.error('Error fetching logs:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch logs');
@@ -127,6 +148,22 @@ const Logs: React.FC<LogsProps> = () => {
                 {uniqueUsers1Day !== null ? uniqueUsers1Day : '—'}
               </div>
               <div className="text-sm text-gray-600 mt-1">Unique users who started puzzles</div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+              <div className="text-sm text-gray-500 mb-2">Past 24 Hours</div>
+              <div className="text-3xl font-bold text-green-600">
+                {puzzleWins24Hours !== null ? puzzleWins24Hours : '—'}
+              </div>
+              <div className="text-sm text-gray-600 mt-1">Puzzle wins</div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+              <div className="text-sm text-gray-500 mb-2">Past 24 Hours</div>
+              <div className="text-3xl font-bold text-purple-600">
+                {slabsCreated24Hours !== null ? slabsCreated24Hours : '—'}
+              </div>
+              <div className="text-sm text-gray-600 mt-1">Slabs created</div>
             </div>
 
             <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
