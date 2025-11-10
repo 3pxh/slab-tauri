@@ -35,7 +35,7 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
     },
     {
       title: "How to make slabs",
-      content: "Try to drag, double-tap, and add colors.",
+      content: "Drag to merge, double-tap to split, select colors to paint.",
       showSlab: false,
       showSlabMaker: true
     },
