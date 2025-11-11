@@ -62,7 +62,6 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     progress,
     isLoading,
     // Optimistic progress values (use these for immediate updates)
-    optimisticTrophies,
     optimisticAttempts,
     optimisticTotalCorrect,
     
@@ -860,8 +859,6 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         hasNextPuzzle={hasNextPuzzle}
         solvedPuzzlesCount={solvedPuzzlesCount}
         slabsCount={allSlabs.length}
-        maxGuesses={3}
-        trophies={optimisticTrophies}
         hasWon={hasWon}
         totalCorrect={optimisticTotalCorrect}
         attempts={optimisticAttempts}

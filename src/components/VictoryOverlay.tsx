@@ -12,8 +12,6 @@ type VictoryOverlayProps = {
   hasNextPuzzle: boolean;
   solvedPuzzlesCount?: number;
   slabsCount?: number;
-  maxGuesses?: number;
-  trophies?: number;
   hasWon?: boolean;
   totalCorrect?: number | null;
   attempts?: number;
@@ -30,8 +28,6 @@ const VictoryOverlay: React.FC<VictoryOverlayProps> = ({
   hasNextPuzzle,
   solvedPuzzlesCount,
   slabsCount,
-  maxGuesses = 3,
-  trophies = 0,
   hasWon = false,
   totalCorrect = null,
   attempts = 0
