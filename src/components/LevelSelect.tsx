@@ -86,12 +86,10 @@ const LevelSelect: React.FC<LevelSelectProps> = () => {
     const fetchProgress = async () => {
       try {
         const allProgress = await puzzleProgressService.getAllProgress();
-        // Create a map of puzzle_id to progress
+        // Create a map of puzzle_id to progress (include all progress, not just those with trophies)
         const progressMap = new Map<string, PuzzleProgress>();
         allProgress.forEach(progress => {
-          if (progress.trophies >= 1) {
-            progressMap.set(progress.puzzle_id, progress);
-          }
+          progressMap.set(progress.puzzle_id, progress);
         });
         setPuzzleProgress(progressMap);
       } catch (error) {
@@ -301,9 +299,28 @@ const LevelSelect: React.FC<LevelSelectProps> = () => {
                       <div className="flex flex-col flex-1">
                         <div className={`font-semibold flex items-center gap-2 ${isTodayPuzzle ? 'text-blue-700' : 'text-gray-900'}`}>
                           <span>{puzzle.name}</span>
-                          {puzzleProgress.has(puzzle.id) && (
-                            <FiAward className="text-yellow-500 fill-yellow-300 flex-shrink-0" size={16} />
-                          )}
+                          {(() => {
+                            const progress = puzzleProgress.get(puzzle.id);
+                            const trophies = progress?.trophies || 0;
+                            return trophies > 0 ? (
+                              <div className="flex items-center gap-0.5">
+                                {Array.from({ length: trophies }, (_, i) => (
+                                  <FiAward key={i} className="text-yellow-500 fill-yellow-300 flex-shrink-0" size={16} />
+                                ))}
+                              </div>
+                            ) : null;
+                          })()}
+                          {(() => {
+                            const progress = puzzleProgress.get(puzzle.id);
+                            const totalCorrect = progress?.total_correct;
+                            const attempts = progress?.attempts || 0;
+                            const maxPossible = attempts > 0 ? 5 * attempts : 0;
+                            return totalCorrect !== null && totalCorrect !== undefined && maxPossible > 0 ? (
+                              <span className="text-sm font-normal text-gray-600">
+                                {totalCorrect}/{maxPossible}
+                              </span>
+                            ) : null;
+                          })()}
                         </div>
                         <div className={`text-sm ${isTodayPuzzle ? 'text-blue-600' : 'text-gray-600'}`}>
                           {fullDate}

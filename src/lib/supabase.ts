@@ -385,6 +385,7 @@ export interface PuzzleProgressBase {
   trophies: number
   attempts: number
   best_score?: number
+  total_correct?: number | null
   completed_at?: string
   last_played_at: string
   created_at?: string

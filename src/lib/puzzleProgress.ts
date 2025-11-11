@@ -255,6 +255,7 @@ export class PuzzleProgressService {
       trophies: existing?.trophies || 0,
       attempts: (existing?.attempts || 0) + 1,
       best_score: existing?.best_score,
+      total_correct: existing?.total_correct ?? null,
       completed_at: existing?.completed_at,
       last_played_at: new Date().toISOString(),
       custom_data: existing?.custom_data || {}
@@ -271,6 +272,7 @@ export class PuzzleProgressService {
       trophies: (existing?.trophies || 0) + 1,
       attempts: existing?.attempts || 0,
       best_score: existing?.best_score,
+      total_correct: existing?.total_correct ?? null,
       completed_at: existing?.completed_at,
       last_played_at: new Date().toISOString(),
       custom_data: existing?.custom_data || {}
@@ -287,6 +289,7 @@ export class PuzzleProgressService {
       trophies: existing?.trophies || 0,
       attempts: existing?.attempts || 0,
       best_score: score && (!existing?.best_score || score > existing.best_score) ? score : existing?.best_score,
+      total_correct: existing?.total_correct ?? null,
       completed_at: new Date().toISOString(),
       last_played_at: new Date().toISOString(),
       custom_data: existing?.custom_data || {}
@@ -298,14 +301,38 @@ export class PuzzleProgressService {
   async updateCustomData(puzzleId: string, customData: Record<string, any>): Promise<PuzzleProgressDeserialized> {
     const existing = await this.getProgress(puzzleId)
     
+    // Preserve hasWon if it's already true (once won, always won)
+    const existingHasWon = existing?.custom_data?.hasWon || false;
+    const newHasWon = customData.hasWon;
+    // If hasWon is already true, preserve it even if new data says false
+    const finalHasWon = existingHasWon ? true : (newHasWon || false);
+    
     const progress = {
       puzzle_id: puzzleId,
       trophies: existing?.trophies || 0,
       attempts: existing?.attempts || 0,
       best_score: existing?.best_score,
+      total_correct: existing?.total_correct ?? null,
       completed_at: existing?.completed_at,
       last_played_at: new Date().toISOString(),
-      custom_data: { ...(existing?.custom_data || {}), ...customData }
+      custom_data: { ...(existing?.custom_data || {}), ...customData, hasWon: finalHasWon }
+    }
+
+    return await this.saveProgress(progress)
+  }
+
+  async addToTotalCorrect(puzzleId: string, correctCount: number): Promise<PuzzleProgressDeserialized> {
+    const existing = await this.getProgress(puzzleId)
+    
+    const progress = {
+      puzzle_id: puzzleId,
+      trophies: existing?.trophies || 0,
+      attempts: existing?.attempts || 0,
+      best_score: existing?.best_score,
+      total_correct: (existing?.total_correct ?? 0) + correctCount,
+      completed_at: existing?.completed_at,
+      last_played_at: new Date().toISOString(),
+      custom_data: existing?.custom_data || {}
     }
 
     return await this.saveProgress(progress)

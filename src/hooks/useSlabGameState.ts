@@ -36,6 +36,11 @@ export interface SlabGameState {
   // Progress tracking
   progress: any;
   isLoading: boolean;
+  
+  // Optimistic progress values (use these instead of progress for immediate updates)
+  optimisticTrophies: number;
+  optimisticAttempts: number;
+  optimisticTotalCorrect: number | null;
 }
 
 export interface SlabGameActions {
@@ -98,12 +103,14 @@ const deserializePuzzleExamples = (examples: any[]): SlabData[] => {
   });
 };
 
-export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameActions {
+export function useSlabGameState(puzzle: Puzzle, onPerfectGuess?: () => void): SlabGameState & SlabGameActions {
   // Core game state
   const [allSlabs, setAllSlabs] = useState<SlabData[]>([]);
   const [archivedSlabs, setArchivedSlabs] = useState<SlabData[]>([]);
   const [remainingGuesses, setRemainingGuesses] = useState(3);
   const [hasWon, setHasWon] = useState(false);
+  // Ref to track current hasWon for immediate access (used when overlay needs to check win state)
+  const hasWonRef = useRef(false);
   
   // UI state
   const [draggedIndex] = useState<number | null>(null);
@@ -127,16 +134,93 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
   const [evaluationResults, setEvaluationResults] = useState<Map<string, boolean>>(new Map());
   
   // Progress tracking
-  const { progress, isLoading, incrementAttempts, addTrophy, markCompleted, updateCustomData } = usePuzzleProgress(puzzle.id);
+  const { progress, isLoading, incrementAttempts, addTrophy, markCompleted, updateCustomData, addToTotalCorrect } = usePuzzleProgress(puzzle.id);
+  
+  // Optimistic local state for progress values (updated immediately, synced to remote async)
+  // These ensure VictoryOverlay shows correct data even before remote sync completes
+  // Initialize to 0/null so they're never null after initialization
+  const [optimisticTrophies, setOptimisticTrophies] = useState<number>(0);
+  const [optimisticAttempts, setOptimisticAttempts] = useState<number>(0);
+  const [optimisticTotalCorrect, setOptimisticTotalCorrect] = useState<number | null>(null);
   
   // Refs for preventing race conditions
   const isSubmittingGuessRef = useRef(false);
   const hasInitializedRef = useRef(false);
+  // Refs to track current local state for merging during re-initialization
+  const currentLocalSlabsRef = useRef<SlabData[]>([]);
+  const currentArchivedSlabsRef = useRef<SlabData[]>([]);
+  // Refs to capture current guess mode state for use in initialization effect
+  const currentGuessModeRef = useRef({
+    isInIndividualGuessMode: false,
+    currentGuessIndex: 0,
+    guessCorrectCount: 0,
+    guessIncorrectCount: 0,
+    slabsToGuess: [] as SlabData[],
+    lastGuessResult: null as boolean | null
+  });
 
   // Colorblind mode definitions
   const COLORBLIND_ICONS = ['●', '≈', '▲', '■', '♥', '⬡']; // circle, squiggles, triangle, square, heart, hexagon
   const COLORBLIND_NUMBERS = ['1', '2', '3', '4', '5', '6'];
   const COLORBLIND_LETTERS = ['a', 'b', 'c', 'd', 'e', 'f'];
+
+  // Keep guess mode ref in sync with state
+  useEffect(() => {
+    currentGuessModeRef.current = {
+      isInIndividualGuessMode,
+      currentGuessIndex,
+      guessCorrectCount,
+      guessIncorrectCount,
+      slabsToGuess,
+      lastGuessResult
+    };
+  }, [isInIndividualGuessMode, currentGuessIndex, guessCorrectCount, guessIncorrectCount, slabsToGuess, lastGuessResult]);
+
+  // Keep local state refs in sync (for merging during re-initialization)
+  useEffect(() => {
+    currentLocalSlabsRef.current = allSlabs;
+  }, [allSlabs]);
+  
+  useEffect(() => {
+    currentArchivedSlabsRef.current = archivedSlabs;
+  }, [archivedSlabs]);
+  
+  // Keep hasWon ref in sync for immediate access
+  useEffect(() => {
+    hasWonRef.current = hasWon;
+  }, [hasWon]);
+
+  // Helper function to merge local and remote slabs without duplicates
+  const mergeSlabs = useCallback((localSlabs: SlabData[], remoteSlabs: SlabData[]): SlabData[] => {
+    // First, deduplicate local slabs
+    const deduplicatedLocal: SlabData[] = [];
+    for (const localSlab of localSlabs) {
+      const exists = deduplicatedLocal.some(existing => areSlabsEqual(existing, localSlab));
+      if (!exists) {
+        deduplicatedLocal.push(localSlab);
+      }
+    }
+    
+    // Then, deduplicate remote slabs
+    const deduplicatedRemote: SlabData[] = [];
+    for (const remoteSlab of remoteSlabs) {
+      const exists = deduplicatedRemote.some(existing => areSlabsEqual(existing, remoteSlab));
+      if (!exists) {
+        deduplicatedRemote.push(remoteSlab);
+      }
+    }
+    
+    // Finally, merge: start with deduplicated local, add remote slabs that don't exist in local
+    const merged: SlabData[] = [...deduplicatedLocal];
+    for (const remoteSlab of deduplicatedRemote) {
+      const exists = merged.some(localSlab => areSlabsEqual(localSlab, remoteSlab));
+      if (!exists) {
+        merged.push(remoteSlab);
+      }
+    }
+    
+    return merged;
+  }, []);
 
   // Reset all state when puzzle changes
   useEffect(() => {
@@ -161,13 +245,24 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     setSlabsToGuess([]);
     setLastGuessResult(null);
     setEvaluationResults(new Map());
+    // Reset optimistic progress state
+    setOptimisticTrophies(0);
+    setOptimisticAttempts(0);
+    setOptimisticTotalCorrect(null);
     // Note: colorblindMode is preserved as it's a user preference
     console.log('🔄 State reset complete');
   }, [puzzle.id]);
 
   // Force re-initialization when progress changes (to handle progress loading)
+  // But only if we're not in an active guessing session
   useEffect(() => {
     if (hasInitializedRef.current && progress !== null) {
+      // Don't re-initialize if we're actively in individual guess mode
+      // This prevents sync from bouncing us out of guessing mode
+      if (currentGuessModeRef.current.isInIndividualGuessMode) {
+        console.log('🔄 Progress updated but in active guess mode, skipping re-initialization');
+        return;
+      }
       console.log('🔄 Progress loaded, re-initializing for puzzle:', puzzle.id);
       hasInitializedRef.current = false;
     }
@@ -213,20 +308,52 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     
     console.log('🚀 Initial slabs from puzzle:', initialSlabs);
     
+    // Check if we have existing local slabs (re-initialization case)
+    const hasExistingLocalSlabs = currentLocalSlabsRef.current.length > 0;
+    const existingLocalSlabs = currentLocalSlabsRef.current;
+    
     // Only override with saved progress if we have meaningful saved data AND it's for the current puzzle
     if (progress && progress.custom_data && progress.puzzle_id === puzzle.id) {
       console.log('🚀 Found saved progress for current puzzle:', progress.custom_data);
       // Use saved slabs if available and not empty, otherwise fall back to shown examples
       if (progress.custom_data.savedSlabs && progress.custom_data.savedSlabs.length > 0) {
-        console.log('🚀 Using saved slabs instead of puzzle shown_examples:', progress.custom_data.savedSlabs);
-        initialSlabs = progress.custom_data.savedSlabs;
+        const remoteSlabs = progress.custom_data.savedSlabs;
+        if (hasExistingLocalSlabs) {
+          // Re-initialization: merge remote slabs with local slabs to avoid losing local changes
+          console.log('🔄 Re-initialization detected, merging remote slabs with local slabs');
+          console.log('🔄 Local slabs:', existingLocalSlabs.length);
+          console.log('🔄 Remote slabs:', remoteSlabs.length);
+          initialSlabs = mergeSlabs(existingLocalSlabs, remoteSlabs);
+          console.log('🔄 Merged slabs:', initialSlabs.length);
+        } else {
+          // First initialization: use remote slabs directly
+          console.log('🚀 First initialization, using saved slabs from remote:', remoteSlabs);
+          initialSlabs = remoteSlabs;
+        }
       } else {
-        console.log('🚀 No saved slabs, using puzzle shown_examples');
+        if (hasExistingLocalSlabs) {
+          // Re-initialization but no remote slabs: keep local slabs
+          console.log('🔄 Re-initialization but no remote slabs, preserving local slabs');
+          initialSlabs = existingLocalSlabs;
+        } else {
+          // First initialization: use shown examples
+          console.log('🚀 No saved slabs, using puzzle shown_examples');
+        }
       }
       
-      // Restore archived slabs if available
+      // Restore archived slabs if available (merge on re-initialization)
       if (Array.isArray(progress.custom_data.archivedSlabs)) {
-        initialArchivedSlabs = progress.custom_data.archivedSlabs;
+        if (hasExistingLocalSlabs) {
+          // Re-initialization: merge remote archived slabs with local archived slabs
+          const existingArchivedSlabs = currentArchivedSlabsRef.current;
+          initialArchivedSlabs = mergeSlabs(existingArchivedSlabs, progress.custom_data.archivedSlabs);
+        } else {
+          // First initialization: use remote archived slabs directly
+          initialArchivedSlabs = progress.custom_data.archivedSlabs;
+        }
+      } else if (hasExistingLocalSlabs) {
+        // Re-initialization but no remote archived slabs: keep local archived slabs
+        initialArchivedSlabs = currentArchivedSlabsRef.current;
       }
       
       // Restore remaining guesses if available
@@ -242,28 +369,42 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
       // Note: evaluationResults are not saved in progress, they get recalculated
       
       // Restore individual guess mode state if available
-      if (typeof progress.custom_data.isInIndividualGuessMode === 'boolean') {
-        initialIsInIndividualGuessMode = progress.custom_data.isInIndividualGuessMode;
-      }
-      
-      if (typeof progress.custom_data.currentGuessIndex === 'number') {
-        initialCurrentGuessIndex = progress.custom_data.currentGuessIndex;
-      }
-      
-      if (typeof progress.custom_data.guessCorrectCount === 'number') {
-        initialGuessCorrectCount = progress.custom_data.guessCorrectCount;
-      }
-      
-      if (typeof progress.custom_data.guessIncorrectCount === 'number') {
-        initialGuessIncorrectCount = progress.custom_data.guessIncorrectCount;
-      }
-      
-      if (Array.isArray(progress.custom_data.slabsToGuess)) {
-        initialSlabsToGuess = progress.custom_data.slabsToGuess;
-      }
-      
-      if (typeof progress.custom_data.lastGuessResult === 'boolean') {
-        initialLastGuessResult = progress.custom_data.lastGuessResult;
+      // BUT: Don't restore if we're currently in an active guessing session
+      // This prevents sync from bouncing us out of guessing mode
+      const currentGuessMode = currentGuessModeRef.current;
+      if (!currentGuessMode.isInIndividualGuessMode) {
+        if (typeof progress.custom_data.isInIndividualGuessMode === 'boolean') {
+          initialIsInIndividualGuessMode = progress.custom_data.isInIndividualGuessMode;
+        }
+        
+        if (typeof progress.custom_data.currentGuessIndex === 'number') {
+          initialCurrentGuessIndex = progress.custom_data.currentGuessIndex;
+        }
+        
+        if (typeof progress.custom_data.guessCorrectCount === 'number') {
+          initialGuessCorrectCount = progress.custom_data.guessCorrectCount;
+        }
+        
+        if (typeof progress.custom_data.guessIncorrectCount === 'number') {
+          initialGuessIncorrectCount = progress.custom_data.guessIncorrectCount;
+        }
+        
+        if (Array.isArray(progress.custom_data.slabsToGuess)) {
+          initialSlabsToGuess = progress.custom_data.slabsToGuess;
+        }
+        
+        if (typeof progress.custom_data.lastGuessResult === 'boolean') {
+          initialLastGuessResult = progress.custom_data.lastGuessResult;
+        }
+      } else {
+        console.log('🚀 In active guess mode, preserving current guess state');
+        // Preserve current state when in active guessing mode
+        initialIsInIndividualGuessMode = currentGuessMode.isInIndividualGuessMode;
+        initialCurrentGuessIndex = currentGuessMode.currentGuessIndex;
+        initialGuessCorrectCount = currentGuessMode.guessCorrectCount;
+        initialGuessIncorrectCount = currentGuessMode.guessIncorrectCount;
+        initialSlabsToGuess = currentGuessMode.slabsToGuess;
+        initialLastGuessResult = currentGuessMode.lastGuessResult;
       }
     } else if (progress && progress.puzzle_id !== puzzle.id) {
       console.log('🚀 Found progress for different puzzle, ignoring:', progress.puzzle_id, 'vs', puzzle.id);
@@ -276,6 +417,7 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     setArchivedSlabs(initialArchivedSlabs);
     setRemainingGuesses(initialRemainingGuesses);
     setHasWon(initialHasWon);
+    hasWonRef.current = initialHasWon; // Update ref immediately
     setEvaluationResults(initialEvaluationResults);
     setIsInIndividualGuessMode(initialIsInIndividualGuessMode);
     setCurrentGuessIndex(initialCurrentGuessIndex);
@@ -284,11 +426,43 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     setSlabsToGuess(initialSlabsToGuess);
     setLastGuessResult(initialLastGuessResult);
     
+    // Initialize optimistic progress state from remote progress
+    if (progress && progress.puzzle_id === puzzle.id) {
+      setOptimisticTrophies(progress.trophies ?? 0);
+      setOptimisticAttempts(progress.attempts ?? 0);
+      setOptimisticTotalCorrect(progress.total_correct ?? null);
+    } else {
+      // No progress yet, start with defaults
+      setOptimisticTrophies(0);
+      setOptimisticAttempts(0);
+      setOptimisticTotalCorrect(null);
+    }
+    
     // Mark as initialized
     hasInitializedRef.current = true;
     console.log('🚀 Final slabs being set:', initialSlabs);
     console.log('🚀 Initialization complete for puzzle:', puzzle.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [puzzle.shown_examples, progress, isLoading]);
+
+  // Sync optimistic state when progress updates (to catch up with remote after async operations)
+  useEffect(() => {
+    if (progress && progress.puzzle_id === puzzle.id) {
+      // Only update if remote has higher values (prevents overwriting optimistic updates that haven't synced yet)
+      // This ensures we don't overwrite local optimistic updates with stale remote data
+      if ((progress.trophies ?? 0) > optimisticTrophies) {
+        setOptimisticTrophies(progress.trophies ?? 0);
+      }
+      if ((progress.attempts ?? 0) > optimisticAttempts) {
+        setOptimisticAttempts(progress.attempts ?? 0);
+      }
+      // For total_correct, always sync from remote when it's more up-to-date
+      // (we check if remote value is different and not null)
+      if (progress.total_correct !== null && progress.total_correct !== optimisticTotalCorrect) {
+        setOptimisticTotalCorrect(progress.total_correct ?? null);
+      }
+    }
+  }, [progress, puzzle.id, optimisticTrophies, optimisticAttempts, optimisticTotalCorrect]);
 
   // Pre-evaluate all slabs when puzzle loads (only after initialization)
   useEffect(() => {
@@ -766,10 +940,27 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     setLastGuessResult(null);
     
     // Set hasWon based on whether they got all correct
-    setHasWon(allCorrect);
+    // But preserve existing win state (once won, always won)
+    // Use ref to get current value immediately for synchronous updates
+    const currentHasWon = hasWonRef.current;
+    const newHasWon = currentHasWon || allCorrect;
+    setHasWon(newHasWon);
+    hasWonRef.current = newHasWon; // Update ref immediately
+    
+    // Notify parent if all slabs in this guess attempt were correct
+    if (allCorrect && onPerfectGuess) {
+      onPerfectGuess();
+    }
     
     // Decrement remaining guesses
     setRemainingGuesses(prev => Math.max(0, prev - 1));
+    
+    // Update optimistic state immediately (before async sync)
+    setOptimisticAttempts(prev => prev + 1);
+    setOptimisticTotalCorrect(prev => (prev ?? 0) + guessCorrectCount);
+    if (allCorrect) {
+      setOptimisticTrophies(prev => prev + 1);
+    }
     
     // Do all the async operations in the background
     (async () => {
@@ -777,7 +968,11 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
         // Track progress: increment attempts
         await incrementAttempts(puzzle.id);
 
+        // Update total correct count with the number of correct guesses from this attempt
+        await addToTotalCorrect(puzzle.id, guessCorrectCount);
+
         // Save state (slabs are already in allSlabs from handleProceedToNext)
+        // Note: hasWon is preserved on the server side (once won, always won), so we can pass allCorrect here
         const stateToSave = {
           savedSlabs: allSlabs,
           remainingGuesses: Math.max(0, remainingGuesses - 1),
@@ -805,7 +1000,7 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
         console.error('Failed to save completion progress:', error);
       }
     })();
-  }, [currentGuessIndex, slabsToGuess, guessCorrectCount, remainingGuesses, allSlabs, puzzle, incrementAttempts, updateCustomData, markCompleted, addTrophy]);
+  }, [currentGuessIndex, slabsToGuess, guessCorrectCount, remainingGuesses, allSlabs, puzzle, incrementAttempts, updateCustomData, markCompleted, addTrophy, addToTotalCorrect, onPerfectGuess]);
 
   const handleGuessSubmit = useCallback(async (results: any[]) => {
     const filteredHidden = getFilteredHiddenExamples();
@@ -845,11 +1040,33 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
           evaluateSingleSlab(slab);
         });
         
+        // Count correct guesses for optimistic update
+        const correctCount = results.filter(r => r.isCorrect && r.index < filteredHidden.length).length;
+        
+        // Update optimistic state immediately (before async sync)
+        setOptimisticAttempts(prev => prev + 1);
+        setOptimisticTotalCorrect(prev => (prev ?? 0) + correctCount);
+        if (allCorrect) {
+          setOptimisticTrophies(prev => prev + 1);
+          // Set hasWon to true if all correct, but preserve existing win state (once won, always won)
+          const currentHasWon = hasWonRef.current;
+          const newHasWon = currentHasWon || true;
+          setHasWon(newHasWon);
+          hasWonRef.current = newHasWon; // Update ref immediately
+        }
+        
         // Track progress: increment attempts
         try {
           await incrementAttempts(puzzle.id);
         } catch (error) {
           console.error('Failed to save progress:', error);
+        }
+        
+        // Update total_correct
+        try {
+          await addToTotalCorrect(puzzle.id, correctCount);
+        } catch (error) {
+          console.error('Failed to update total correct:', error);
         }
         
         // Force immediate save of the new state (do this first to avoid overwriting trophy count)
@@ -863,8 +1080,12 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
         await updateCustomData(puzzle.id, stateToSave);
         
         // Check if player won (all guesses correct) - do this AFTER updateCustomData
+        // Preserve existing win state (once won, always won)
         if (allCorrect) {
-          setHasWon(true);
+          const currentHasWon = hasWonRef.current;
+          const newHasWon = currentHasWon || true;
+          setHasWon(newHasWon);
+          hasWonRef.current = newHasWon; // Update ref immediately
           
           // Track analytics for puzzle completion
           const timeSpent = Date.now() - (window as any).puzzleStartTime || 0;
@@ -888,7 +1109,7 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     }
 
     setIsInGuessSession(false); // Reset guess session when guesses are submitted
-  }, [getFilteredHiddenExamples, remainingGuesses, allSlabs, incrementAttempts, puzzle.id, updateCustomData, markCompleted, addTrophy, evaluateSingleSlab]);
+  }, [getFilteredHiddenExamples, remainingGuesses, allSlabs, incrementAttempts, puzzle.id, updateCustomData, markCompleted, addTrophy, addToTotalCorrect, evaluateSingleSlab]);
 
   const handleColorblindModeToggle = useCallback(() => {
     setColorblindMode(prev => {
@@ -943,6 +1164,11 @@ export function useSlabGameState(puzzle: Puzzle): SlabGameState & SlabGameAction
     evaluationResults,
     progress,
     isLoading,
+    // Optimistic progress values (use these instead of progress for immediate updates)
+    // These are always up-to-date and never fall back to stale progress
+    optimisticTrophies,
+    optimisticAttempts,
+    optimisticTotalCorrect,
     
     // Actions
     handleSlabCreate,

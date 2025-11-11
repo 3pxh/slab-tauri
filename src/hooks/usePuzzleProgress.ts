@@ -123,6 +123,23 @@ export function usePuzzleProgress(puzzleId?: string) {
     }
   }, [])
 
+  // Add to total correct
+  const addToTotalCorrect = useCallback(async (id: string, correctCount: number) => {
+    setIsLoading(true)
+    setError(null)
+    
+    try {
+      const data = await puzzleProgressService.addToTotalCorrect(id, correctCount)
+      setProgress(data)
+      return data
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update total correct')
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
   // Delete progress
   const deleteProgress = useCallback(async (id: string) => {
     setIsLoading(true)
@@ -158,6 +175,7 @@ export function usePuzzleProgress(puzzleId?: string) {
     addTrophy,
     markCompleted,
     updateCustomData,
+    addToTotalCorrect,
     deleteProgress
   }
 }

@@ -11,7 +11,6 @@ import SlabMaker from './SlabMaker';
 import IndividualSlabGuesser from './IndividualSlabGuesser';
 import { useSlabGameState } from '../hooks/useSlabGameState';
 import { analytics, sessionTracker } from '../utils/analytics';
-import RuleDescriptionModal from './RuleDescriptionModal';
 import DifficultyIndicator from './DifficultyIndicator';
 import ScrollButton from './ScrollButton';
 import VictoryOverlay from './VictoryOverlay';
@@ -37,6 +36,11 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     (window as any).puzzleStartTime = Date.now();
   }, [puzzle]);
 
+  // Callback for when all slabs in a guess attempt are correct
+  const handlePerfectGuess = React.useCallback(() => {
+    setJustGotPerfectGuess(true);
+  }, []);
+
   // Use the custom hook for all state management
   const {
     // State
@@ -57,6 +61,10 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     slabsToGuess,
     progress,
     isLoading,
+    // Optimistic progress values (use these for immediate updates)
+    optimisticTrophies,
+    optimisticAttempts,
+    optimisticTotalCorrect,
     
     // Actions
     handleSlabCreate,
@@ -76,7 +84,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     getSlabKey,
     getCurrentColors,
     getColorblindOverlay,
-  } = useSlabGameState(puzzle);
+  } = useSlabGameState(puzzle, handlePerfectGuess);
 
   const fetchSolvedPuzzlesCount = React.useCallback(async () => {
     try {
@@ -125,9 +133,14 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   const prevHasWonRef = React.useRef(false);
   const isInitialLoadRef = React.useRef(true);
   
+  // State for victory overlay (declared early so it can be used in useEffect)
+  const [justGotPerfectGuess, setJustGotPerfectGuess] = React.useState(false);
+  const [showVictoryOverlay, setShowVictoryOverlay] = React.useState(false);
+  
   // Reset victory overlay and previous hasWon when puzzle changes
   React.useEffect(() => {
     setShowVictoryOverlay(false);
+    setJustGotPerfectGuess(false);
     prevHasWonRef.current = false;
     isInitialLoadRef.current = true; // Mark as initial load to ignore first transition
   }, [puzzle.id]);
@@ -142,24 +155,32 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     }
   }, [isLoading, hasWon]);
 
-  // Show/hide victory overlay based on win state transitions
+  // Show/hide victory overlay based on win state transitions, perfect guess attempts, or when all guesses are used
   React.useEffect(() => {
     // Skip during initial load (prevents showing overlay from restored saved state)
     if (isInitialLoadRef.current) {
       return;
     }
     
-    // Only show overlay if hasWon transitions from false to true (new win, not restored state)
+    // Show overlay if:
+    // 1. hasWon transitions from false to true (new win, not restored state), OR
+    // 2. justGotPerfectGuess is true (all slabs correct in current guess attempt, even if already won), OR
+    // 3. remainingGuesses === 0 (all guesses used, show "better luck next time" if didn't win)
     const isNewWin = hasWon && !prevHasWonRef.current;
+    const allGuessesUsed = remainingGuesses === 0;
     
-    if (isNewWin && !isInIndividualGuessMode) {
+    if ((isNewWin || justGotPerfectGuess || allGuessesUsed) && !isInIndividualGuessMode) {
       setShowVictoryOverlay(true);
       // Check if there's a next puzzle available
       checkNextPuzzleAvailability();
       // Fetch solved puzzles count
       fetchSolvedPuzzlesCount();
-    } else if (!hasWon) {
-      // Hide overlay when hasWon becomes false
+      // Reset the perfect guess flag after showing overlay
+      if (justGotPerfectGuess) {
+        setJustGotPerfectGuess(false);
+      }
+    } else if (!hasWon && !justGotPerfectGuess && remainingGuesses > 0) {
+      // Hide overlay when hasWon becomes false, no perfect guess, and still have guesses
       setShowVictoryOverlay(false);
     }
     
@@ -167,7 +188,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     if (!isInitialLoadRef.current) {
       prevHasWonRef.current = hasWon;
     }
-  }, [hasWon, isInIndividualGuessMode, isLoading, checkNextPuzzleAvailability, fetchSolvedPuzzlesCount]);
+  }, [hasWon, justGotPerfectGuess, remainingGuesses, isInIndividualGuessMode, isLoading, checkNextPuzzleAvailability, fetchSolvedPuzzlesCount]);
 
   // Scroll detection for scroll-to-top button (always active, independent)
   React.useEffect(() => {
@@ -270,11 +291,8 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   const slabListRef = React.useRef<HTMLDivElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   
-  // State for rule description modal
-  const [showRuleModal, setShowRuleModal] = React.useState(false);
   
-  // State for victory overlay
-  const [showVictoryOverlay, setShowVictoryOverlay] = React.useState(false);
+  // State for victory overlay (other state)
   const [hasNextPuzzle, setHasNextPuzzle] = React.useState(true);
   const [solvedPuzzlesCount, setSolvedPuzzlesCount] = React.useState<number | undefined>(undefined);
 
@@ -433,12 +451,12 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     }
   };
 
-  const handleShowRuleModal = () => {
-    setShowRuleModal(true);
-  };
 
   const handleVictoryKeepPlaying = () => {
     setShowVictoryOverlay(false);
+    setJustGotPerfectGuess(false);
+    // Automatically start the next guess
+    handleGuessClick();
   };
 
   const handleVictoryNextPuzzle = async () => {
@@ -567,7 +585,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
           colors={getCurrentColors()}
           colorblindMode={colorblindMode}
           getColorblindOverlay={getColorblindOverlay}
-          levelAttempts={progress?.attempts || 0}
+          levelAttempts={optimisticAttempts}
         />
       ) : (
         <SlabMaker 
@@ -583,8 +601,8 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
           colorblindMode={colorblindMode}
           getColorblindOverlay={getColorblindOverlay}
           puzzle={puzzle}
-          showRuleButton={hasWon || remainingGuesses <= 0}
-          onShowRuleModal={handleShowRuleModal}
+          showRuleButton={remainingGuesses <= 0}
+          onShowRuleModal={() => setShowVictoryOverlay(true)}
         />
       )}
 
@@ -842,16 +860,13 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         hasNextPuzzle={hasNextPuzzle}
         solvedPuzzlesCount={solvedPuzzlesCount}
         slabsCount={allSlabs.length}
+        maxGuesses={3}
+        trophies={optimisticTrophies}
+        hasWon={hasWon}
+        totalCorrect={optimisticTotalCorrect}
+        attempts={optimisticAttempts}
       />
 
-      {/* Rule Description Modal */}
-      <RuleDescriptionModal
-        isOpen={showRuleModal}
-        onClose={() => setShowRuleModal(false)}
-        ruleDescription={puzzle.rule_description || ''}
-        puzzleName={puzzle.name}
-        remainingGuesses={remainingGuesses}
-      />
 
     </div>
   );

@@ -888,27 +888,22 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
             >
               <span className="text-sm font-medium">Evaluate Slab</span>
             </button>
-            {onGuess && (
+            {onGuess && guessCount > 0 && (
               <button
                 className={`px-3 py-2 rounded text-sm flex flex-col items-center justify-center h-12 transition-all duration-300 ${
                   flashGuessButton 
                     ? 'animate-pulse bg-yellow-400 text-white shadow-lg scale-110' 
-                    : guessCount <= 0
-                      ? 'bg-gray-400 text-white cursor-not-allowed'
-                      : hasWon
-                        ? 'bg-yellow-500 text-white hover:bg-yellow-600'
-                        : isInGuessSession
-                          ? 'bg-green-500 text-white hover:bg-green-600'
-                          : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                    : hasWon
+                      ? 'bg-yellow-500 text-white hover:bg-yellow-600'
+                      : isInGuessSession
+                        ? 'bg-green-500 text-white hover:bg-green-600'
+                        : 'bg-yellow-500 text-white hover:bg-yellow-600'
                 }`}
                 onClick={onGuess}
-                disabled={guessCount <= 0}
                 title={
                   hasWon 
                     ? "Puzzle completed!" 
-                    : guessCount > 0 
-                      ? "Attempt a guess" 
-                      : "No guesses remaining"
+                    : "Attempt a guess"
                 }
               >
                 <span className="text-sm font-medium">Guess</span>
