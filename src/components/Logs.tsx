@@ -16,7 +16,9 @@ const Logs: React.FC<LogsProps> = () => {
   const [uniqueUsers1Day, setUniqueUsers1Day] = React.useState<number | null>(null);
   const [uniqueUsers7Days, setUniqueUsers7Days] = React.useState<number | null>(null);
   const [puzzleWins24Hours, setPuzzleWins24Hours] = React.useState<number | null>(null);
+  const [puzzleWins7Days, setPuzzleWins7Days] = React.useState<number | null>(null);
   const [slabsCreated24Hours, setSlabsCreated24Hours] = React.useState<number | null>(null);
+  const [slabsCreated7Days, setSlabsCreated7Days] = React.useState<number | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -74,6 +76,20 @@ const Logs: React.FC<LogsProps> = () => {
         const wins: number = await getPuzzleWinsLast24Hours();
         setPuzzleWins24Hours(wins);
 
+        // Query for puzzle wins in the past 7 days
+        const { count: wins7DaysCount, error: wins7DaysError } = await supabase
+          .from('logs')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_name', 'Puzzle Won')
+          .gte('time', sevenDaysAgo.toISOString());
+
+        if (wins7DaysError) {
+          console.warn('Failed to fetch 7-day puzzle wins:', wins7DaysError);
+          setPuzzleWins7Days(0);
+        } else {
+          setPuzzleWins7Days(wins7DaysCount || 0);
+        }
+
         // Query for slabs created in the past 24 hours
         const { count: slabsCount, error: slabsError } = await supabase
           .from('logs')
@@ -86,6 +102,20 @@ const Logs: React.FC<LogsProps> = () => {
           setSlabsCreated24Hours(0);
         } else {
           setSlabsCreated24Hours(slabsCount || 0);
+        }
+
+        // Query for slabs created in the past 7 days
+        const { count: slabs7DaysCount, error: slabs7DaysError } = await supabase
+          .from('logs')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_name', 'Slab Created')
+          .gte('time', sevenDaysAgo.toISOString());
+
+        if (slabs7DaysError) {
+          console.warn('Failed to fetch 7-day slabs created:', slabs7DaysError);
+          setSlabsCreated7Days(0);
+        } else {
+          setSlabsCreated7Days(slabs7DaysCount || 0);
         }
       } catch (err) {
         console.error('Error fetching logs:', err);
@@ -172,6 +202,22 @@ const Logs: React.FC<LogsProps> = () => {
                 {uniqueUsers7Days !== null ? uniqueUsers7Days : '—'}
               </div>
               <div className="text-sm text-gray-600 mt-1">Unique users who started puzzles</div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+              <div className="text-sm text-gray-500 mb-2">Past 7 Days</div>
+              <div className="text-3xl font-bold text-green-600">
+                {puzzleWins7Days !== null ? puzzleWins7Days : '—'}
+              </div>
+              <div className="text-sm text-gray-600 mt-1">Puzzle wins</div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+              <div className="text-sm text-gray-500 mb-2">Past 7 Days</div>
+              <div className="text-3xl font-bold text-purple-600">
+                {slabsCreated7Days !== null ? slabsCreated7Days : '—'}
+              </div>
+              <div className="text-sm text-gray-600 mt-1">Slabs created</div>
             </div>
           </div>
         )}
