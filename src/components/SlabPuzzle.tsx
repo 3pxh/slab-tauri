@@ -117,8 +117,26 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
           currentIndex = sortedDates.findIndex(date => date === puzzle.publish_date);
         }
         
-        const hasNext = currentIndex !== -1 && currentIndex < sortedDates.length - 1;
-        setHasNextPuzzle(hasNext);
+        // Check if there's a next puzzle
+        const hasNextInArray = currentIndex !== -1 && currentIndex < sortedDates.length - 1;
+        
+        if (hasNextInArray) {
+          // Get the next puzzle's date
+          const nextPuzzleDateStr = sortedDates[currentIndex + 1];
+          const nextPuzzleDate = new Date(nextPuzzleDateStr);
+          
+          // Get today's date (normalized to start of day for comparison)
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const nextPuzzleDateNormalized = new Date(nextPuzzleDate);
+          nextPuzzleDateNormalized.setHours(0, 0, 0, 0);
+          
+          // Only show next puzzle button if the next puzzle is today or earlier
+          const hasNext = nextPuzzleDateNormalized <= today;
+          setHasNextPuzzle(hasNext);
+        } else {
+          setHasNextPuzzle(false);
+        }
       } else {
         setHasNextPuzzle(false);
       }
