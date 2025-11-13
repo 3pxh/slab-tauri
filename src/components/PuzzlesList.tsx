@@ -56,7 +56,7 @@ const PuzzlesList: React.FC<PuzzlesListProps> = ({ onHome }) => {
     setConfirmDeletePuzzleId(puzzleId);
   };
 
-  const handleConfirmDelete = async (puzzleId: string, puzzleName: string, e?: React.MouseEvent) => {
+  const handleConfirmDelete = async (puzzleId: string, e?: React.MouseEvent) => {
     // Prevent event propagation
     e?.stopPropagation();
     e?.preventDefault();
@@ -269,7 +269,7 @@ const PuzzlesList: React.FC<PuzzlesListProps> = ({ onHome }) => {
                           Cancel
                         </button>
                         <button
-                          onClick={(e) => handleConfirmDelete(puzzle.id, puzzle.name, e)}
+                          onClick={(e) => handleConfirmDelete(puzzle.id, e)}
                           disabled={deletingPuzzleId === puzzle.id}
                           className="px-3 py-1.5 text-sm text-white bg-red-600 hover:bg-red-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                         >
