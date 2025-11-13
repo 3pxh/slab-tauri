@@ -569,3 +569,29 @@ export async function getVersionInfo(): Promise<VersionInfo> {
   const data = await response.json()
   return data
 }
+
+// Announcement interfaces and functions
+export interface Announcement {
+  title: string;
+  body: string;
+  active: boolean;
+}
+
+// Function to get announcement information
+export async function getAnnouncement(): Promise<Announcement | null> {
+  const response = await fetch(`${supabaseUrl}/functions/v1/announcement`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${supabaseAnonKey}`,
+    }
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || 'Failed to fetch announcement')
+  }
+
+  const data = await response.json()
+  return data
+}

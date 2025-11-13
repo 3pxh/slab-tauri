@@ -3,12 +3,13 @@ import { FiCalendar, FiPlus, FiPlay, FiMail, FiBookOpen, FiBarChart2 } from 'rea
 import { useAuth } from '../hooks/useAuth';
 import AppHeader from './AppHeader';
 import { analytics } from '../utils/analytics';
-import { getPuzzle, Puzzle } from '../lib/supabase';
+import { getPuzzle, Puzzle, getAnnouncement, Announcement } from '../lib/supabase';
 import DifficultyIndicator from './DifficultyIndicator';
 import { useNavigation } from '../utils/navigation';
 import { DebugLogDisplay } from './DebugLog';
 import SignInModal from './SignInModal';
 import WelcomeScreen from './WelcomeScreen';
+import { AnnouncementBar } from './AnnouncementBar';
 import favicon from '../assets/favicon.png';
 
 const GEORGE_USER_ID = '3996a43b-86dd-4bda-8807-dc3d8e76e5a7';
@@ -40,6 +41,10 @@ const Home: React.FC<HomeProps> = () => {
   
   // State for anonymous account warning modal
   const [showAnonymousWarning, setShowAnonymousWarning] = React.useState(false);
+  
+  // State for announcement
+  const [announcement, setAnnouncement] = React.useState<Announcement | null>(null);
+  const [isLoadingAnnouncement, setIsLoadingAnnouncement] = React.useState(true);
   
   // Check if user is new and should see welcome screen
   React.useEffect(() => {
@@ -129,6 +134,33 @@ const Home: React.FC<HomeProps> = () => {
     fetchTodaysPuzzle();
   }, []);
   
+  // Fetch announcement
+  React.useEffect(() => {
+    const fetchAnnouncement = async () => {
+      try {
+        setIsLoadingAnnouncement(true);
+        const announcementData = await getAnnouncement();
+        
+        console.log('📢 Announcement data received:', announcementData);
+        
+        // Only show if announcement is active
+        if (announcementData && announcementData.active) {
+          console.log('📢 Setting announcement:', announcementData);
+          setAnnouncement(announcementData);
+        } else {
+          console.log('📢 Announcement not active or null, not showing');
+        }
+      } catch (error) {
+        console.error('❌ Error loading announcement:', error);
+        // Don't show error to user, just fail silently
+      } finally {
+        setIsLoadingAnnouncement(false);
+      }
+    };
+
+    fetchAnnouncement();
+  }, []);
+  
   const handleWelcomeSkip = () => {
     if (user) {
       const userWelcomeKey = `${WELCOME_SCREEN_SEEN_KEY}_${user.id}`;
@@ -183,6 +215,14 @@ const Home: React.FC<HomeProps> = () => {
     <div className="w-full max-w-md mx-auto p-4">
       {/* App Header */}
       <AppHeader titleSize="large" />
+
+      {/* Announcement Bar */}
+      {announcement && (
+        <AnnouncementBar
+          title={announcement.title}
+          body={announcement.body}
+        />
+      )}
 
       {/* Main Action Buttons */}
       <div className="grid grid-cols-2 gap-4">
