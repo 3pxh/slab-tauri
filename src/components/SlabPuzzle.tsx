@@ -5,7 +5,7 @@ import { PiShuffleBold } from 'react-icons/pi';
 import { FaArrowDownUpAcrossLine } from 'react-icons/fa6';
 import { useGesture } from '@use-gesture/react';
 import { Puzzle } from '../lib/supabase';
-import Slab, { SlabData, areSlabsEqual } from './Slab';
+import Slab, { SlabData, areSlabsEqual, deserializeSlab } from './Slab';
 import { formatDateUTC } from '../utils';
 import SlabMaker from './SlabMaker';
 import IndividualSlabGuesser from './IndividualSlabGuesser';
@@ -83,6 +83,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     getSlabKey,
     getCurrentColors,
     getColorblindOverlay,
+    evaluateSlab,
   } = useSlabGameState(puzzle, handlePerfectGuess);
 
   const fetchSolvedPuzzlesCount = React.useCallback(async () => {
@@ -442,6 +443,30 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     return formatDateUTC(dateString);
   };
 
+  // Helper function to check if a slab is part of the puzzle definition
+  const isSlabInPuzzleDefinition = React.useCallback((slab: SlabData): boolean => {
+    // Deserialize puzzle examples if needed
+    const deserializePuzzleExamples = (examples: any[]): SlabData[] => {
+      if (!examples || !Array.isArray(examples)) {
+        return [];
+      }
+      return examples.map((example: any) => {
+        const isSerialized = example && typeof example === 'object' && 'grid' in example && 'colors' in example;
+        if (isSerialized) {
+          return deserializeSlab(example);
+        }
+        return example;
+      });
+    };
+
+    const shownSlabs = deserializePuzzleExamples(puzzle.shown_examples || []);
+    const hiddenSlabs = deserializePuzzleExamples(puzzle.hidden_examples || []);
+    const allPuzzleSlabs = [...shownSlabs, ...hiddenSlabs];
+
+    // Check if the slab matches any slab in the puzzle definition
+    return allPuzzleSlabs.some(puzzleSlab => areSlabsEqual(slab, puzzleSlab));
+  }, [puzzle.shown_examples, puzzle.hidden_examples]);
+
   const scrollToSlabList = () => {
     if (slabListRef.current) {
       slabListRef.current.scrollIntoView({ 
@@ -620,6 +645,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
           puzzle={puzzle}
           showRuleButton={remainingGuesses <= 0}
           onShowRuleModal={() => setShowVictoryOverlay(true)}
+          onEvaluate={evaluateSlab}
         />
       )}
 
@@ -840,19 +866,21 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                             >
                               <FiEyeOff size={12} className="rotate-180" />
                             </button>
-                            {/* Delete button */}
-                            <button
-                              data-delete-button
-                              className="absolute top-1 right-1 p-1 rounded-full bg-white/80 hover:bg-white text-gray-600 hover:text-red-600 transition-colors"
-                              title="Delete this slab permanently"
-                              aria-label="Delete slab"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSlabDelete(slab);
-                              }}
-                            >
-                              <FiTrash2 size={12} />
-                            </button>
+                            {/* Delete button - only show if slab is not in puzzle definition */}
+                            {!isSlabInPuzzleDefinition(slab) && (
+                              <button
+                                data-delete-button
+                                className="absolute top-1 right-1 p-1 rounded-full bg-white/80 hover:bg-white text-gray-600 hover:text-red-600 transition-colors"
+                                title="Delete this slab permanently"
+                                aria-label="Delete slab"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSlabDelete(slab);
+                                }}
+                              >
+                                <FiTrash2 size={12} />
+                              </button>
+                            )}
                           </>
                         )}
                       </div>

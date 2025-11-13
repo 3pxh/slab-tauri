@@ -52,7 +52,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartTutorial, onSkip }
             className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg flex items-center justify-center gap-3"
           >
             <FiBookOpen size={24} />
-            <span className="text-lg font-semibold">See Tutorial</span>
+            <span className="text-lg font-semibold">Learn to play</span>
           </button>
 
           <button
@@ -60,7 +60,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartTutorial, onSkip }
             className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg p-6 transition-colors duration-200 flex items-center justify-center gap-3"
           >
             <FiX size={24} />
-            <span className="text-lg font-semibold">Skip Tutorial</span>
+            <span className="text-lg font-semibold">I've played before</span>
           </button>
         </div>
       </div>

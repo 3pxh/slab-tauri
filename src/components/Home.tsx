@@ -185,7 +185,7 @@ const Home: React.FC<HomeProps> = () => {
       <AppHeader titleSize="large" />
 
       {/* Main Action Buttons */}
-      <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
         {/* Today's Puzzle Button */}
         <button
           onClick={() => {
@@ -197,32 +197,28 @@ const Home: React.FC<HomeProps> = () => {
             } as any);
             goToTodayPuzzle();
           }}
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
+          className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-lg p-5 transition-colors duration-200 shadow-lg flex flex-col items-center justify-center gap-3 aspect-square"
           disabled={isLoadingPuzzle}
         >
-          <div className="grid grid-cols-3 gap-4 items-center">
-            <div className="flex justify-end">
-              <FiPlay size={24} />
+          <FiPlay size={40} />
+          <div className="text-center px-2">
+            <div className="text-base font-semibold flex flex-col items-center gap-1">
+              <span className="line-clamp-2">
+                {isLoadingPuzzle ? 'Loading...' : (puzzleError ? 'Error loading puzzle' : (todaysPuzzle?.name || "Today's Puzzle"))}
+              </span>
+              {/* Difficulty indicator */}
+              {todaysPuzzle?.difficulty && (
+                <div className="inline-block bg-white/20 rounded px-2 py-0.5">
+                  <DifficultyIndicator 
+                    difficulty={todaysPuzzle.difficulty} 
+                    size="small"
+                    showTooltip={true}
+                  />
+                </div>
+              )}
             </div>
-            <div className="col-span-2 text-left">
-              <div className="text-lg font-semibold flex items-center gap-2">
-                <span>
-                  {isLoadingPuzzle ? 'Loading puzzle...' :`Today: '${todaysPuzzle?.name}'` || "Today's Puzzle"}
-                </span>
-                {/* Difficulty indicator */}
-                {todaysPuzzle?.difficulty && (
-                  <div className="inline-block bg-white/20 rounded px-2 py-1">
-                    <DifficultyIndicator 
-                      difficulty={todaysPuzzle.difficulty} 
-                      size="small"
-                      showTooltip={true}
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="text-sm opacity-90">
-                {puzzleError ? 'Unable to load puzzle name' : 'Play the daily puzzle'}
-              </div>
+            <div className="text-sm opacity-90 mt-1">
+              {puzzleError ? 'Error' : 'Daily puzzle'}
             </div>
           </div>
         </button>
@@ -233,16 +229,12 @@ const Home: React.FC<HomeProps> = () => {
             analytics.archiveViewed();
             goToArchive();
           }}
-          className="w-full bg-purple-500 hover:bg-purple-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
+          className="w-full bg-purple-500 hover:bg-purple-600 text-white rounded-lg p-5 transition-colors duration-200 shadow-lg flex flex-col items-center justify-center gap-3 aspect-square"
         >
-          <div className="grid grid-cols-3 gap-4 items-center">
-            <div className="flex justify-end">
-              <FiCalendar size={24} />
-            </div>
-            <div className="col-span-2 text-left">
-              <div className="text-lg font-semibold">Archive</div>
-              <div className="text-sm opacity-90">Browse past puzzles</div>
-            </div>
+          <FiCalendar size={40} />
+          <div className="text-center">
+            <div className="text-base font-semibold">Archive</div>
+            <div className="text-sm opacity-90 mt-1">Past puzzles</div>
           </div>
         </button>
 
@@ -252,16 +244,12 @@ const Home: React.FC<HomeProps> = () => {
             analytics.tutorialViewed();
             goToTutorial();
           }}
-          className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
+          className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-lg p-5 transition-colors duration-200 shadow-lg flex flex-col items-center justify-center gap-3 aspect-square"
         >
-          <div className="grid grid-cols-3 gap-4 items-center">
-            <div className="flex justify-end">
-              <FiBookOpen size={24} />
-            </div>
-            <div className="col-span-2 text-left">
-              <div className="text-lg font-semibold">Tutorial</div>
-              <div className="text-sm opacity-90">Learn to play!</div>
-            </div>
+          <FiBookOpen size={40} />
+          <div className="text-center">
+            <div className="text-base font-semibold">Tutorial</div>
+            <div className="text-sm opacity-90 mt-1">Learn to play!</div>
           </div>
         </button>
 
@@ -271,39 +259,35 @@ const Home: React.FC<HomeProps> = () => {
             analytics.puzzleCreatorViewed();
             goToCreate();
           }}
-          className="w-full bg-green-500 hover:bg-green-600 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
+          className="w-full bg-green-500 hover:bg-green-600 text-white rounded-lg p-5 transition-colors duration-200 shadow-lg flex flex-col items-center justify-center gap-3 aspect-square"
         >
-          <div className="grid grid-cols-3 gap-4 items-center">
-            <div className="flex justify-end">
-              <FiPlus size={24} />
-            </div>
-            <div className="col-span-2 text-left">
-              <div className="text-lg font-semibold">Make a Puzzle</div>
-              <div className="text-sm opacity-90">Entertain a friend</div>
-            </div>
+          <FiPlus size={40} />
+          <div className="text-center">
+            <div className="text-base font-semibold">Make a Puzzle</div>
+            <div className="text-sm opacity-90 mt-1">Entertain a friend</div>
           </div>
         </button>
+      </div>
 
-        {/* Logs Button - only visible to George */}
-        {isGeorge && (
+      {/* Logs Button - only visible to George */}
+      {isGeorge && (
+        <div className="mt-4">
           <button
             onClick={() => {
               goToLogs();
             }}
-            className="w-full bg-gray-600 hover:bg-gray-700 text-white rounded-lg p-6 transition-colors duration-200 shadow-lg"
+            className="w-full bg-gray-600 hover:bg-gray-700 text-white rounded-lg p-5 transition-colors duration-200 shadow-lg"
           >
-            <div className="grid grid-cols-3 gap-4 items-center">
-              <div className="flex justify-end">
-                <FiBarChart2 size={24} />
-              </div>
-              <div className="col-span-2 text-left">
-                <div className="text-lg font-semibold">Analytics</div>
+            <div className="flex items-center justify-center gap-3">
+              <FiBarChart2 size={24} />
+              <div className="text-left">
+                <div className="text-base font-semibold">Analytics</div>
                 <div className="text-sm opacity-90">View logs and stats</div>
               </div>
             </div>
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Save Progress Link - only show for anonymous users */}
       {isAuthenticated && isAnonymous && (

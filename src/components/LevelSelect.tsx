@@ -60,11 +60,11 @@ const LevelSelect: React.FC<LevelSelectProps> = () => {
         setIsLoadingDates(true);
         const response = await getAllDatesWithDifficulty();
         if (response.success) {
-          // Filter out puzzles after today, then reverse the order so earliest puzzle (#1) is at the top
+          // Filter out puzzles after today, keeping newest puzzles at the top
           const filteredPuzzles = response.puzzles.filter(puzzle => 
             isTodayOrBefore(puzzle.publish_date)
           );
-          setPuzzles(filteredPuzzles.reverse());
+          setPuzzles(filteredPuzzles);
         }
       } catch (error) {
         console.error('Failed to fetch available puzzles:', error);
@@ -274,10 +274,9 @@ const LevelSelect: React.FC<LevelSelectProps> = () => {
             {puzzles.map((puzzle, index) => {
               const { fullDate, date } = formatDateForDisplay(puzzle.publish_date);
               const isTodayPuzzle = isToday(puzzle.publish_date);
-              // Calculate puzzle number (earliest puzzle = #1, most recent = highest number)
-              // Since puzzles are now ordered chronologically (earliest first), 
-              // the index + 1 gives us the correct numbering
-              const puzzleNumber = index + 1;
+              // Calculate puzzle number (newest puzzle = highest number, earliest puzzle = #1)
+              // Since puzzles are ordered with newest first, we calculate from the end
+              const puzzleNumber = puzzles.length - index;
               
               return (
                 <button

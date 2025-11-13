@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowLeft, FiStar, FiX, FiChevronUp, FiChevronDown } from 'react-icons/fi';
+import { FiArrowLeft, FiStar, FiX, FiChevronUp, FiChevronDown, FiShare2 } from 'react-icons/fi';
 import { Puzzle, getAllDates, supabase, getAllVisibleSlabs, createSlab, Slab as SlabRecord } from '../lib/supabase';
 import SlabMaker from './SlabMaker';
 import SlabComponent, { SlabData, areSlabsEqual, serializeSlab, deserializeSlab } from './Slab';
@@ -86,6 +86,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   const [slabsLoaded, setSlabsLoaded] = React.useState(false);
   const [copyButtonText, setCopyButtonText] = React.useState('Copy Prompt and Load Slabs');
   const copyButtonTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const [createdPuzzleId, setCreatedPuzzleId] = React.useState<string | null>(null);
   
   // Authentication state
   const [email, setEmail] = React.useState('');
@@ -603,6 +604,52 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
     }
   };
 
+  const handleSharePuzzle = async (puzzleId: string, puzzleName: string) => {
+    const shareUrl = `${window.location.origin}/puzzle/shared/${puzzleId}`;
+    
+    // Use Web Share API on iOS/mobile if available
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (navigator.share && (isIOS || isMobile)) {
+      try {
+        await navigator.share({
+          title: `Check out "${puzzleName}" on Slab!`,
+          text: `Try solving this puzzle: ${puzzleName}`,
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        // User cancelled or share failed, fall through to clipboard
+        if ((err as Error).name === 'AbortError') {
+          return; // User cancelled, don't show error
+        }
+        console.warn('Web Share API failed, falling back to clipboard:', err);
+      }
+    }
+    
+    // Fallback to clipboard for desktop or if Web Share API fails
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(shareUrl);
+        alert(`Link to "${puzzleName}" copied to clipboard!`);
+      } else {
+        // Fallback for browsers that don't support clipboard API
+        const textArea = document.createElement('textarea');
+        textArea.value = shareUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert(`Link to "${puzzleName}" copied to clipboard!`);
+      }
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+      alert(`Failed to share puzzle. URL: ${shareUrl}`);
+    }
+  };
+
   const handleCopyRulePrompt = async () => {
     // Load all slabs if they haven't been loaded yet
     if (!slabsLoaded && !isLoadingHistory) {
@@ -747,6 +794,7 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
         throw new Error(`Failed to create puzzle: ${error.message}`);
       }
 
+      setCreatedPuzzleId(data.id);
       alert(`Puzzle "${data.name}" created successfully!`);
       // Optionally navigate back to home or show success message
     } catch (error) {
@@ -1025,13 +1073,24 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
           }
           
           return (
-            <button
-              onClick={handleCreatePuzzle}
-              disabled={isDisabled}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
-            >
-              {buttonText}
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={handleCreatePuzzle}
+                disabled={isDisabled}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+              >
+                {buttonText}
+              </button>
+              {createdPuzzleId && (
+                <button
+                  onClick={() => handleSharePuzzle(createdPuzzleId, puzzleName)}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+                >
+                  <FiShare2 size={20} />
+                  Share Puzzle
+                </button>
+              )}
+            </div>
           );
         })()}
       </div>

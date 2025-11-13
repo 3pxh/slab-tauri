@@ -84,6 +84,9 @@ export interface SlabGameActions {
   addTrophy: (puzzleId: string) => Promise<any>;
   markCompleted: (puzzleId: string, score: number) => Promise<any>;
   updateCustomData: (puzzleId: string, data: any) => Promise<any>;
+  
+  // Evaluation
+  evaluateSlab: (slab: SlabData) => Promise<boolean>;
 }
 
 // Helper function to deserialize puzzle examples if needed
@@ -1198,5 +1201,6 @@ export function useSlabGameState(puzzle: Puzzle, onPerfectGuess?: () => void): S
     addTrophy,
     markCompleted,
     updateCustomData,
+    evaluateSlab, // Export evaluateSlab for use in SlabMaker
   };
 }

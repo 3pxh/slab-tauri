@@ -1,7 +1,7 @@
 import React from 'react';
-import { FiRotateCcw, FiRefreshCw } from 'react-icons/fi';
+import { FiRotateCcw, FiRefreshCw, FiStar, FiX } from 'react-icons/fi';
 import { useGesture } from '@use-gesture/react';
-import { SlabData, createSlab, Cell, COLORS, getGroup, mapColorIndex } from './Slab';
+import { SlabData, createSlab, Cell, COLORS, getGroup, mapColorIndex, areSlabsEqual } from './Slab';
 import { deepCopy } from '../utils';
 import { analytics } from '../utils/analytics';
 import { createSlab as saveSlabToDatabase } from '../lib/supabase';
@@ -25,6 +25,7 @@ type SlabMakerProps = {
   hideControls?: boolean; // Hide control buttons for tutorial
   showRuleButton?: boolean; // Show the rule description button
   onShowRuleModal?: () => void; // Callback to show rule modal
+  onEvaluate?: (slab: SlabData) => Promise<boolean>; // Evaluation function
 };
 
 const SlabMaker: React.FC<SlabMakerProps> = ({ 
@@ -42,7 +43,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   puzzle,
   hideControls = false,
   showRuleButton = false,
-  onShowRuleModal
+  onShowRuleModal,
+  onEvaluate
 }) => {
   const { isAuthenticated } = useAuth();
   const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
@@ -53,6 +55,11 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   const [dragStartCell, setDragStartCell] = React.useState<{row: number, col: number} | null>(null);
   const [selectedCell, setSelectedCell] = React.useState<{row: number, col: number} | null>(null);
   const [activeColor, setActiveColor] = React.useState<number | null>(null);
+  
+  // Evaluation animation state
+  const [evaluationResult, setEvaluationResult] = React.useState<boolean | null>(null);
+  const [evaluatedSlab, setEvaluatedSlab] = React.useState<SlabData | null>(null);
+  const [isAnimating, setIsAnimating] = React.useState(false);
 
   // Keep a snapshot from drag start to push at drag end
   const preDragSnapshotRef = React.useRef<SlabData | null>(null);
@@ -73,6 +80,15 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
       preDragSnapshotRef.current = null;
     }
   }, [initialSlab]);
+
+  // Hide evaluation symbol when slab changes
+  React.useEffect(() => {
+    if (evaluatedSlab && !areSlabsEqual(slab, evaluatedSlab)) {
+      setEvaluationResult(null);
+      setEvaluatedSlab(null);
+      setIsAnimating(false);
+    }
+  }, [slab, evaluatedSlab]);
 
   // Helper: deep clone a slab snapshot
   const cloneSlab = (source: SlabData): SlabData => {
@@ -712,77 +728,108 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
 
   return (
     <div className="p-4 w-full max-w-md mx-auto">
-      <div className="grid grid-cols-6 w-full" style={{ gridAutoRows: '1fr' }}>
-        {slab.cells.map((row, rowIndex) => (
-          <React.Fragment key={rowIndex}>
-            {row.map((cell, colIndex) => (
-              <div
-                key={`${rowIndex}-${colIndex}`}
-                className="relative aspect-square w-full h-full flex items-center justify-center text-xs font-mono cursor-pointer transition-opacity select-none"
-                style={{
-                  backgroundColor: colors[mapColorIndex(getGroup(slab.groups, cell.groupId)?.color || 0, colors)],
-                  color: (getGroup(slab.groups, cell.groupId)?.color || 0) === 0 ? '#000' : '#fff',
-                  ...getBorderStyles(rowIndex, colIndex),
-                  touchAction: 'none'
-                }}
-                title={`Group: ${cell.groupId}, Color: ${getGroup(slab.groups, cell.groupId)?.color || 0}`}
-                data-cell-coords={`${rowIndex},${colIndex}`}
-                {...bindCellGestures(rowIndex, colIndex)}
-              >
-                {/* Colorblind overlay */}
-                {colorblindMode !== 'none' && getColorblindOverlay && (() => {
-                  const originalColorIndex = getGroup(slab.groups, cell.groupId)?.color || 0;
-                  const mappedColorIndex = mapColorIndex(originalColorIndex, colors);
-                  const overlay = getColorblindOverlay(mappedColorIndex);
-                  if (!overlay) return null;
-                  
-                  return (
-                    <div 
-                      className="absolute inset-0 flex items-center justify-center text-sm font-normal pointer-events-none"
-                      style={{
-                        color: mappedColorIndex === 0 ? '#000' : '#fff',
-                        textShadow: mappedColorIndex === 0 ? '1px 1px 2px rgba(255,255,255,0.8)' : '1px 1px 2px rgba(0,0,0,0.8)',
-                        zIndex: 2
-                      }}
-                    >
-                      {overlay}
-                    </div>
-                  );
-                })()}
-                {(() => {
-                  const concave = getConcaveCorners(rowIndex, colIndex);
-                  const dotSize = 8;
-                  const offset = '-5px'
-                  const dotStyleBase: React.CSSProperties = {
-                    position: 'absolute',
-                    width: `${dotSize}px`,
-                    height: `${dotSize}px`,
-                    backgroundColor: 'white',
-                    borderRadius: '9999px',
-                    zIndex: 1,
-                  };
+      <div className="relative">
+        <div className="grid grid-cols-6 w-full" style={{ gridAutoRows: '1fr' }}>
+          {slab.cells.map((row, rowIndex) => (
+            <React.Fragment key={rowIndex}>
+              {row.map((cell, colIndex) => (
+                <div
+                  key={`${rowIndex}-${colIndex}`}
+                  className="relative aspect-square w-full h-full flex items-center justify-center text-xs font-mono cursor-pointer transition-opacity select-none"
+                  style={{
+                    backgroundColor: colors[mapColorIndex(getGroup(slab.groups, cell.groupId)?.color || 0, colors)],
+                    color: (getGroup(slab.groups, cell.groupId)?.color || 0) === 0 ? '#000' : '#fff',
+                    ...getBorderStyles(rowIndex, colIndex),
+                    touchAction: 'none'
+                  }}
+                  title={`Group: ${cell.groupId}, Color: ${getGroup(slab.groups, cell.groupId)?.color || 0}`}
+                  data-cell-coords={`${rowIndex},${colIndex}`}
+                  {...bindCellGestures(rowIndex, colIndex)}
+                >
+                  {/* Colorblind overlay */}
+                  {colorblindMode !== 'none' && getColorblindOverlay && (() => {
+                    const originalColorIndex = getGroup(slab.groups, cell.groupId)?.color || 0;
+                    const mappedColorIndex = mapColorIndex(originalColorIndex, colors);
+                    const overlay = getColorblindOverlay(mappedColorIndex);
+                    if (!overlay) return null;
+                    
+                    return (
+                      <div 
+                        className="absolute inset-0 flex items-center justify-center text-sm font-normal pointer-events-none"
+                        style={{
+                          color: mappedColorIndex === 0 ? '#000' : '#fff',
+                          textShadow: mappedColorIndex === 0 ? '1px 1px 2px rgba(255,255,255,0.8)' : '1px 1px 2px rgba(0,0,0,0.8)',
+                          zIndex: 2
+                        }}
+                      >
+                        {overlay}
+                      </div>
+                    );
+                  })()}
+                  {(() => {
+                    const concave = getConcaveCorners(rowIndex, colIndex);
+                    const dotSize = 8;
+                    const offset = '-5px'
+                    const dotStyleBase: React.CSSProperties = {
+                      position: 'absolute',
+                      width: `${dotSize}px`,
+                      height: `${dotSize}px`,
+                      backgroundColor: 'white',
+                      borderRadius: '9999px',
+                      zIndex: 1,
+                    };
 
-                  return (
-                    <>
-                      {concave.topLeft && (
-                        <span style={{ ...dotStyleBase, top: offset, left: offset }} />
-                      )}
-                      {concave.topRight && (
-                        <span style={{ ...dotStyleBase, top: offset, right: offset }} />
-                      )}
-                      {concave.bottomRight && (
-                        <span style={{ ...dotStyleBase, bottom: offset, right: offset }} />
-                      )}
-                      {concave.bottomLeft && (
-                        <span style={{ ...dotStyleBase, bottom: offset, left: offset }} />
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-            ))}
-          </React.Fragment>
-        ))}
+                    return (
+                      <>
+                        {concave.topLeft && (
+                          <span style={{ ...dotStyleBase, top: offset, left: offset }} />
+                        )}
+                        {concave.topRight && (
+                          <span style={{ ...dotStyleBase, top: offset, right: offset }} />
+                        )}
+                        {concave.bottomRight && (
+                          <span style={{ ...dotStyleBase, bottom: offset, right: offset }} />
+                        )}
+                        {concave.bottomLeft && (
+                          <span style={{ ...dotStyleBase, bottom: offset, left: offset }} />
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              ))}
+            </React.Fragment>
+          ))}
+        </div>
+        
+        {/* Evaluation Symbol Overlay - positioned relative to grid container */}
+        {evaluationResult !== null && evaluatedSlab && areSlabsEqual(slab, evaluatedSlab) && (
+          <div
+            className={`absolute pointer-events-none z-50 ${isAnimating ? 'evaluation-animate' : 'evaluation-final'}`}
+          >
+          {evaluationResult ? (
+            <FiStar 
+              size={48} 
+              className="fill-yellow-400 text-yellow-500"
+              style={{
+                filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)',
+                shapeRendering: 'geometricPrecision',
+                imageRendering: 'crisp-edges'
+              }}
+            />
+          ) : (
+            <FiX 
+              size={48} 
+              className="text-red-500"
+              style={{
+                filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)',
+                shapeRendering: 'geometricPrecision',
+                imageRendering: 'crisp-edges'
+              }}
+            />
+          )}
+        </div>
+      )}
       </div>
       
       {/* Color Swatches with Undo/Reset */}
@@ -872,6 +919,26 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
               }`}
               onClick={async () => {
                 if (puzzle) analytics.slabCreated(puzzle, Object.keys(slab.groups).length);
+                
+                // Evaluate the slab if evaluation function is provided
+                if (onEvaluate) {
+                  try {
+                    const result = await onEvaluate(slab);
+                    setEvaluationResult(result);
+                    setEvaluatedSlab(cloneSlab(slab));
+                    
+                    // Start animation
+                    setIsAnimating(true);
+                    
+                    // Reset animation state after animation completes
+                    setTimeout(() => {
+                      setIsAnimating(false);
+                    }, 800); // Total animation duration (400ms grow + 400ms move)
+                  } catch (error) {
+                    console.error('Error evaluating slab:', error);
+                  }
+                }
+                
                 onCreate(slab);
                 
                 // Automatically save slab to database if user is authenticated
