@@ -44,7 +44,6 @@ const Home: React.FC<HomeProps> = () => {
   
   // State for announcement
   const [announcement, setAnnouncement] = React.useState<Announcement | null>(null);
-  const [isLoadingAnnouncement, setIsLoadingAnnouncement] = React.useState(true);
   
   // Check if user is new and should see welcome screen
   React.useEffect(() => {
@@ -138,7 +137,6 @@ const Home: React.FC<HomeProps> = () => {
   React.useEffect(() => {
     const fetchAnnouncement = async () => {
       try {
-        setIsLoadingAnnouncement(true);
         const announcementData = await getAnnouncement();
         
         console.log('📢 Announcement data received:', announcementData);
@@ -153,8 +151,6 @@ const Home: React.FC<HomeProps> = () => {
       } catch (error) {
         console.error('❌ Error loading announcement:', error);
         // Don't show error to user, just fail silently
-      } finally {
-        setIsLoadingAnnouncement(false);
       }
     };
 
