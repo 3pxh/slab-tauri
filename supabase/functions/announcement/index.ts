@@ -28,7 +28,7 @@ serve(async (req) => {
     const announcement: Announcement = {
       title: "Join the community!",
       body: "Join our [subreddit](https://www.reddit.com/r/slab17/) for discussions and community puzzles.",
-      active: true
+      active: false
     }
 
     // If announcement is not active, return null
