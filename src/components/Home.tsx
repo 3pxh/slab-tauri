@@ -22,7 +22,7 @@ interface HomeProps {}
 
 const Home: React.FC<HomeProps> = () => {
   const { isAnonymous, linkAccountWithEmail, isAuthenticated, signInWithPassword, signUpWithPassword, user, isLoading } = useAuth();
-  const { goToTodayPuzzle, goToArchive, goToCreate, goToTutorial, goToLogs } = useNavigation();
+  const { goToTodayPuzzle, goToArchive, goToCreate, goToTutorial, goToLogs, goToAbout } = useNavigation();
   
   // Check if current user is George
   const isGeorge = user?.id === GEORGE_USER_ID;
@@ -324,6 +324,18 @@ const Home: React.FC<HomeProps> = () => {
           </button>
         </div>
       )}
+
+      {/* Why did you make Slab? Button */}
+      <div className="mt-4">
+        <button
+          onClick={() => {
+            goToAbout();
+          }}
+          className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-800 rounded-lg p-4 transition-colors duration-200 shadow-lg"
+        >
+          <div className="text-base font-semibold">Why did you make Slab?</div>
+        </button>
+      </div>
 
       {/* Save Progress Link - only show for anonymous users */}
       {isAuthenticated && isAnonymous && (

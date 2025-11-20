@@ -7,6 +7,7 @@ import SlabPuzzleCreator from './components/SlabPuzzleCreator';
 import PuzzlesList from './components/PuzzlesList';
 import Tutorial from './components/Tutorial';
 import Logs from './components/Logs';
+import About from './components/About';
 import { DeepLinkHandler } from './components/DeepLinkHandler';
 import { VersionCheck } from './components/VersionCheck';
 import { DebugLogProvider } from './components/DebugLog';
@@ -232,6 +233,11 @@ const router = createBrowserRouter([
         path: '/logs',
         element: <Logs />,
         errorElement: <ErrorBoundary error={new Error('Failed to load logs')} />
+      },
+      {
+        path: '/about',
+        element: <About />,
+        errorElement: <ErrorBoundary error={new Error('Failed to load about page')} />
       }
     ]
   }

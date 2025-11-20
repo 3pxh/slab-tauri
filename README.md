@@ -3,6 +3,9 @@
 ## [Play](https://slab17.com)
 [Play for free online](https://slab17.com) as much as you like, make puzzles, have fun.
 
+## License
+Slab 17 by George Hoqqanen is marked CC0 1.0. See [LICENSE](LICENSE) for details.
+
 ## About
 See [technical teardown](https://www.hoqqanen.com/2025/11/09/slab-technical-teardown/)
 
