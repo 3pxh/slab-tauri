@@ -8,6 +8,7 @@ import PuzzlesList from './components/PuzzlesList';
 import Tutorial from './components/Tutorial';
 import Logs from './components/Logs';
 import About from './components/About';
+import Support from './components/Support';
 import { DeepLinkHandler } from './components/DeepLinkHandler';
 import { VersionCheck } from './components/VersionCheck';
 import { DebugLogProvider } from './components/DebugLog';
@@ -238,6 +239,11 @@ const router = createBrowserRouter([
         path: '/about',
         element: <About />,
         errorElement: <ErrorBoundary error={new Error('Failed to load about page')} />
+      },
+      {
+        path: '/support',
+        element: <Support />,
+        errorElement: <ErrorBoundary error={new Error('Failed to load support page')} />
       }
     ]
   }
