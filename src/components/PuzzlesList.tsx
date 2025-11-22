@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FiArrowLeft, FiTrash2, FiCalendar, FiShare2 } from 'react-icons/fi';
+import { FiArrowLeft, FiTrash2, FiCalendar } from 'react-icons/fi';
 import { supabase, Puzzle } from '../lib/supabase';
-import { formatDateUTC } from '../utils';
+import { formatDateUTC, isIOS } from '../utils';
+import { ShareButton } from './ShareButton';
 
 interface PuzzlesListProps {
   onHome: () => void;
@@ -108,9 +109,9 @@ const PuzzlesList: React.FC<PuzzlesListProps> = ({ onHome }) => {
     const shareUrl = `${window.location.origin}/puzzle/shared/${puzzleId}`;
     
     // Use Web Share API on iOS/mobile if available
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const ios = isIOS();
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (navigator.share && (isIOS || isMobile)) {
+    if (navigator.share && (ios || isMobile)) {
       try {
         await navigator.share({
           title: `Check out "${puzzleName}" on Slab!`,
@@ -277,13 +278,13 @@ const PuzzlesList: React.FC<PuzzlesListProps> = ({ onHome }) => {
                       </>
                     ) : (
                       <>
-                        <button
+                        <ShareButton
                           onClick={() => handleSharePuzzle(puzzle.id, puzzle.name)}
-                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
                           title="Share puzzle"
-                        >
-                          <FiShare2 className="w-4 h-4" />
-                        </button>
+                          ariaLabel="Share puzzle"
+                          size={16}
+                          variant="icon"
+                        />
                         <button
                           onClick={(e) => handleInitiateDelete(puzzle.id, e)}
                           disabled={deletingPuzzleId === puzzle.id}

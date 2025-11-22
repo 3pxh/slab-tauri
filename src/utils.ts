@@ -152,3 +152,11 @@ export function isTodayOrBefore(dateString: string): boolean {
   
   return puzzleDate <= today;
 }
+
+/**
+ * Detect if the current platform is iOS
+ */
+export function isIOS(): boolean {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}

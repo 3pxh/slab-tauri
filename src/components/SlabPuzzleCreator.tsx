@@ -1,10 +1,11 @@
 import React from 'react';
-import { FiArrowLeft, FiStar, FiX, FiChevronUp, FiChevronDown, FiShare2 } from 'react-icons/fi';
+import { FiArrowLeft, FiStar, FiX, FiChevronUp, FiChevronDown } from 'react-icons/fi';
 import { Puzzle, getAllDates, supabase, createSlab, Slab as SlabRecord } from '../lib/supabase';
 import SlabMaker from './SlabMaker';
 import SlabComponent, { SlabData, areSlabsEqual, serializeSlab, deserializeSlab } from './Slab';
-import { deepCopy } from '../utils';
+import { deepCopy, isIOS } from '../utils';
 import { executeCodeSafely } from '../utils/sandbox';
+import { ShareButton } from './ShareButton';
 
 const GEORGE_USER_ID = '3996a43b-86dd-4bda-8807-dc3d8e76e5a7';
 
@@ -672,9 +673,9 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
     const shareUrl = `${window.location.origin}/puzzle/shared/${puzzleId}`;
     
     // Use Web Share API on iOS/mobile if available
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const ios = isIOS();
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (navigator.share && (isIOS || isMobile)) {
+    if (navigator.share && (ios || isMobile)) {
       try {
         await navigator.share({
           title: `Check out "${puzzleName}" on Slab!`,
@@ -1139,13 +1140,14 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
                 {buttonText}
               </button>
               {createdPuzzleId && (
-                <button
+                <ShareButton
                   onClick={() => handleSharePuzzle(createdPuzzleId, puzzleName)}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
-                >
-                  <FiShare2 size={20} />
-                  Share Puzzle
-                </button>
+                  title="Share puzzle"
+                  ariaLabel="Share puzzle"
+                  size={20}
+                  variant="button"
+                  className="w-full"
+                />
               )}
             </div>
           );

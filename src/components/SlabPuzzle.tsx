@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2, FiX, FiHelpCircle, FiShare2 } from 'react-icons/fi';
+import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2, FiX, FiHelpCircle } from 'react-icons/fi';
 import { FiStar } from 'react-icons/fi';
 import { PiShuffleBold } from 'react-icons/pi';
 import { FaArrowDownUpAcrossLine } from 'react-icons/fa6';
@@ -7,7 +7,7 @@ import { useGesture } from '@use-gesture/react';
 import { useLocation } from 'react-router';
 import { Puzzle } from '../lib/supabase';
 import Slab, { SlabData, areSlabsEqual, deserializeSlab } from './Slab';
-import { formatDateUTC, isTodayOrBefore, isTodayUTC } from '../utils';
+import { formatDateUTC, isTodayOrBefore, isTodayUTC, isIOS } from '../utils';
 import SlabMaker from './SlabMaker';
 import IndividualSlabGuesser from './IndividualSlabGuesser';
 import { useSlabGameState } from '../hooks/useSlabGameState';
@@ -18,6 +18,7 @@ import VictoryOverlay from './VictoryOverlay';
 import { useNavigation } from '../utils/navigation';
 import { getAllDates } from '../lib/supabase';
 import { puzzleProgressService } from '../lib/puzzleProgress';
+import { ShareButton } from './ShareButton';
 
 
 type SlabPuzzleProps = {
@@ -568,9 +569,9 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
     const shareUrl = `${window.location.origin}${path}`;
     
     // Use Web Share API on iOS/mobile if available
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const ios = isIOS();
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (navigator.share && (isIOS || isMobile)) {
+    if (navigator.share && (ios || isMobile)) {
       try {
         await navigator.share({
           title: `Check out "${puzzle.name}" on Slab!`,
@@ -649,14 +650,13 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
           <div className="text-sm text-gray-600">
             {formatDate(puzzle.publish_date)}
           </div>
-          <button
-            className="px-2 py-1 rounded text-sm hover:bg-gray-200 transition-colors flex items-center gap-1"
+          <ShareButton
             onClick={handleShare}
             title="Share puzzle"
-            aria-label="Share puzzle"
-          >
-            <FiShare2 size={20} />
-          </button>
+            ariaLabel="Share puzzle"
+            size={20}
+            variant="icon"
+          />
           <button
             className="px-2 py-1 rounded text-sm hover:bg-gray-200 transition-colors flex items-center gap-1"
             onClick={() => {
