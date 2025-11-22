@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2, FiX } from 'react-icons/fi';
+import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2, FiX, FiHelpCircle } from 'react-icons/fi';
 import { FiStar } from 'react-icons/fi';
 import { PiShuffleBold } from 'react-icons/pi';
 import { FaArrowDownUpAcrossLine } from 'react-icons/fa6';
@@ -687,7 +687,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
               >
               {allSlabs.map((slab, index) => {
                 const key = getSlabKey(slab);
-                const evaluationResult = evaluationResults.get(key) || false;
+                const evaluationResult = evaluationResults.get(key);
                 const isDraggingThis = localDraggedIndex === index;
                 
                 return (
@@ -720,23 +720,23 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                         getColorblindOverlay={getColorblindOverlay}
                       />
                       {/* Evaluation annotation directly on slab */}
-                      {evaluationResult !== undefined && (
-                        <div 
-                          className="absolute"
-                          style={{
-                            top: '-8px',
-                            right: '-8px',
-                            color: '#000000',
-                            filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
-                          }}
-                        >
-                          {evaluationResult ? (
-                            <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
-                          ) : (
-                            <FiX size={16} className="text-red-500" />
-                          )}
-                        </div>
-                      )}
+                      <div 
+                        className="absolute"
+                        style={{
+                          top: '-8px',
+                          right: '-8px',
+                          color: '#000000',
+                          filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
+                        }}
+                      >
+                        {evaluationResult === undefined ? (
+                          <FiHelpCircle size={16} className="text-gray-500" />
+                        ) : evaluationResult ? (
+                          <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
+                        ) : (
+                          <FiX size={16} className="text-red-500" />
+                        )}
+                      </div>
                       {/* Archive button */}
                       <button
                         data-archive-button
@@ -808,7 +808,7 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
               <div className="flex flex-wrap gap-2 justify-center pr-4">
                 {archivedSlabs.map((slab, index) => {
                   const key = getSlabKey(slab);
-                  const evaluationResult = evaluationResults.get(key) || false;
+                  const evaluationResult = evaluationResults.get(key);
                   
                   return (
                     <div 
@@ -833,7 +833,6 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                           getColorblindOverlay={getColorblindOverlay}
                         />
                         {/* Evaluation annotation for archived slabs */}
-                        {evaluationResult !== undefined && (
                         <div 
                           className="absolute"
                           style={{
@@ -843,13 +842,14 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
                             filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
                           }}
                         >
-                          {evaluationResult ? (
-                          <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
+                          {evaluationResult === undefined ? (
+                            <FiHelpCircle size={16} className="text-gray-500" />
+                          ) : evaluationResult ? (
+                            <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
                           ) : (
-                          <FiX size={16} className="text-red-500" />
+                            <FiX size={16} className="text-red-500" />
                           )}
                         </div>
-                        )}
                         {/* Action buttons - only show when selected */}
                         {selectedSlabForMaker && areSlabsEqual(selectedSlabForMaker, slab) && (
                           <>

@@ -135,6 +135,8 @@ export function useSlabGameState(puzzle: Puzzle, onPerfectGuess?: () => void): S
   
   // Evaluation state
   const [evaluationResults, setEvaluationResults] = useState<Map<string, boolean>>(new Map());
+  // Ref to track latest evaluation results for use in callbacks (prevents stale closures)
+  const evaluationResultsRef = useRef<Map<string, boolean>>(new Map());
   
   // Progress tracking
   const { progress, isLoading, incrementAttempts, addTrophy, markCompleted, updateCustomData, addToTotalCorrect } = usePuzzleProgress(puzzle.id);
@@ -247,7 +249,9 @@ export function useSlabGameState(puzzle: Puzzle, onPerfectGuess?: () => void): S
     setGuessIncorrectCount(0);
     setSlabsToGuess([]);
     setLastGuessResult(null);
-    setEvaluationResults(new Map());
+    const emptyMap = new Map();
+    setEvaluationResults(emptyMap);
+    evaluationResultsRef.current = emptyMap;
     // Reset optimistic progress state
     setOptimisticTrophies(0);
     setOptimisticAttempts(0);
@@ -301,7 +305,9 @@ export function useSlabGameState(puzzle: Puzzle, onPerfectGuess?: () => void): S
     let initialArchivedSlabs: SlabData[] = [];
     let initialRemainingGuesses = 3;
     let initialHasWon = false;
-    let initialEvaluationResults = new Map<string, boolean>();
+    // Preserve existing evaluation results during re-initialization
+    // This prevents losing cached evaluations when state is reset
+    let initialEvaluationResults = new Map(evaluationResultsRef.current);
     let initialIsInIndividualGuessMode = false;
     let initialCurrentGuessIndex = 0;
     let initialGuessCorrectCount = 0;
@@ -421,7 +427,20 @@ export function useSlabGameState(puzzle: Puzzle, onPerfectGuess?: () => void): S
     setRemainingGuesses(initialRemainingGuesses);
     setHasWon(initialHasWon);
     hasWonRef.current = initialHasWon; // Update ref immediately
-    setEvaluationResults(initialEvaluationResults);
+    // Merge existing evaluation results with initial ones to preserve cache
+    setEvaluationResults(prev => {
+      // Start with the preserved initialEvaluationResults (which already has existing cache)
+      const merged = new Map(initialEvaluationResults);
+      // Also merge in anything from prev that might not be in initialEvaluationResults
+      // This handles edge cases where evaluations completed between initialization checks
+      prev.forEach((value, key) => {
+        if (!merged.has(key)) {
+          merged.set(key, value);
+        }
+      });
+      evaluationResultsRef.current = merged;
+      return merged;
+    });
     setIsInIndividualGuessMode(initialIsInIndividualGuessMode);
     setCurrentGuessIndex(initialCurrentGuessIndex);
     setGuessCorrectCount(initialGuessCorrectCount);
@@ -483,10 +502,10 @@ export function useSlabGameState(puzzle: Puzzle, onPerfectGuess?: () => void): S
         ...deserializePuzzleExamples(puzzle.hidden_examples || [])
       ];
 
-      // Filter out slabs that are already evaluated
+      // Filter out slabs that are already evaluated (use ref to prevent stale closure)
       const slabsToEvaluate = allSlabsToEvaluate.filter(slab => {
         const key = getSlabKey(slab);
-        return !evaluationResults.has(key);
+        return !evaluationResultsRef.current.has(key);
       });
 
       if (slabsToEvaluate.length > 0) {
@@ -502,6 +521,8 @@ export function useSlabGameState(puzzle: Puzzle, onPerfectGuess?: () => void): S
               const key = getSlabKey(slab);
               newMap.set(key, results[index]);
             });
+            // Update ref to keep it in sync
+            evaluationResultsRef.current = newMap;
             return newMap;
           });
         } catch (error) {
@@ -511,12 +532,19 @@ export function useSlabGameState(puzzle: Puzzle, onPerfectGuess?: () => void): S
     };
 
     preEvaluateAllSlabs();
-  }, [puzzle.evaluate_fn, puzzle.shown_examples, puzzle.hidden_examples, evaluationResults]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [puzzle.evaluate_fn, puzzle.shown_examples, puzzle.hidden_examples]);
+
+  // Sync ref whenever evaluationResults state changes (for cases where state is set directly)
+  useEffect(() => {
+    evaluationResultsRef.current = evaluationResults;
+  }, [evaluationResults]);
 
   // Update evaluation results when slabs change (only after initialization)
   useEffect(() => {
     if (!hasInitializedRef.current) return; // Wait for initialization
     updateEvaluationResults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allSlabs, puzzle.evaluate_fn]);
 
   // Utility functions
@@ -575,8 +603,8 @@ export function useSlabGameState(puzzle: Puzzle, onPerfectGuess?: () => void): S
 
     const key = getSlabKey(slab);
     
-    // Skip if already evaluated
-    if (evaluationResults.has(key)) {
+    // Skip if already evaluated (use ref to prevent stale closure)
+    if (evaluationResultsRef.current.has(key)) {
       return;
     }
 
@@ -585,27 +613,36 @@ export function useSlabGameState(puzzle: Puzzle, onPerfectGuess?: () => void): S
       setEvaluationResults(prev => {
         const newMap = new Map(prev);
         newMap.set(key, result);
+        // Update ref to keep it in sync
+        evaluationResultsRef.current = newMap;
         return newMap;
       });
     } catch (error) {
       console.error('Error evaluating single slab:', error);
     }
-  }, [puzzle.evaluate_fn, getSlabKey, evaluationResults, evaluateSlab]);
+  }, [puzzle.evaluate_fn, getSlabKey, evaluateSlab]);
 
   // Function to update evaluation results for all slabs
   const updateEvaluationResults = useCallback(async () => {
     if (!puzzle.evaluate_fn.trim()) {
-      setEvaluationResults(new Map());
+      const emptyMap = new Map();
+      setEvaluationResults(emptyMap);
+      evaluationResultsRef.current = emptyMap;
       return;
     }
 
     try {
+      // Capture the current ref value at the start to ensure consistency
+      // If ref is empty, we'll use the state value in the setState callback instead
+      const currentResults = new Map(evaluationResultsRef.current);
       const newResults = new Map<string, boolean>();
       
       // Only evaluate slabs that don't already have results
+      // Use the captured currentResults to check (prevents race conditions)
+      // Note: We'll double-check against prev state in the setState callback to be safe
       const slabsToEvaluate = allSlabs.filter(slab => {
         const key = getSlabKey(slab);
-        return !evaluationResults.has(key);
+        return !currentResults.has(key);
       });
 
       if (slabsToEvaluate.length > 0) {
@@ -620,18 +657,29 @@ export function useSlabGameState(puzzle: Puzzle, onPerfectGuess?: () => void): S
         });
       }
 
-      // Merge with existing results
+      // Merge with existing results - preserve ALL existing evaluations
       setEvaluationResults(prev => {
+        // Start with prev (the current state) to ensure we never lose any evaluations
+        // This is the most reliable source of truth
         const merged = new Map(prev);
+        // Also merge in anything from currentResults that might not be in prev yet
+        currentResults.forEach((value, key) => {
+          if (!merged.has(key)) {
+            merged.set(key, value);
+          }
+        });
+        // Add any new results (these are for slabs we just evaluated)
         newResults.forEach((value, key) => {
           merged.set(key, value);
         });
+        // Update ref to keep it in sync
+        evaluationResultsRef.current = merged;
         return merged;
       });
     } catch (error) {
       console.error('Error updating evaluation results:', error);
     }
-  }, [puzzle.evaluate_fn, allSlabs, getSlabKey, evaluationResults, evaluateSlab]);
+  }, [puzzle.evaluate_fn, allSlabs, getSlabKey, evaluateSlab]);
 
   // Helper function to compare slabs ignoring the id property
   const areSlabsEqualIgnoringId = useCallback((slab1: any, slab2: any): boolean => {

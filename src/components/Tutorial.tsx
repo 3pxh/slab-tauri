@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowRight, FiArrowLeft, FiRefreshCw, FiStar, FiX } from 'react-icons/fi';
+import { FiArrowRight, FiArrowLeft, FiRefreshCw, FiStar, FiX, FiHelpCircle } from 'react-icons/fi';
 import { analytics } from '../utils/analytics';
 import SlabComponent, { SlabData, createRandomSlab, COLORS, deserializeSlab } from './Slab';
 import SlabMaker from './SlabMaker';
@@ -237,7 +237,7 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
                             const isSerialized = example && typeof example === 'object' && 'grid' in example && 'colors' in example;
                             const deserializedExample = isSerialized ? deserializeSlab(example) : example;
                             const key = JSON.stringify(deserializedExample);
-                            const evaluationResult = evaluationResults.get(key) || false;
+                            const evaluationResult = evaluationResults.get(key);
                             
                             return (
                               <div key={index} className="flex flex-col items-center gap-2">
@@ -248,23 +248,23 @@ const Tutorial: React.FC<TutorialProps> = ({ onFirstPuzzle, onHome }) => {
                                     className="shadow-md"
                                   />
                                   {/* Evaluation annotation exactly like in SlabPuzzle.tsx */}
-                                  {evaluationResult !== undefined && (
-                                    <div 
-                                      className="absolute"
-                                      style={{
-                                        top: '-4px',
-                                        right: '-4px',
-                                        color: '#000000',
-                                        filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
-                                      }}
-                                    >
-                                      {evaluationResult ? (
-                                        <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
-                                      ) : (
-                                        <FiX size={16} className="text-red-500" />
-                                      )}
-                                    </div>
-                                  )}
+                                  <div 
+                                    className="absolute"
+                                    style={{
+                                      top: '-4px',
+                                      right: '-4px',
+                                      color: '#000000',
+                                      filter: 'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)'
+                                    }}
+                                  >
+                                    {evaluationResult === undefined ? (
+                                      <FiHelpCircle size={16} className="text-gray-500" />
+                                    ) : evaluationResult ? (
+                                      <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
+                                    ) : (
+                                      <FiX size={16} className="text-red-500" />
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="text-xs text-gray-500">
                                   {evaluationResult ? 'Passes the rule ⭐️' : 'Doesn\'t pass the rule'}
