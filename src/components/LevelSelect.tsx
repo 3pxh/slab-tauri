@@ -1,7 +1,7 @@
 import React from 'react';
 import { FiAward } from 'react-icons/fi';
 import { getAllDatesWithDifficulty, PuzzleDate } from '../lib/supabase';
-import { isTodayUTC } from '../utils';
+import { isTodayUTC, isTodayOrBefore } from '../utils';
 import AppHeader from './AppHeader';
 import DifficultyIndicator from './DifficultyIndicator';
 import Slab, { COLORS, deserializeSlab } from './Slab';
@@ -23,35 +23,6 @@ const LevelSelect: React.FC<LevelSelectProps> = () => {
   const [puzzleProgress, setPuzzleProgress] = React.useState<Map<string, PuzzleProgress>>(new Map());
   const { goToPuzzle, goHome } = useNavigation();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
-
-  // Helper function to check if a date is today or before (in UTC)
-  const isTodayOrBefore = (dateString: string) => {
-    let date: Date;
-    
-    if (dateString.includes('T') || dateString.includes(' ')) {
-      date = new Date(dateString);
-    } else {
-      date = new Date(dateString + 'T00:00:00Z');
-    }
-    
-    if (isNaN(date.getTime())) {
-      return false;
-    }
-    
-    const now = new Date();
-    const puzzleDate = new Date(Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate()
-    ));
-    const today = new Date(Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate()
-    ));
-    
-    return puzzleDate <= today;
-  };
 
   // Fetch available puzzle dates with difficulty on component mount
   React.useEffect(() => {

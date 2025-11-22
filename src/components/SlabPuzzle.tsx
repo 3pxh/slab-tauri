@@ -1,12 +1,13 @@
 import React from 'react';
-import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2, FiX, FiHelpCircle } from 'react-icons/fi';
+import { FiArrowLeft, FiMonitor, FiAward, FiEyeOff, FiTrash2, FiX, FiHelpCircle, FiShare2 } from 'react-icons/fi';
 import { FiStar } from 'react-icons/fi';
 import { PiShuffleBold } from 'react-icons/pi';
 import { FaArrowDownUpAcrossLine } from 'react-icons/fa6';
 import { useGesture } from '@use-gesture/react';
+import { useLocation } from 'react-router';
 import { Puzzle } from '../lib/supabase';
 import Slab, { SlabData, areSlabsEqual, deserializeSlab } from './Slab';
-import { formatDateUTC } from '../utils';
+import { formatDateUTC, isTodayOrBefore, isTodayUTC } from '../utils';
 import SlabMaker from './SlabMaker';
 import IndividualSlabGuesser from './IndividualSlabGuesser';
 import { useSlabGameState } from '../hooks/useSlabGameState';
@@ -27,6 +28,7 @@ type SlabPuzzleProps = {
 
 const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
   const { goToPuzzle, goToArchive } = useNavigation();
+  const location = useLocation();
   
   // Track puzzle start
   React.useEffect(() => {
@@ -124,16 +126,10 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         if (hasNextInArray) {
           // Get the next puzzle's date
           const nextPuzzleDateStr = sortedDates[currentIndex + 1];
-          const nextPuzzleDate = new Date(nextPuzzleDateStr);
           
-          // Get today's date (normalized to start of day for comparison)
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const nextPuzzleDateNormalized = new Date(nextPuzzleDate);
-          nextPuzzleDateNormalized.setHours(0, 0, 0, 0);
-          
-          // Only show next puzzle button if the next puzzle is today or earlier
-          const hasNext = nextPuzzleDateNormalized <= today;
+          // Only show next puzzle button if the next puzzle is today or earlier (in UTC)
+          // This matches the logic used in LevelSelect.tsx for consistency
+          const hasNext = isTodayOrBefore(nextPuzzleDateStr);
           setHasNextPuzzle(hasNext);
         } else {
           setHasNextPuzzle(false);
@@ -529,10 +525,18 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
         }
         
         if (currentIndex !== -1 && currentIndex < sortedDates.length - 1) {
-          // Navigate to the next puzzle
+          // Get the next puzzle's date
           const nextDateStr = sortedDates[currentIndex + 1];
-          const nextDate = new Date(nextDateStr);
-          goToPuzzle(nextDate);
+          
+          // Only navigate to the next puzzle if it's today or earlier (in UTC)
+          // This matches the logic used in LevelSelect.tsx for consistency
+          if (isTodayOrBefore(nextDateStr)) {
+            const nextDate = new Date(nextDateStr);
+            goToPuzzle(nextDate);
+          } else {
+            // Next puzzle is in the future, go to archive instead
+            goToArchive();
+          }
         } else {
           // No next puzzle available, go to archive
           goToArchive();
@@ -545,6 +549,60 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
       console.error('Error finding next puzzle:', error);
       // Fallback to archive
       goToArchive();
+    }
+  };
+
+  const handleShare = async () => {
+    // Get the current URL path
+    let path = location.pathname;
+    
+    // If the path contains "today" and the puzzle is today, convert to date format
+    if (path.includes('/puzzle/today')) {
+      const puzzleDate = new Date(puzzle.publish_date);
+      if (isTodayUTC(puzzleDate)) {
+        const dateStr = puzzleDate.toISOString().split('T')[0];
+        path = `/puzzle/${dateStr}`;
+      }
+    }
+    
+    const shareUrl = `${window.location.origin}${path}`;
+    
+    // Use Web Share API on iOS/mobile if available
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (navigator.share && (isIOS || isMobile)) {
+      try {
+        await navigator.share({
+          title: `Check out "${puzzle.name}" on Slab!`,
+          text: `Try solving this puzzle: ${puzzle.name}`,
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        // User cancelled or share failed, fall through to clipboard
+        if ((err as Error).name !== 'AbortError') {
+          console.warn('Web Share API failed, falling back to clipboard:', err);
+        }
+      }
+    }
+    
+    // Fallback to clipboard for desktop or if Web Share API fails
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        // Fallback for browsers without clipboard API
+        const textArea = document.createElement('textarea');
+        textArea.value = shareUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
     }
   };
 
@@ -591,6 +649,14 @@ const SlabPuzzle: React.FC<SlabPuzzleProps> = ({ onHome, puzzle }) => {
           <div className="text-sm text-gray-600">
             {formatDate(puzzle.publish_date)}
           </div>
+          <button
+            className="px-2 py-1 rounded text-sm hover:bg-gray-200 transition-colors flex items-center gap-1"
+            onClick={handleShare}
+            title="Share puzzle"
+            aria-label="Share puzzle"
+          >
+            <FiShare2 size={20} />
+          </button>
           <button
             className="px-2 py-1 rounded text-sm hover:bg-gray-200 transition-colors flex items-center gap-1"
             onClick={() => {

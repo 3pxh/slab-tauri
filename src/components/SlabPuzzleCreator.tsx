@@ -598,12 +598,10 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
 
   const handleRunEvaluation = async () => {
     if (!evaluationFn.trim()) {
-      alert('Please enter an evaluation function');
       return;
     }
 
     if (createdSlabs.length === 0) {
-      alert('Please create some slabs first');
       return;
     }
 
@@ -667,7 +665,6 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       
     } catch (error) {
       console.error('Error running evaluation:', error);
-      alert(`Error in evaluation: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -698,7 +695,6 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(shareUrl);
-        alert(`Link to "${puzzleName}" copied to clipboard!`);
       } else {
         // Fallback for browsers that don't support clipboard API
         const textArea = document.createElement('textarea');
@@ -709,11 +705,9 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
         textArea.select();
         document.execCommand('copy');
         document.body.removeChild(textArea);
-        alert(`Link to "${puzzleName}" copied to clipboard!`);
       }
     } catch (err) {
       console.error('Failed to copy to clipboard:', err);
-      alert(`Failed to share puzzle. URL: ${shareUrl}`);
     }
   };
 
@@ -780,7 +774,6 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       }
     } catch (error) {
       console.error('Failed to copy rule guide:', error);
-      // Don't show alert, just log the error
     }
   };
 
@@ -820,7 +813,6 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
 
   const handleCreatePuzzle = async () => {
     if (!puzzleName.trim() || !evaluationFn.trim()) {
-      alert('Please fill in both puzzle name and evaluation function');
       return;
     }
 
@@ -862,11 +854,9 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       }
 
       setCreatedPuzzleId(data.id);
-      alert(`Puzzle "${data.name}" created successfully!`);
       // Optionally navigate back to home or show success message
     } catch (error) {
       console.error('Failed to create puzzle:', error);
-      alert(`Failed to create puzzle: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsCreating(false);
     }
@@ -1073,10 +1063,10 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
           />
           
           <p className='mt-2'>
-            Hidden slabs are revealed 5 at a time in the order in which they are presented in the list below, so make 15 of them if you want to give 3 guesses worth. All shown slabs are available when starting a level (it's recommended to make 2, one which follows the rule and one which doesn't).
+            Shown slabs are given when the puzzle starts, give at least 2 (one X, one star) if you're generous. Hidden slabs are revealed 5 at a time in the order in which they are presented in the list below, so make 15 of them so there are 3 guesses. All shown slabs are available when starting a level (it's recommended to make 2, one which follows the rule and one which doesn't).
           </p>
           <p className='mt-2'>
-            Clicking on a slab will bring it to the front of the list.
+            Clicking on a slab will bring it to the front of the list (works in the shown/hidden slab lists too for reordering).
           </p>
         </div>
 
@@ -1426,9 +1416,8 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
                       textarea.select();
                       try {
                         document.execCommand('copy');
-                        alert('Text selected! You can now paste it manually.');
                       } catch (error) {
-                        alert('Please manually select and copy the text above.');
+                        // Copy failed, text is already selected for manual copying
                       }
                     }
                   }}

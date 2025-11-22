@@ -120,3 +120,35 @@ export function isTodayUTC(date: Date): boolean {
     date.getUTCDate() === now.getUTCDate()
   );
 }
+
+/**
+ * Check if a date string represents today or a date in the past (in UTC)
+ * This ensures consistent date checking across timezones
+ */
+export function isTodayOrBefore(dateString: string): boolean {
+  let date: Date;
+  
+  if (dateString.includes('T') || dateString.includes(' ')) {
+    date = new Date(dateString);
+  } else {
+    date = new Date(dateString + 'T00:00:00Z');
+  }
+  
+  if (isNaN(date.getTime())) {
+    return false;
+  }
+  
+  const now = new Date();
+  const puzzleDate = new Date(Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate()
+  ));
+  const today = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate()
+  ));
+  
+  return puzzleDate <= today;
+}

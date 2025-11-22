@@ -90,9 +90,7 @@ const PuzzlesList: React.FC<PuzzlesListProps> = ({ onHome }) => {
       // Remove the puzzle from the local state
       setPuzzles(prev => prev.filter(p => p.id !== puzzleId));
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       console.error('Error deleting puzzle:', err);
-      alert(`Failed to delete puzzle: ${errorMessage}`);
     } finally {
       setDeletingPuzzleId(null);
     }
@@ -133,7 +131,6 @@ const PuzzlesList: React.FC<PuzzlesListProps> = ({ onHome }) => {
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(shareUrl);
-        alert(`Link to "${puzzleName}" copied to clipboard!`);
       } else {
         // Fallback for browsers that don't support clipboard API
         const textArea = document.createElement('textarea');
@@ -144,11 +141,9 @@ const PuzzlesList: React.FC<PuzzlesListProps> = ({ onHome }) => {
         textArea.select();
         document.execCommand('copy');
         document.body.removeChild(textArea);
-        alert(`Link to "${puzzleName}" copied to clipboard!`);
       }
     } catch (err) {
       console.error('Failed to copy to clipboard:', err);
-      alert(`Failed to share puzzle. URL: ${shareUrl}`);
     }
   };
 
