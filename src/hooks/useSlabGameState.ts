@@ -922,8 +922,25 @@ export function useSlabGameState(puzzle: Puzzle, onPerfectGuess?: () => void): S
 
     const currentSlab = slabsToGuess[currentGuessIndex];
     const key = getSlabKey(currentSlab);
-    const actualResult = evaluationResults.get(key) || false;
-    const isCorrect = (isStar && actualResult) || (!isStar && !actualResult);
+    
+    // Check if we have a cached result
+    let actualResult = evaluationResults.get(key);
+    
+    // If not cached, evaluate it now
+    if (actualResult === undefined) {
+      actualResult = await evaluateSlab(currentSlab);
+      // Store the result in the cache
+      setEvaluationResults(prev => {
+        const newMap = new Map(prev);
+        newMap.set(key, actualResult ?? false);
+        evaluationResultsRef.current = newMap;
+        return newMap;
+      });
+    }
+    
+    // Ensure we have a boolean value (default to false if somehow still undefined)
+    const result = actualResult ?? false;
+    const isCorrect = (isStar && result) || (!isStar && !result);
 
     // Store the result for use in proceedToNext
     setLastGuessResult(isCorrect);
@@ -934,7 +951,7 @@ export function useSlabGameState(puzzle: Puzzle, onPerfectGuess?: () => void): S
     // Return the result without moving to next slab or adding to main list yet
     // The component will handle showing the confirmation and then call proceedToNext
     return isCorrect;
-  }, [currentGuessIndex, slabsToGuess, getSlabKey, evaluationResults, remainingGuesses, puzzle]);
+  }, [currentGuessIndex, slabsToGuess, getSlabKey, evaluationResults, remainingGuesses, puzzle, evaluateSlab]);
 
   const handleProceedToNext = useCallback(async () => {
     if (currentGuessIndex >= slabsToGuess.length) {
