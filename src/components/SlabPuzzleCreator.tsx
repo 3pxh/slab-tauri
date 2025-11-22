@@ -1,6 +1,6 @@
 import React from 'react';
 import { FiArrowLeft, FiStar, FiX, FiChevronUp, FiChevronDown, FiShare2 } from 'react-icons/fi';
-import { Puzzle, getAllDates, supabase, getAllVisibleSlabs, createSlab, Slab as SlabRecord } from '../lib/supabase';
+import { Puzzle, getAllDates, supabase, createSlab, Slab as SlabRecord } from '../lib/supabase';
 import SlabMaker from './SlabMaker';
 import SlabComponent, { SlabData, areSlabsEqual, serializeSlab, deserializeSlab } from './Slab';
 import { deepCopy } from '../utils';
@@ -87,6 +87,10 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
   const [copyButtonText, setCopyButtonText] = React.useState('Copy Prompt and Load Slabs');
   const copyButtonTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const [createdPuzzleId, setCreatedPuzzleId] = React.useState<string | null>(null);
+  // Pagination state
+  const [slabsOffset, setSlabsOffset] = React.useState(0);
+  const [hasMoreSlabs, setHasMoreSlabs] = React.useState(true);
+  const [isLoadingMoreSlabs, setIsLoadingMoreSlabs] = React.useState(false);
   
   // Authentication state
   const [email, setEmail] = React.useState('');
@@ -126,35 +130,59 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
     return nextDate.toISOString();
   };
 
-  // Function to load all visible slabs from the slabs table with deduplication
-  const loadAllPuzzles = async () => {
-    setIsLoadingHistory(true);
+  // Function to load George's slabs from the slabs table with pagination and deduplication
+  const loadSlabs = async (offset: number = 0, isInitialLoad: boolean = false) => {
+    if (isInitialLoad) {
+      setIsLoadingHistory(true);
+    } else {
+      setIsLoadingMoreSlabs(true);
+    }
+    
     try {
-      const response = await getAllVisibleSlabs();
-      console.log('All visible slabs:', response.slabs);
+      const PAGE_SIZE = 100;
       
-      if (!response.slabs || response.slabs.length === 0) {
-        console.log('No visible slabs found');
+      // Query only George's slabs with pagination
+      const { data, error } = await supabase
+        .from('slabs')
+        .select('*')
+        .eq('creator_id', GEORGE_USER_ID)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + PAGE_SIZE - 1);
+
+      if (error) {
+        throw new Error(`Failed to get George's slabs: ${error.message}`);
+      }
+
+      if (!data || data.length === 0) {
+        if (isInitialLoad) {
+          console.log('No George slabs found');
+        } else {
+          console.log('No more slabs to load');
+        }
+        setHasMoreSlabs(false);
         return;
       }
+
+      // Check if there are more slabs to load
+      setHasMoreSlabs(data.length === PAGE_SIZE);
       
       const allSlabs: SlabWithId[] = [];
       
       // Convert slabs from database to SlabWithId format
-      response.slabs.forEach((slab: SlabRecord, index: number) => {
-        // Deserialize if needed (should already be deserialized by getAllVisibleSlabs, but be safe)
+      data.forEach((slab: SlabRecord, index: number) => {
+        // Deserialize if needed
         const slabData = slab.slab_data;
         const isSerialized = slabData && typeof slabData === 'object' && 'grid' in slabData && 'colors' in slabData;
         const deserializedSlab = isSerialized ? deserializeSlab(slabData) : slabData;
         
         allSlabs.push({
           ...deserializedSlab,
-          id: Date.now() + Math.random() + index // Ensure unique IDs for creator interface only
+          id: Date.now() + Math.random() + index + offset // Ensure unique IDs for creator interface only
         });
       });
       
       if (allSlabs.length > 0) {
-        console.log(`Starting with ${allSlabs.length} total slabs from database`);
+        console.log(`Loaded ${allSlabs.length} slabs from database (offset: ${offset})`);
         
         // Deduplicate slabs using the equality function
         const uniqueSlabs: SlabWithId[] = [];
@@ -220,13 +248,34 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
           
           return finalUnique;
         });
+        
+        // Update offset for next load (use data.length, not allSlabs.length, to track database position)
+        setSlabsOffset(offset + data.length);
       }
       
     } catch (error) {
-      console.error('Failed to load visible slabs:', error);
+      console.error('Failed to load George slabs:', error);
     } finally {
-      setIsLoadingHistory(false);
-      setSlabsLoaded(true); // Mark as loaded even on error to prevent retrying
+      if (isInitialLoad) {
+        setIsLoadingHistory(false);
+        setSlabsLoaded(true); // Mark as loaded even on error to prevent retrying
+      } else {
+        setIsLoadingMoreSlabs(false);
+      }
+    }
+  };
+  
+  // Wrapper function for initial load (backwards compatibility)
+  const loadAllPuzzles = async () => {
+    setSlabsOffset(0);
+    setHasMoreSlabs(true);
+    await loadSlabs(0, true);
+  };
+  
+  // Function to load next page of slabs
+  const loadMoreSlabs = async () => {
+    if (!isLoadingMoreSlabs && hasMoreSlabs) {
+      await loadSlabs(slabsOffset, false);
     }
   };
 
@@ -569,34 +618,52 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
       // Build new cache starting with existing cached results
       const newCache = new Map<string, boolean>(currentCache);
       
-      // Evaluate only slabs that aren't in cache
-      await Promise.all(
-        createdSlabs.map(async (slab) => {
-          const cacheKey = getSlabCacheKey(slab);
-          
-          // Skip if already cached
-          if (newCache.has(cacheKey)) {
-            return;
-          }
-          
-          // Evaluate this slab
-          try {
-            const result = await executeCodeSafely(evaluationFn, slab, 5000);
-            if (result.success) {
-              newCache.set(cacheKey, result.result);
-            } else {
-              console.error('Error evaluating slab:', result.error);
+      // Filter out slabs that are already cached
+      const slabsToEvaluate = createdSlabs.filter(slab => {
+        const cacheKey = getSlabCacheKey(slab);
+        return !newCache.has(cacheKey);
+      });
+      
+      if (slabsToEvaluate.length === 0) {
+        console.log('All slabs already evaluated');
+        return;
+      }
+      
+      // Process slabs in batches of 50
+      const BATCH_SIZE = 50;
+      for (let i = 0; i < slabsToEvaluate.length; i += BATCH_SIZE) {
+        const batch = slabsToEvaluate.slice(i, i + BATCH_SIZE);
+        const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(slabsToEvaluate.length / BATCH_SIZE);
+        
+        console.log(`Evaluating batch ${batchNumber}/${totalBatches} (${batch.length} slabs)`);
+        
+        // Evaluate this batch
+        await Promise.all(
+          batch.map(async (slab) => {
+            const cacheKey = getSlabCacheKey(slab);
+            
+            // Evaluate this slab
+            try {
+              const result = await executeCodeSafely(evaluationFn, slab, 5000);
+              if (result.success) {
+                newCache.set(cacheKey, result.result);
+              } else {
+                console.error('Error evaluating slab:', result.error);
+                newCache.set(cacheKey, false);
+              }
+            } catch (error) {
+              console.error('Error evaluating slab:', error);
               newCache.set(cacheKey, false);
             }
-          } catch (error) {
-            console.error('Error evaluating slab:', error);
-            newCache.set(cacheKey, false);
-          }
-        })
-      );
+          })
+        );
+        
+        // Update cache after each batch so UI can show progress
+        setEvaluationResults(new Map(newCache));
+      }
       
-      // Update cache with all results
-      setEvaluationResults(newCache);
+      console.log(`Finished evaluating ${slabsToEvaluate.length} slabs`);
       
     } catch (error) {
       console.error('Error running evaluation:', error);
@@ -1305,6 +1372,19 @@ const SlabPuzzleCreator: React.FC<SlabPuzzleCreatorProps> = ({
               </div>
               ))}
           </div>
+          
+          {/* Load More Button */}
+          {slabsLoaded && hasMoreSlabs && (
+            <div className="mt-4 flex justify-center">
+              <button
+                onClick={loadMoreSlabs}
+                disabled={isLoadingMoreSlabs}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-md transition-colors duration-200"
+              >
+                {isLoadingMoreSlabs ? 'Loading...' : 'Load More Slabs (Next 100)'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

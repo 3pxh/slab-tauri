@@ -207,41 +207,6 @@ export async function getUserSlabs(): Promise<SlabResponse> {
   }
 }
 
-// Function to get all visible slabs (includes George's public slabs and user's own slabs)
-// RLS policies will automatically filter based on visibility rules
-export async function getAllVisibleSlabs(): Promise<SlabResponse> {
-  const { data, error } = await supabase
-    .from('slabs')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    throw new Error(`Failed to get visible slabs: ${error.message}`)
-  }
-
-  // Deserialize slabs if they're in serialized format
-  const deserializedSlabs = (data || []).map(slab => {
-    // Check if slab_data is serialized (has 'grid' property) or deserialized (has 'cells' property)
-    const slabData = slab.slab_data;
-    const isSerialized = slabData && typeof slabData === 'object' && 'grid' in slabData && 'colors' in slabData;
-    
-    if (isSerialized) {
-      return {
-        ...slab,
-        slab_data: deserializeSlab(slabData)
-      };
-    }
-    // Already deserialized, return as-is
-    return slab;
-  });
-
-  return {
-    success: true,
-    slabs: deserializedSlabs,
-    message: `Found ${deserializedSlabs.length} visible slabs`
-  }
-}
-
 // Function to create a new slab
 export async function createSlab(slabData: any): Promise<SlabResponse> {
   // Serialize the slab if it's in deserialized format (has 'cells' property)
