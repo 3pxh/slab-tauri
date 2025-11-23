@@ -21,7 +21,7 @@ serve(async (req) => {
     // Return version information
     // This can be easily updated without redeploying the app
     const versionInfo: VersionInfo = {
-      minimumVersion: "0.1.0",
+      minimumVersion: "1.0.0",
       iosUrl: "https://apps.apple.com/app/slab/id123456789",
       androidUrl: "https://play.google.com/store/apps/details?id=com.hoqqanen.slab"
     }
