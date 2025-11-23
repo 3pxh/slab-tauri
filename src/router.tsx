@@ -9,6 +9,7 @@ import Tutorial from './components/Tutorial';
 import Logs from './components/Logs';
 import About from './components/About';
 import Support from './components/Support';
+import Privacy from './components/Privacy';
 import { DeepLinkHandler } from './components/DeepLinkHandler';
 import { VersionCheck } from './components/VersionCheck';
 import { DebugLogProvider } from './components/DebugLog';
@@ -244,6 +245,11 @@ const router = createBrowserRouter([
         path: '/support',
         element: <Support />,
         errorElement: <ErrorBoundary error={new Error('Failed to load support page')} />
+      },
+      {
+        path: '/privacy',
+        element: <Privacy />,
+        errorElement: <ErrorBoundary error={new Error('Failed to load privacy page')} />
       }
     ]
   }
