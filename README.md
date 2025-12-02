@@ -13,3 +13,7 @@ See [technical teardown](https://www.hoqqanen.com/2025/11/09/slab-technical-tear
 - `npm run tauri dev` to run the app
 - `python iconGenerator.py` will take the icon in public/ and regen app icons
 - `tauri ios dev --force-ip-prompt` to run on physical ios device (must `npm run dev` as well to run the frontend server), pick the 192.168 address while on same wifi
+
+## Build
+- `npm run tauri ios build -- --export-method app-store-connect`
+- open the .xcarchive in xcode to distribute (upload to appstore connect)

@@ -2,7 +2,7 @@ name: slab-app
 options:
   bundleIdPrefix: com.hoqqanen.slab
   deploymentTarget:
-    iOS: 13.0
+    iOS: 14.0
 fileGroups: [../../src]
 configs:
   debug: debug
@@ -12,6 +12,7 @@ settingGroups:
     base:
       PRODUCT_NAME: Slab!
       PRODUCT_BUNDLE_IDENTIFIER: com.hoqqanen.slab
+      DEVELOPMENT_TEAM: 4H25332LKW
 targetTemplates:
   app:
     type: application
@@ -52,7 +53,7 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         CFBundleShortVersionString: 1.0.0
-        CFBundleVersion: 1.0.0
+        CFBundleVersion: "1.0.0"
     entitlements:
       path: slab-app_iOS/slab-app_iOS.entitlements
     scheme:
@@ -80,7 +81,11 @@ targets:
       - sdk: UIKit.framework
       - sdk: WebKit.framework
     preBuildScripts:
-      - script: npm run -- tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths "${FRAMEWORK_SEARCH_PATHS:?}" --header-search-paths "${HEADER_SEARCH_PATHS:?}" --gcc-preprocessor-definitions "${GCC_PREPROCESSOR_DEFINITIONS:-}" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}
+      - script: |
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+          nvm use 22
+          npm run -- tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths "${FRAMEWORK_SEARCH_PATHS:?}" --header-search-paths "${HEADER_SEARCH_PATHS:?}" --gcc-preprocessor-definitions "${GCC_PREPROCESSOR_DEFINITIONS:-}" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}
         name: Build Rust Code
         basedOnDependencyAnalysis: false
         outputFiles:
