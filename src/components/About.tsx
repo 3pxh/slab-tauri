@@ -33,7 +33,7 @@ const About: React.FC = () => {
             PS for the philosophically inclined players, I suggest the later writings of Wittgenstein as well as Feyerabend's book Against Method. 
           </p>
           <p className="mt-6 text-sm text-gray-600 italic">
-          PPS this app is given freely and licensed in the public domain via CC0. You are free to remix, distribute, and otherwise make it your own as you like. Visit <a href="https://source.slab17.com" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:text-blue-900 underline font-medium">source.slab17.com</a> for the source code.
+          PPS this app is given freely on the web and licensed in the public domain via CC0. You are free to remix, distribute, and otherwise make it your own as you like. Visit <a href="https://source.slab17.com" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:text-blue-900 underline font-medium">source.slab17.com</a> for the source code.
           </p>
         </div>
       </div>

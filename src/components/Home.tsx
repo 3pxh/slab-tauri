@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiCalendar, FiPlus, FiPlay, FiMail, FiBookOpen, FiBarChart2 } from 'react-icons/fi';
+import { FiCalendar, FiPlus, FiPlay, FiMail, FiBookOpen, FiBarChart2, FiTrash2 } from 'react-icons/fi';
 import { useAuth } from '../hooks/useAuth';
 import AppHeader from './AppHeader';
 import { analytics } from '../utils/analytics';
@@ -21,7 +21,7 @@ const ANONYMOUS_ACCOUNT_DELETION_DAYS = 30; // Accounts deleted after 10 days
 interface HomeProps {}
 
 const Home: React.FC<HomeProps> = () => {
-  const { isAnonymous, linkAccountWithEmail, isAuthenticated, signInWithPassword, signUpWithPassword, user, isLoading } = useAuth();
+  const { isAnonymous, linkAccountWithEmail, isAuthenticated, signInWithPassword, signUpWithPassword, user, isLoading, deleteAccount, signOut } = useAuth();
   const { goToTodayPuzzle, goToArchive, goToCreate, goToTutorial, goToLogs, goToAbout } = useNavigation();
   
   // Check if current user is George
@@ -38,6 +38,13 @@ const Home: React.FC<HomeProps> = () => {
   
   // State for account linking
   const [showLinkAccount, setShowLinkAccount] = React.useState(false);
+
+  // State for account details / delete modal
+  const [showAccountDetails, setShowAccountDetails] = React.useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = React.useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = React.useState('');
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
+  const [deleteSuccess, setDeleteSuccess] = React.useState(false);
   
   // State for anonymous account warning modal
   const [showAnonymousWarning, setShowAnonymousWarning] = React.useState(false);
@@ -350,6 +357,18 @@ const Home: React.FC<HomeProps> = () => {
         </div>
       )}
 
+      {/* Account status link for authenticated users with email */}
+      {isAuthenticated && !isAnonymous && user?.email && (
+        <div className="mt-2 text-center">
+          <button
+            onClick={() => setShowAccountDetails(true)}
+            className="text-sm text-gray-700 hover:text-gray-900 underline"
+          >
+            Saving progress as {user.email}
+          </button>
+        </div>
+      )}
+
       {/* Made with love */}
       <div className="mt-6 text-center text-sm text-gray-500">
         Made with ❤️ by{' '}
@@ -413,6 +432,135 @@ const Home: React.FC<HomeProps> = () => {
                 Remind Me Later
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Account Details / Delete Account Modal */}
+      {showAccountDetails && user && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 relative">
+            <button
+              type="button"
+              onClick={() => {
+                setShowAccountDetails(false);
+                setDeleteConfirmation('');
+                setDeleteError(null);
+                setDeleteSuccess(false);
+                setIsDeletingAccount(false);
+              }}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+              aria-label="Close"
+            >
+              ×
+            </button>
+
+            {!deleteSuccess && (
+              <>
+                <h3 className="text-lg font-semibold mb-2">Your account</h3>
+                <p className="text-sm text-gray-700 mb-4">
+                  You are signed in as <span className="font-mono font-semibold">{user.email}</span>.
+                  Your puzzle progress is being saved to this account.
+                </p>
+              </>
+            )}
+
+            {!deleteSuccess && !isGeorge && (
+              <>
+                <div className="border-t pt-4 mt-2">
+                  <h4 className="text-sm font-semibold text-red-700 flex items-center gap-2 mb-2">
+                    <FiTrash2 />
+                    Delete account
+                  </h4>
+                  <p className="text-xs text-gray-700 mb-2">
+                    This will permanently delete your account and all associated puzzle progress.
+                    This action cannot be undone.
+                  </p>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Type <span className="font-mono">delete</span> to confirm:
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmation}
+                    onChange={(e) => {
+                      setDeleteConfirmation(e.target.value);
+                      setDeleteError(null);
+                    }}
+                    className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm mb-2"
+                    placeholder="delete"
+                    disabled={isDeletingAccount}
+                  />
+                  {deleteError && (
+                    <p className="text-xs text-red-600 mb-2">
+                      {deleteError}
+                    </p>
+                  )}
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={async () => {
+                        if (deleteConfirmation.trim().toLowerCase() !== 'delete') {
+                          setDeleteError('Please type "delete" to confirm.');
+                          return;
+                        }
+                        setIsDeletingAccount(true);
+                        setDeleteError(null);
+                        try {
+                          const result = await deleteAccount();
+                          if (!result.success) {
+                            setDeleteError(result.message);
+                          } else {
+                            setDeleteSuccess(true);
+                          }
+                        } catch (err) {
+                          setDeleteError(
+                            err instanceof Error ? err.message : 'Failed to delete account.'
+                          );
+                        } finally {
+                          setIsDeletingAccount(false);
+                        }
+                      }}
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                      disabled={isDeletingAccount}
+                    >
+                      {isDeletingAccount ? 'Deleting…' : 'Delete account'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAccountDetails(false);
+                        setDeleteConfirmation('');
+                        setDeleteError(null);
+                        setDeleteSuccess(false);
+                      }}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+                      disabled={isDeletingAccount}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {deleteSuccess && (
+              <div className="mt-3 pt-1">
+                <h3 className="text-lg font-semibold mb-2">Account deleted</h3>
+                <p className="text-sm text-gray-700 mb-3">
+                  Your account and puzzle progress have been deleted.
+                </p>
+                <button
+                  onClick={async () => {
+                    try {
+                      await signOut();
+                    } finally {
+                      window.location.reload();
+                    }
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm"
+                >
+                  Reload App as Anonymous User
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

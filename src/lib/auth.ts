@@ -290,12 +290,22 @@ export class AuthService {
 
   async deleteAccount(): Promise<{ success: boolean; message: string }> {
     try {
-      const { error } = await supabase.auth.admin.deleteUser(
-        this.authState.user?.id || ''
-      )
+      const { data, error } = await supabase.functions.invoke('delete-account', {
+        body: {},
+      })
 
       if (error) {
-        return { success: false, message: `Failed to delete account: ${error.message}` }
+        return {
+          success: false,
+          message: `Failed to delete account: ${error.message}`,
+        }
+      }
+
+      if (!data?.success) {
+        return {
+          success: false,
+          message: data?.error || 'Failed to delete account',
+        }
       }
 
       return { success: true, message: 'Account deleted successfully' }
