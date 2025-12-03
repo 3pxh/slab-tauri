@@ -17,3 +17,4 @@ See [technical teardown](https://www.hoqqanen.com/2025/11/09/slab-technical-tear
 ## Build
 - `npm run tauri ios build -- --export-method app-store-connect`
 - open the .xcarchive in xcode to distribute (upload to appstore connect)
+- Android `npm run tauri android build -- --aab true`
