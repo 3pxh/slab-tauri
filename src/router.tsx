@@ -10,6 +10,7 @@ import Logs from './components/Logs';
 import About from './components/About';
 import Support from './components/Support';
 import Privacy from './components/Privacy';
+import Delete from './components/Delete';
 import { DeepLinkHandler } from './components/DeepLinkHandler';
 import { VersionCheck } from './components/VersionCheck';
 import { DebugLogProvider } from './components/DebugLog';
@@ -250,6 +251,11 @@ const router = createBrowserRouter([
         path: '/privacy',
         element: <Privacy />,
         errorElement: <ErrorBoundary error={new Error('Failed to load privacy page')} />
+      },
+      {
+        path: '/delete',
+        element: <Delete />,
+        errorElement: <ErrorBoundary error={new Error('Failed to load delete page')} />
       }
     ]
   }
