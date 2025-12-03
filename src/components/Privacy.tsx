@@ -29,7 +29,24 @@ const Privacy: React.FC = () => {
           <h3 className="text-xl font-semibold mt-6 mb-3">Third-Party Sharing</h3>
           
           <p className="mt-4">
-            We do not sell, trade, or share your information with any third parties. Your data is used exclusively to provide and improve the Slab 17 gaming experience.
+            We do not sell, trade, or share your information with any third parties. Your data is used exclusively to
+            provide and improve the Slab 17 gaming experience.
+          </p>
+
+          <h3 className="text-xl font-semibold mt-6 mb-3">Data deletion</h3>
+          <p className="mt-4">
+            You can delete your account and associated data at any time from within the app. To do this, sign in, tap
+            the <strong>&quot;Saving progress as &lt;your email&gt;&quot;</strong> link, and choose{' '}
+            <strong>Delete account</strong>. When you confirm, we permanently remove your account, puzzle progress,
+            and related sync data from our systems.
+          </p>
+          <p className="mt-4">
+            For a step‑by‑step description of this process, or if you need help completing a deletion request, please
+            visit our{' '}
+            <a href="/delete" className="text-blue-600 underline">
+              data deletion page
+            </a>
+            .
           </p>
 
           <h3 className="text-xl font-semibold mt-6 mb-3">Contact</h3>
