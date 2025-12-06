@@ -11,6 +11,7 @@ import SignInModal from './SignInModal';
 import WelcomeScreen from './WelcomeScreen';
 import { AnnouncementBar } from './AnnouncementBar';
 import favicon from '../assets/favicon.png';
+import AppStore from './AppStore';
 
 const GEORGE_USER_ID = '3996a43b-86dd-4bda-8807-dc3d8e76e5a7';
 const NEW_USER_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
@@ -225,6 +226,19 @@ const Home: React.FC<HomeProps> = () => {
           title={announcement.title}
           body={announcement.body}
         />
+      )}
+
+      {typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window) && (
+        <div className="mt-4 mb-4 flex justify-center">
+          <a
+            href="https://apps.apple.com/us/app/slab-17/id6753980449"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block"
+          >
+            <AppStore />
+          </a>
+        </div>
       )}
 
       {/* Main Action Buttons */}
