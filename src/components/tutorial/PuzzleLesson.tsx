@@ -1,8 +1,9 @@
 import React from 'react';
 import { FiHelpCircle, FiStar } from 'react-icons/fi';
 import Slab, { COLORS, SlabData, createSlab } from '../Slab';
-import SlabMaker, { CoachHighlights } from '../SlabMaker';
+import SlabMaker, { CellCoordinate, CoachHighlights } from '../SlabMaker';
 import CoachBanner from './CoachBanner';
+import ExampleReveal from './ExampleReveal';
 import NextArrowButton from './NextArrowButton';
 import SparkleBurst from './SparkleBurst';
 import TutorialSlabGuesser from './TutorialSlabGuesser';
@@ -13,6 +14,7 @@ import { useTutorialSlabEntries } from '../../hooks/useTutorialSlabEntries';
 import { useTutorialGuessSession } from '../../hooks/useTutorialGuessSession';
 import {
   RainbowRowTarget,
+  isRowSingleGroup,
   isStripedSlab,
   findNextRainbowRow,
   getRowCells
@@ -28,6 +30,7 @@ import {
 const TUTORIAL_GUESS_LIMIT = 3;
 const GUIDED_GUESS_SLAB_COUNT = 0;
 const GUESS_FLIGHT_VIEWING_MS = 0;
+const EXAMPLE_FLIGHT_VIEWING_MS = 0;
 const HINT_NUDGE_DELAY_MS = 7000;
 
 type RoundScore = {
@@ -52,9 +55,18 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
   const [isSolved, setIsSolved] = React.useState(false);
   const [makerKey, setMakerKey] = React.useState(0);
   const [restoredSlab, setRestoredSlab] = React.useState<SlabData | null>(null);
-  const { entries, addSlab } = useTutorialSlabEntries(PUZZLE_EXAMPLE_SLABS);
+  const [selectedCell, setSelectedCell] = React.useState<CellCoordinate | null>(null);
+  const [revealedExampleCount, setRevealedExampleCount] = React.useState(0);
+  const { entries, addSlab } = useTutorialSlabEntries([]);
+  const isWalkthroughComplete = revealedExampleCount >= PUZZLE_EXAMPLE_SLABS.length;
 
   const handleLanded = (slab: SlabData) => {
+    if (!isWalkthroughComplete) {
+      addSlab(slab);
+      setRevealedExampleCount(count => count + 1);
+      return;
+    }
+
     if (guessSession.isGuessing) {
       guessSession.proceedToNext();
       return;
@@ -86,14 +98,18 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
     ? findNextRainbowRow(currentSlab)
     : null;
 
+  const getRainbowStepHighlights = (target: RainbowRowTarget): CoachHighlights => {
+    const rowCells = getRowCells(currentSlab, target.rowIndex);
+    const isRowMerged = isRowSingleGroup(currentSlab, target.rowIndex);
+    const isRowSelected = selectedCell?.row === target.rowIndex;
+
+    if (isRowMerged && isRowSelected) return { colorIndex: target.colorIndex, showFinger: true };
+    if (isRowMerged) return { cells: rowCells, showFinger: true, fingerGesture: 'tap' };
+    return { cells: rowCells, showFinger: true, fingerGesture: 'swipe' };
+  };
+
   const getCoachHighlights = (): CoachHighlights => {
-    if (rainbowTarget) {
-      return {
-        cells: getRowCells(currentSlab, rainbowTarget.rowIndex),
-        colorIndex: rainbowTarget.colorIndex,
-        showFinger: true
-      };
-    }
+    if (rainbowTarget) return getRainbowStepHighlights(rainbowTarget);
 
     if (isShowingVisualHint && !hasEvaluatedStar) {
       return { evaluateButton: true, showFinger: true };
@@ -121,6 +137,10 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
 
   const requestGuessSlabFlight = () => {
     flight.begin(guessSession.slabsToGuess[guessSession.currentIndex], GUESS_FLIGHT_VIEWING_MS);
+  };
+
+  const requestExampleFlight = () => {
+    flight.begin(PUZZLE_EXAMPLE_SLABS[revealedExampleCount], EXAMPLE_FLIGHT_VIEWING_MS);
   };
 
   const handleHint = () => {
@@ -157,6 +177,31 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
     </button>
   );
 
+  if (!isWalkthroughComplete) {
+    const exampleSlab = PUZZLE_EXAMPLE_SLABS[revealedExampleCount];
+
+    return (
+      <div className="flex flex-col gap-4">
+        <ExampleReveal
+          key={revealedExampleCount}
+          slab={exampleSlab}
+          colors={COLORS}
+          passes={isStripedSlab(exampleSlab)}
+          isProceeding={flight.pendingSlab !== null}
+          flightTargetRect={flight.targetRect}
+          onFlightEnd={flight.handleFlightEnd}
+          onNext={requestExampleFlight}
+        />
+        <TutorialSlabList
+          entries={entries}
+          colors={COLORS}
+          passesRule={isStripedSlab}
+          slotRef={flight.isSlotReserved ? flight.slotRef : undefined}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {!guessSession.isGuessing && (
@@ -192,7 +237,7 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
       ) : (
         <div
           key={makerKey}
-          className={`${restoredSlab ? 'fade-in' : ''} ${flight.isSlotReserved ? 'pointer-events-none' : ''}`}
+          className={`fade-in ${flight.isSlotReserved ? 'pointer-events-none' : ''}`}
         >
           <SlabMaker
             onCreate={handleCreate}
@@ -205,6 +250,7 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
             initialSlab={restoredSlab ?? undefined}
             coachHighlights={getCoachHighlights()}
             onSlabChange={handleSlabChange}
+            onSelectionChange={setSelectedCell}
             flightTargetRect={flight.targetRect}
             onFlightEnd={flight.handleFlightEnd}
           />

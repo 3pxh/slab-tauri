@@ -20,6 +20,10 @@ const Tutorial: React.FC<TutorialProps> = ({ onComplete, onHome }) => {
     analytics.tutorialStarted();
   }, []);
 
+  React.useEffect(() => {
+    document.getElementById('root')?.scrollTo({ top: 0 });
+  }, [phase]);
+
   const handleFinish = () => {
     analytics.tutorialCompleted();
     onComplete();

@@ -19,11 +19,25 @@ export type CoachHighlights = {
   evaluateButton?: boolean;
   guessButton?: boolean;
   showFinger?: boolean;
+  fingerGesture?: 'swipe' | 'tap';
+};
+
+export type InputLock = {
+  cells?: CellCoordinate[];
+  colorIndex?: number | null;
+  evaluate?: boolean;
+  guess?: boolean;
 };
 
 const ENTRANCE_WAVE_DELAY_MS = 120;
+const CELL_BORDER_WIDTH_PX = 3;
 
 type FingerTarget = 'cells' | 'color' | 'evaluate' | 'guess' | null;
+
+const getCellCenterPercents = (cell: CellCoordinate, gridSize: number) => ({
+  leftPercent: `${((cell.col + 0.5) / gridSize) * 100}%`,
+  topPercent: `${((cell.row + 0.5) / gridSize) * 100}%`
+});
 
 const getFingerTarget = (coachHighlights: CoachHighlights): FingerTarget => {
   if (!coachHighlights.showFinger) return null;
@@ -58,7 +72,8 @@ type SlabMakerProps = {
   onSlabChange?: (slab: SlabData) => void;
   flightTargetRect?: DOMRect | null;
   onFlightEnd?: () => void;
-  isEvaluateDisabled?: boolean;
+  inputLock?: InputLock | null;
+  onSelectionChange?: (cell: CellCoordinate | null) => void;
 };
 
 const SlabMaker: React.FC<SlabMakerProps> = ({ 
@@ -85,7 +100,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   onSlabChange,
   flightTargetRect = null,
   onFlightEnd,
-  isEvaluateDisabled = false
+  inputLock = null,
+  onSelectionChange
 }) => {
   const { isAuthenticated } = useAuth();
   const [slab, setSlab] = React.useState<SlabData>(() =>
@@ -94,6 +110,14 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   const gridSize = slab.cells.length;
   const fingerTarget = getFingerTarget(coachHighlights);
   const flightElementRef = useSlabFlight(flightTargetRect, onFlightEnd);
+  const isEvaluateBlocked = inputLock !== null && !inputLock.evaluate;
+  const isGuessBlocked = inputLock !== null && !inputLock.guess;
+  const isSwatchBlocked = (colorIndex: number) =>
+    inputLock !== null && inputLock.colorIndex !== colorIndex;
+  const isCellAllowed = (row: number, col: number): boolean => {
+    if (inputLock === null) return true;
+    return inputLock.cells?.some(cell => cell.row === row && cell.col === col) ?? false;
+  };
   const [history, setHistory] = React.useState<SlabData[]>([]);
   const [, setIsDragging] = React.useState(false);
   const [encounteredCells, setEncounteredCells] = React.useState<Set<string>>(new Set());
@@ -111,10 +135,11 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   const preDragSnapshotRef = React.useRef<SlabData | null>(null);
   // Track last visited cell during drag to detect diagonals
   const lastDragCellRef = React.useRef<{row: number, col: number} | null>(null);
+  const isDragBlockedRef = React.useRef(false);
 
   // Handle initialSlab prop changes
   React.useEffect(() => {
-    if (initialSlab) {
+    if (initialSlab && !areSlabsEqual(slab, initialSlab)) {
       // Push current state to history before setting new slab
       pushHistory();
       setSlab(cloneSlab(initialSlab));
@@ -130,6 +155,10 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   React.useEffect(() => {
     onSlabChange?.(slab);
   }, [slab]);
+
+  React.useEffect(() => {
+    onSelectionChange?.(selectedCell);
+  }, [selectedCell]);
 
   // Hide evaluation symbol when slab changes
   React.useEffect(() => {
@@ -441,6 +470,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   const bindCellGestures = useGesture({
     onDrag: ({ first, last, event, args }) => {
       const [row, col] = args as [number, number];
+      if (first) isDragBlockedRef.current = !isCellAllowed(row, col);
+      if (isDragBlockedRef.current) return;
       if (first) {
         const groupId = slab.cells[row][col].groupId;
         setIsDragging(true);
@@ -469,6 +500,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
           
           if (cellCoords) {
             const { row: currentRow, col: currentCol } = cellCoords;
+            if (!isCellAllowed(currentRow, currentCol)) return;
             const groupId = slab.cells[currentRow][currentCol].groupId;
 
             // Only handle dragging if we've left the starting cell
@@ -584,6 +616,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     },
     onClick: ({ args }) => {
       const [row, col] = args as [number, number];
+      if (!isCellAllowed(row, col)) return;
       
       if (activeColor !== null) {
         // When there's an active color, just apply it without selecting
@@ -600,6 +633,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     },
     onDoubleClick: ({ event, args }) => {
       const [row, col] = args as [number, number];
+      if (inputLock !== null) return;
       // Double tap - split group into unique IDs
       event.preventDefault();
       pushHistory(cloneSlab(slab));
@@ -665,7 +699,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     const selectedGroupId = selectedCell ? slab.cells[selectedCell.row][selectedCell.col].groupId : null;
     const isSelected = selectedCell && currentGroupId === selectedGroupId;
     const borderColor = isSelected ? '#ffff00' : 'white'; // Yellow for selected, white for normal
-    const borderWidth = isSelected ? '3px' : '3px';
+    const borderWidth = `${CELL_BORDER_WIDTH_PX}px`;
     
     const sameTop = row > 0 && slab.cells[row - 1][col].groupId === currentGroupId;
     const sameRight = col < gridSize - 1 && slab.cells[row][col + 1].groupId === currentGroupId;
@@ -731,6 +765,24 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     };
   };
 
+  const getCoachOverlayStyle = (row: number, col: number): React.CSSProperties => {
+    const borders = getBorderStyles(row, col);
+    const getInset = (border: React.CSSProperties['borderTop']) =>
+      border === 'none' ? 0 : -CELL_BORDER_WIDTH_PX;
+
+    return {
+      top: getInset(borders.borderTop),
+      right: getInset(borders.borderRight),
+      bottom: getInset(borders.borderBottom),
+      left: getInset(borders.borderLeft),
+      borderTopLeftRadius: borders.borderTopLeftRadius,
+      borderTopRightRadius: borders.borderTopRightRadius,
+      borderBottomRightRadius: borders.borderBottomRightRadius,
+      borderBottomLeftRadius: borders.borderBottomLeftRadius,
+      zIndex: 3
+    };
+  };
+
   // Apply color to selected group
   const applyColorToGroup = (colorIndex: number, cellCoords?: {row: number, col: number}) => {
     const targetCell = cellCoords || selectedCell;
@@ -761,6 +813,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
 
   // Handle color swatch click - toggle active color
   const handleColorSwatchClick = (colorIndex: number) => {
+    if (isSwatchBlocked(colorIndex)) return;
     if (activeColor === colorIndex) {
       // If clicking the active color, deactivate it
       setActiveColor(null);
@@ -801,7 +854,10 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                   {...bindCellGestures(rowIndex, colIndex)}
                 >
                   {coachHighlights.cells?.some(({ row, col }) => row === rowIndex && col === colIndex) && (
-                    <div className="coach-pulse absolute inset-0 pointer-events-none" style={{ zIndex: 3 }} />
+                    <div
+                      className="coach-pulse absolute pointer-events-none"
+                      style={getCoachOverlayStyle(rowIndex, colIndex)}
+                    />
                   )}
                   {/* Colorblind overlay */}
                   {colorblindMode !== 'none' && getColorblindOverlay && (() => {
@@ -860,12 +916,21 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
         </div>
         
         {fingerTarget === 'cells' && coachHighlights.cells && (
-          <GhostFingerSwipe
-            startColumn={coachHighlights.cells[0].col}
-            endColumn={coachHighlights.cells[coachHighlights.cells.length - 1].col}
-            rowIndex={coachHighlights.cells[0].row}
-            gridSize={gridSize}
-          />
+          coachHighlights.fingerGesture === 'tap' ? (
+            <GhostFingerTap
+              {...getCellCenterPercents(
+                coachHighlights.cells[Math.floor(coachHighlights.cells.length / 2)],
+                gridSize
+              )}
+            />
+          ) : (
+            <GhostFingerSwipe
+              startColumn={coachHighlights.cells[0].col}
+              endColumn={coachHighlights.cells[coachHighlights.cells.length - 1].col}
+              rowIndex={coachHighlights.cells[0].row}
+              gridSize={gridSize}
+            />
+          )
         )}
         {/* Evaluation Symbol Overlay - positioned relative to grid container */}
         {evaluationResult !== null && evaluatedSlab && areSlabsEqual(slab, evaluatedSlab) && (
@@ -902,9 +967,9 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
         <div className="flex justify-center gap-1 w-full">
           {/* Undo button */}
           <button
-            className={`px-2 py-2 rounded text-sm bg-gray-100 h-12 flex items-center justify-center ${history.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'}`}
+            className={`px-2 py-2 rounded text-sm bg-gray-100 h-12 flex items-center justify-center ${history.length === 0 || inputLock !== null ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'}`}
             onClick={handleUndo}
-            disabled={history.length === 0}
+            disabled={history.length === 0 || inputLock !== null}
             title={history.length === 0 ? 'Nothing to undo' : 'Undo last action'}
           >
             <FiRotateCcw size={16} />
@@ -925,7 +990,9 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
             return uniqueColorsWithIndex.map(({ color, originalIndex }) => (
               <button
                 key={originalIndex}
-                className={`flex-1 rounded cursor-pointer transition-all hover:scale-110 relative ${coachHighlights.colorIndex === originalIndex ? 'coach-pulse-ring' : ''}`}
+                className={`flex-1 rounded cursor-pointer transition-all hover:scale-110 relative ${coachHighlights.colorIndex === originalIndex ? 'coach-pulse-ring' : ''} ${
+                  isSwatchBlocked(originalIndex) ? 'opacity-40 pointer-events-none' : ''
+                }`}
                 style={{ 
                   backgroundColor: color,
                   aspectRatio: '1',
@@ -964,7 +1031,10 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
           
           {/* Reset button */}
           <button
-            className="px-2 py-2 rounded text-sm bg-gray-100 hover:bg-gray-200 h-12 flex items-center justify-center"
+            className={`px-2 py-2 rounded text-sm bg-gray-100 h-12 flex items-center justify-center ${
+              inputLock !== null ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'
+            }`}
+            disabled={inputLock !== null}
             onClick={handleReset}
             title="Reset to a new slab"
           >
@@ -985,9 +1055,9 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                   ? 'bg-gray-400 text-white' 
                   : 'bg-blue-500 text-white hover:bg-blue-600'
               } relative ${coachHighlights.evaluateButton ? 'coach-pulse-ring' : ''} ${
-                isEvaluateDisabled ? 'opacity-40 cursor-not-allowed' : ''
+                isEvaluateBlocked ? 'opacity-40 cursor-not-allowed' : ''
               }`}
-              disabled={isEvaluateDisabled}
+              disabled={isEvaluateBlocked}
               onClick={async () => {
                 if (puzzle) analytics.slabCreated(puzzle, Object.keys(slab.groups).length);
                 
@@ -1031,7 +1101,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
               <button
                 className={`px-3 py-2 rounded text-sm flex flex-col items-center justify-center h-12 relative transition-all duration-300 ${
                   coachHighlights.guessButton ? 'coach-pulse-ring ' : ''
-                }${
+                }${isGuessBlocked ? 'grayscale opacity-50 cursor-not-allowed ' : ''}${
                   flashGuessButton 
                     ? 'animate-pulse bg-yellow-400 text-white shadow-lg scale-110' 
                     : hasWon
@@ -1040,6 +1110,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                         ? 'bg-green-500 text-white hover:bg-green-600'
                         : 'bg-yellow-500 text-white hover:bg-yellow-600'
                 }`}
+                disabled={isGuessBlocked}
                 onClick={onGuess}
                 title={
                   hasWon 

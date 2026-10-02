@@ -34,6 +34,16 @@ export const GhostFingerSwipe: React.FC<GhostFingerSwipeProps> = ({
   </span>
 );
 
-export const GhostFingerTap: React.FC = () => (
-  <span className="ghost-finger ghost-finger-tap">{FINGER_GLYPH}</span>
+type GhostFingerTapProps = {
+  leftPercent?: string;
+  topPercent?: string;
+};
+
+export const GhostFingerTap: React.FC<GhostFingerTapProps> = ({ leftPercent, topPercent }) => (
+  <span
+    className="ghost-finger ghost-finger-tap"
+    style={{ left: leftPercent, top: topPercent }}
+  >
+    {FINGER_GLYPH}
+  </span>
 );

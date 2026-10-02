@@ -1,6 +1,6 @@
 import React from 'react';
 import { SlabData } from '../Slab';
-import SlabMaker, { CoachHighlights } from '../SlabMaker';
+import SlabMaker, { CellCoordinate, CoachHighlights, InputLock } from '../SlabMaker';
 import SparkleBurst from './SparkleBurst';
 import TutorialSlabGuesser from './TutorialSlabGuesser';
 import TutorialSlabList from './TutorialSlabList';
@@ -20,19 +20,26 @@ import {
   INTRO_UNPAINTED_SLAB
 } from '../../tutorial/tutorialPuzzle';
 
-type IntroRound = 'first' | 'second';
+type IntroRound = 'first' | 'second' | 'readyToGuess';
 
-type IntroStep = 'waiting' | 'evaluated' | 'swipeRow' | 'paintRow' | 'evaluate';
+type IntroStep =
+  | 'waiting'
+  | 'evaluated'
+  | 'swipeRow'
+  | 'selectRow'
+  | 'paintRow'
+  | 'evaluate'
+  | 'guess';
 
-type RoundConfig = {
-  initialSlab?: SlabData;
-  targetRowIndex: number;
-  showFinger: boolean;
+type StepGuidance = {
+  highlights: CoachHighlights;
+  lock: InputLock;
 };
 
-const ROUND_CONFIGS: Record<IntroRound, RoundConfig> = {
-  first: { initialSlab: undefined, targetRowIndex: 0, showFinger: true },
-  second: { initialSlab: INTRO_BOTTOM_ROW_MERGED_SLAB, targetRowIndex: 2, showFinger: false }
+const TARGET_ROW_BY_ROUND: Record<IntroRound, number> = {
+  first: 0,
+  second: 2,
+  readyToGuess: 2
 };
 
 const ENTRANCE_DURATION_MS = 1400;
@@ -40,6 +47,7 @@ const GUESS_FLIGHT_VIEWING_MS = 0;
 const INTRO_GRID_SIZE = 3;
 const LIST_SLAB_SIZE_PIXELS = 72;
 const GUIDED_GUESS_SLAB_COUNT = 1;
+const INTRO_GUESS_LIMIT = 3;
 
 type IntroLessonProps = {
   onContinue: () => void;
@@ -49,8 +57,10 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
   const [round, setRound] = React.useState<IntroRound>('first');
   const [isEntering, setIsEntering] = React.useState(true);
   const [currentSlab, setCurrentSlab] = React.useState<SlabData>(INTRO_UNPAINTED_SLAB);
+  const [selectedCell, setSelectedCell] = React.useState<CellCoordinate | null>(null);
+  const [restoredSlab, setRestoredSlab] = React.useState<SlabData | null>(null);
   const { entries, addSlab } = useTutorialSlabEntries([], { insertAt: 'end' });
-  const { initialSlab, targetRowIndex, showFinger } = ROUND_CONFIGS[round];
+  const targetRowIndex = TARGET_ROW_BY_ROUND[round];
 
   const guessSession = useTutorialGuessSession({
     passesRule: containsBlue,
@@ -77,7 +87,8 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
       return;
     }
 
-    guessSession.startRound(INTRO_GUESS_SLABS);
+    setRestoredSlab(slab);
+    setRound('readyToGuess');
   };
 
   const flight = useEvaluationFlight({ onLanded: handleLanded });
@@ -90,29 +101,51 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
   const getStep = (): IntroStep => {
     if (isEntering) return 'waiting';
     if (flight.pendingSlab) return 'evaluated';
+    if (round === 'readyToGuess') return 'guess';
     if (containsBlue(currentSlab)) return 'evaluate';
-    if (isRowSingleGroup(currentSlab, targetRowIndex)) return 'paintRow';
-    return 'swipeRow';
+    if (!isRowSingleGroup(currentSlab, targetRowIndex)) return 'swipeRow';
+    if (selectedCell?.row === targetRowIndex) return 'paintRow';
+    return 'selectRow';
   };
 
-  const step = getStep();
-  const targetRowCells = getRowCells(currentSlab, targetRowIndex);
+  const getGuidance = (step: IntroStep): StepGuidance => {
+    const targetRowCells = getRowCells(currentSlab, targetRowIndex);
 
-  const getCoachHighlights = (): CoachHighlights => {
     switch (step) {
       case 'swipeRow':
-        return { cells: targetRowCells, showFinger };
+        return {
+          highlights: { cells: targetRowCells, showFinger: true, fingerGesture: 'swipe' },
+          lock: { cells: targetRowCells }
+        };
+      case 'selectRow':
+        return {
+          highlights: { cells: targetRowCells, showFinger: true, fingerGesture: 'tap' },
+          lock: { cells: targetRowCells }
+        };
       case 'paintRow':
         return {
-          cells: showFinger ? undefined : targetRowCells,
-          colorIndex: INTRO_BLUE_COLOR_INDEX,
-          showFinger
+          highlights: { colorIndex: INTRO_BLUE_COLOR_INDEX, showFinger: true },
+          lock: { colorIndex: INTRO_BLUE_COLOR_INDEX }
         };
       case 'evaluate':
-        return { evaluateButton: true, showFinger };
+        return {
+          highlights: { evaluateButton: true, showFinger: true },
+          lock: { evaluate: true }
+        };
+      case 'guess':
+        return {
+          highlights: { guessButton: true, showFinger: true },
+          lock: { guess: true }
+        };
       default:
-        return {};
+        return { highlights: {}, lock: {} };
     }
+  };
+
+  const getMakerInitialSlab = (): SlabData | undefined => {
+    if (round === 'second') return INTRO_BOTTOM_ROW_MERGED_SLAB;
+    if (round === 'readyToGuess') return restoredSlab ?? undefined;
+    return undefined;
   };
 
   const handleSlabChange = (slab: SlabData) => {
@@ -120,12 +153,19 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
     flight.cancelIfSlabEdited(slab);
   };
 
+  const handleGuess = () => {
+    guessSession.startRound(INTRO_GUESS_SLABS);
+  };
+
   const requestGuessSlabFlight = () => {
     flight.begin(guessSession.slabsToGuess[guessSession.currentIndex], GUESS_FLIGHT_VIEWING_MS);
   };
 
+  const step = getStep();
+  const guidance = getGuidance(step);
   const isMakerLocked = step === 'waiting' || flight.isSlotReserved;
   const isStarShowing = flight.pendingSlab !== null && !flight.isSlotReserved;
+  const isFirstTwoRounds = round !== 'readyToGuess';
 
   return (
     <div className="flex flex-col gap-4">
@@ -146,20 +186,26 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
         />
       ) : (
         <div
-          className={`relative max-w-xs w-full mx-auto ${isMakerLocked ? 'pointer-events-none' : ''}`}
+          className={`relative max-w-xs w-full mx-auto ${isMakerLocked ? 'pointer-events-none' : ''} ${
+            isFirstTwoRounds ? '' : 'fade-in'
+          }`}
         >
           <SlabMaker
             key={round}
             onCreate={flight.begin}
             onEvaluate={async slab => containsBlue(slab)}
-            isEvaluateDisabled={!containsBlue(currentSlab)}
+            onGuess={handleGuess}
+            guessCount={INTRO_GUESS_LIMIT}
+            maxGuesses={INTRO_GUESS_LIMIT}
             colors={INTRO_COLORS}
             initialGridSize={INTRO_GRID_SIZE}
-            initialSlab={initialSlab}
+            initialSlab={getMakerInitialSlab()}
             persistSlabs={false}
-            entranceAnimation
-            coachHighlights={getCoachHighlights()}
+            entranceAnimation={isFirstTwoRounds}
+            coachHighlights={guidance.highlights}
+            inputLock={guidance.lock}
             onSlabChange={handleSlabChange}
+            onSelectionChange={setSelectedCell}
             flightTargetRect={flight.targetRect}
             onFlightEnd={flight.handleFlightEnd}
           />
