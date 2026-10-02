@@ -9,6 +9,17 @@ import { useAuth } from '../hooks/useAuth';
 
 
 
+export type CellCoordinate = { row: number; col: number };
+
+export type CoachHighlights = {
+  cells?: CellCoordinate[];
+  colorIndex?: number | null;
+  evaluateButton?: boolean;
+  guessButton?: boolean;
+};
+
+const ENTRANCE_WAVE_DELAY_MS = 120;
+
 type SlabMakerProps = {
   onCreate: (slab: SlabData) => void;
   onGuess?: () => void;
@@ -26,6 +37,11 @@ type SlabMakerProps = {
   showRuleButton?: boolean; // Show the rule description button
   onShowRuleModal?: () => void; // Callback to show rule modal
   onEvaluate?: (slab: SlabData) => Promise<boolean>; // Evaluation function
+  initialGridSize?: number;
+  persistSlabs?: boolean;
+  entranceAnimation?: boolean;
+  coachHighlights?: CoachHighlights;
+  onSlabChange?: (slab: SlabData) => void;
 };
 
 const SlabMaker: React.FC<SlabMakerProps> = ({ 
@@ -44,10 +60,18 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   hideControls = false,
   showRuleButton = false,
   onShowRuleModal,
-  onEvaluate
+  onEvaluate,
+  initialGridSize = 6,
+  persistSlabs = true,
+  entranceAnimation = false,
+  coachHighlights = {},
+  onSlabChange
 }) => {
   const { isAuthenticated } = useAuth();
-  const [slab, setSlab] = React.useState<SlabData>(() => createSlab());
+  const [slab, setSlab] = React.useState<SlabData>(() =>
+    initialSlab ? deepCopy(initialSlab) : createSlab(initialGridSize)
+  );
+  const gridSize = slab.cells.length;
   const [history, setHistory] = React.useState<SlabData[]>([]);
   const [, setIsDragging] = React.useState(false);
   const [encounteredCells, setEncounteredCells] = React.useState<Set<string>>(new Set());
@@ -81,6 +105,10 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     }
   }, [initialSlab]);
 
+  React.useEffect(() => {
+    onSlabChange?.(slab);
+  }, [slab]);
+
   // Hide evaluation symbol when slab changes
   React.useEffect(() => {
     if (evaluatedSlab && !areSlabsEqual(slab, evaluatedSlab)) {
@@ -102,8 +130,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     
     // Find all cells belonging to this group
     const groupCells: {row: number, col: number}[] = [];
-    for (let r = 0; r < 6; r++) {
-      for (let c = 0; c < 6; c++) {
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
         if (cells[r][c].groupId === groupId) {
           groupCells.push({row: r, col: c});
         }
@@ -135,7 +163,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
         ];
         
         for (const dir of directions) {
-          if (dir.row >= 0 && dir.row < 6 && dir.col >= 0 && dir.col < 6) {
+          if (dir.row >= 0 && dir.row < gridSize && dir.col >= 0 && dir.col < gridSize) {
             const dirKey = `${dir.row},${dir.col}`;
             if (!visited.has(dirKey) && cells[dir.row][dir.col].groupId === groupId) {
               stack.push(dir);
@@ -161,8 +189,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     
     // First, collect all unique group IDs from cells
     const allGroupIds = new Set<number>();
-    for (let r = 0; r < 6; r++) {
-      for (let c = 0; c < 6; c++) {
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
         allGroupIds.add(slab.cells[r][c].groupId);
       }
     }
@@ -186,8 +214,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     }
     
     // Update all cells with new group IDs
-    for (let r = 0; r < 6; r++) {
-      for (let c = 0; c < 6; c++) {
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
         const oldGroupId = newSlab.cells[r][c].groupId;
         const newGroupId = groupMapping.get(oldGroupId);
         if (newGroupId !== undefined) {
@@ -223,8 +251,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     
     // First, collect all unique group IDs from cells
     const allGroupIds = new Set<number>();
-    for (let r = 0; r < 6; r++) {
-      for (let c = 0; c < 6; c++) {
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
         allGroupIds.add(slab.cells[r][c].groupId);
       }
     }
@@ -255,8 +283,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     }
     
     // Update cells with new group IDs (only for reassigned groups)
-    for (let r = 0; r < 6; r++) {
-      for (let c = 0; c < 6; c++) {
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
         const oldGroupId = newSlab.cells[r][c].groupId;
         const newGroupId = groupMapping.get(oldGroupId);
         if (newGroupId !== undefined) {
@@ -363,7 +391,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   // Reset to a fresh slab, but allow undo to recover previous state
   const handleReset = () => {
     pushHistory();
-    setSlab(createSlab());
+    setSlab(createSlab(initialGridSize));
     setSelectedCell(null);
     setIsDragging(false);
     setEncounteredCells(new Set());
@@ -522,8 +550,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
           const splitSlab = splitDisconnectedGroups(prevSlab);
           // Check if we need to reallocate due to too many groups
           const allGroupIds = new Set<number>();
-          for (let r = 0; r < 6; r++) {
-            for (let c = 0; c < 6; c++) {
+          for (let r = 0; r < gridSize; r++) {
+            for (let c = 0; c < gridSize; c++) {
               allGroupIds.add(splitSlab.cells[r][c].groupId);
             }
           }
@@ -557,8 +585,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
       
       // Find all cells in the same group
       const cellsInGroup: {row: number, col: number}[] = [];
-      for (let r = 0; r < 6; r++) {
-        for (let c = 0; c < 6; c++) {
+      for (let r = 0; r < gridSize; r++) {
+        for (let c = 0; c < gridSize; c++) {
           if (slab.cells[r][c].groupId === targetGroupId) {
             cellsInGroup.push({row: r, col: c});
           }
@@ -576,7 +604,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
         cellsInGroup.forEach((cell, index) => {
           // Use a temporary high ID that won't conflict with existing groups
           // We'll clean these up later with reallocateGroupIds
-          const newGroupId = 1000 + (cell.row * 6 + cell.col) + (index * 100); // Ensure uniqueness
+          const newGroupId = 1000 + (cell.row * gridSize + cell.col) + (index * 100); // Ensure uniqueness
           
           // Update cell to point to new group
           newSlab.cells[cell.row][cell.col] = {
@@ -618,8 +646,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     const borderWidth = isSelected ? '3px' : '3px';
     
     const sameTop = row > 0 && slab.cells[row - 1][col].groupId === currentGroupId;
-    const sameRight = col < 5 && slab.cells[row][col + 1].groupId === currentGroupId;
-    const sameBottom = row < 5 && slab.cells[row + 1][col].groupId === currentGroupId;
+    const sameRight = col < gridSize - 1 && slab.cells[row][col + 1].groupId === currentGroupId;
+    const sameBottom = row < gridSize - 1 && slab.cells[row + 1][col].groupId === currentGroupId;
     const sameLeft = col > 0 && slab.cells[row][col - 1].groupId === currentGroupId;
 
     const radiusValue = '8px';
@@ -663,14 +691,14 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     const currentGroupId = slab.cells[row][col].groupId;
 
     const sameTop = row > 0 && slab.cells[row - 1][col].groupId === currentGroupId;
-    const sameRight = col < 5 && slab.cells[row][col + 1].groupId === currentGroupId;
-    const sameBottom = row < 5 && slab.cells[row + 1][col].groupId === currentGroupId;
+    const sameRight = col < gridSize - 1 && slab.cells[row][col + 1].groupId === currentGroupId;
+    const sameBottom = row < gridSize - 1 && slab.cells[row + 1][col].groupId === currentGroupId;
     const sameLeft = col > 0 && slab.cells[row][col - 1].groupId === currentGroupId;
 
     const sameTopLeftDiag = row > 0 && col > 0 && slab.cells[row - 1][col - 1].groupId === currentGroupId;
-    const sameTopRightDiag = row > 0 && col < 5 && slab.cells[row - 1][col + 1].groupId === currentGroupId;
-    const sameBottomRightDiag = row < 5 && col < 5 && slab.cells[row + 1][col + 1].groupId === currentGroupId;
-    const sameBottomLeftDiag = row < 5 && col > 0 && slab.cells[row + 1][col - 1].groupId === currentGroupId;
+    const sameTopRightDiag = row > 0 && col < gridSize - 1 && slab.cells[row - 1][col + 1].groupId === currentGroupId;
+    const sameBottomRightDiag = row < gridSize - 1 && col < gridSize - 1 && slab.cells[row + 1][col + 1].groupId === currentGroupId;
+    const sameBottomLeftDiag = row < gridSize - 1 && col > 0 && slab.cells[row + 1][col - 1].groupId === currentGroupId;
 
     // Inner concave if both adjacent sides are same-group but diagonal is not (prevents fully interior corners)
     return {
@@ -729,14 +757,18 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   return (
     <div className="p-4 w-full max-w-md mx-auto">
       <div className="relative">
-        <div className="grid grid-cols-6 w-full" style={{ gridAutoRows: '1fr' }}>
+        <div
+          className="grid w-full"
+          style={{ gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`, gridAutoRows: '1fr' }}
+        >
           {slab.cells.map((row, rowIndex) => (
             <React.Fragment key={rowIndex}>
               {row.map((cell, colIndex) => (
                 <div
                   key={`${rowIndex}-${colIndex}`}
-                  className="relative aspect-square w-full h-full flex items-center justify-center text-xs font-mono cursor-pointer transition-opacity select-none"
+                  className={`relative aspect-square w-full h-full flex items-center justify-center text-xs font-mono cursor-pointer transition-opacity select-none ${entranceAnimation ? 'slab-cell-drop-in' : ''}`}
                   style={{
+                    animationDelay: entranceAnimation ? `${(rowIndex + colIndex) * ENTRANCE_WAVE_DELAY_MS}ms` : undefined,
                     backgroundColor: colors[mapColorIndex(getGroup(slab.groups, cell.groupId)?.color || 0, colors)],
                     color: (getGroup(slab.groups, cell.groupId)?.color || 0) === 0 ? '#000' : '#fff',
                     ...getBorderStyles(rowIndex, colIndex),
@@ -746,6 +778,9 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                   data-cell-coords={`${rowIndex},${colIndex}`}
                   {...bindCellGestures(rowIndex, colIndex)}
                 >
+                  {coachHighlights.cells?.some(({ row, col }) => row === rowIndex && col === colIndex) && (
+                    <div className="coach-pulse absolute inset-0 pointer-events-none" style={{ zIndex: 3 }} />
+                  )}
                   {/* Colorblind overlay */}
                   {colorblindMode !== 'none' && getColorblindOverlay && (() => {
                     const originalColorIndex = getGroup(slab.groups, cell.groupId)?.color || 0;
@@ -860,7 +895,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
             return uniqueColorsWithIndex.map(({ color, originalIndex }) => (
               <button
                 key={originalIndex}
-                className="flex-1 rounded cursor-pointer transition-all hover:scale-110 relative"
+                className={`flex-1 rounded cursor-pointer transition-all hover:scale-110 relative ${coachHighlights.colorIndex === originalIndex ? 'coach-pulse-ring' : ''}`}
                 style={{ 
                   backgroundColor: color,
                   aspectRatio: '1',
@@ -916,7 +951,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                 isInGuessSession 
                   ? 'bg-gray-400 text-white' 
                   : 'bg-blue-500 text-white hover:bg-blue-600'
-              }`}
+              } ${coachHighlights.evaluateButton ? 'coach-pulse-ring' : ''}`}
               onClick={async () => {
                 if (puzzle) analytics.slabCreated(puzzle, Object.keys(slab.groups).length);
                 
@@ -942,7 +977,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                 onCreate(slab);
                 
                 // Automatically save slab to database if user is authenticated
-                if (isAuthenticated) {
+                if (persistSlabs && isAuthenticated) {
                   try {
                     await saveSlabToDatabase(slab);
                   } catch (error) {
@@ -958,6 +993,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
             {onGuess && guessCount > 0 && (
               <button
                 className={`px-3 py-2 rounded text-sm flex flex-col items-center justify-center h-12 transition-all duration-300 ${
+                  coachHighlights.guessButton ? 'coach-pulse-ring ' : ''
+                }${
                   flashGuessButton 
                     ? 'animate-pulse bg-yellow-400 text-white shadow-lg scale-110' 
                     : hasWon

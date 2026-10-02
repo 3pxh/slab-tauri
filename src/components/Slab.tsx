@@ -107,14 +107,14 @@ export const areSlabsEqual = (slab1: SlabData, slab2: SlabData): boolean => {
 };
 
 // Initialize a new Slab with 6x6 grid
-export const createSlab = (): SlabData => {
+export const createSlab = (gridSize: number = 6): SlabData => {
   const cells: Cell[][] = [];
   const groups: Record<number, Group> = {};
   
-  for (let row = 0; row < 6; row++) {
+  for (let row = 0; row < gridSize; row++) {
     cells[row] = [];
-    for (let col = 0; col < 6; col++) {
-      const groupId = 6 * row + col;
+    for (let col = 0; col < gridSize; col++) {
+      const groupId = gridSize * row + col;
       cells[row][col] = {
         groupId: groupId
       };
@@ -167,12 +167,13 @@ export const createRandomSlab = (): SlabData => {
 // Helper function to get border styles and corner radii based on neighbors
 const getBorderStyles = (row: number, col: number, slab: SlabData) => {
   const currentGroupId = slab.cells[row][col].groupId;
+  const lastIndex = slab.cells.length - 1;
   const borderColor = 'white';
   const borderWidth = '1px';
   
   const sameTop = row > 0 && slab.cells[row - 1][col].groupId === currentGroupId;
-  const sameRight = col < 5 && slab.cells[row][col + 1].groupId === currentGroupId;
-  const sameBottom = row < 5 && slab.cells[row + 1][col].groupId === currentGroupId;
+  const sameRight = col < lastIndex && slab.cells[row][col + 1].groupId === currentGroupId;
+  const sameBottom = row < lastIndex && slab.cells[row + 1][col].groupId === currentGroupId;
   const sameLeft = col > 0 && slab.cells[row][col - 1].groupId === currentGroupId;
 
   const radiusValue = '3px';
@@ -214,16 +215,17 @@ const getBorderStyles = (row: number, col: number, slab: SlabData) => {
 // Determine which corners are inner-concave (L-bend) for a cell
 const getConcaveCorners = (row: number, col: number, slab: SlabData) => {
   const currentGroupId = slab.cells[row][col].groupId;
+  const lastIndex = slab.cells.length - 1;
 
   const sameTop = row > 0 && slab.cells[row - 1][col].groupId === currentGroupId;
-  const sameRight = col < 5 && slab.cells[row][col + 1].groupId === currentGroupId;
-  const sameBottom = row < 5 && slab.cells[row + 1][col].groupId === currentGroupId;
+  const sameRight = col < lastIndex && slab.cells[row][col + 1].groupId === currentGroupId;
+  const sameBottom = row < lastIndex && slab.cells[row + 1][col].groupId === currentGroupId;
   const sameLeft = col > 0 && slab.cells[row][col - 1].groupId === currentGroupId;
 
   const sameTopLeftDiag = row > 0 && col > 0 && slab.cells[row - 1][col - 1].groupId === currentGroupId;
-  const sameTopRightDiag = row > 0 && col < 5 && slab.cells[row - 1][col + 1].groupId === currentGroupId;
-  const sameBottomRightDiag = row < 5 && col < 5 && slab.cells[row + 1][col + 1].groupId === currentGroupId;
-  const sameBottomLeftDiag = row < 5 && col > 0 && slab.cells[row + 1][col - 1].groupId === currentGroupId;
+  const sameTopRightDiag = row > 0 && col < lastIndex && slab.cells[row - 1][col + 1].groupId === currentGroupId;
+  const sameBottomRightDiag = row < lastIndex && col < lastIndex && slab.cells[row + 1][col + 1].groupId === currentGroupId;
+  const sameBottomLeftDiag = row < lastIndex && col > 0 && slab.cells[row + 1][col - 1].groupId === currentGroupId;
 
   // Inner concave if both adjacent sides are same-group but diagonal is not (prevents fully interior corners)
   return {
@@ -258,7 +260,14 @@ const Slab: React.FC<SlabProps> = ({
   };
 
   return (
-    <div className={`grid grid-cols-6 rounded-sm border border-white ${className.includes('w-full') ? 'w-full h-full' : sizeClasses[size]} ${className}`} style={{ gridAutoRows: '1fr', backgroundColor: 'white' }}>
+    <div
+      className={`grid rounded-sm border border-white ${className.includes('w-full') ? 'w-full h-full' : sizeClasses[size]} ${className}`}
+      style={{
+        gridTemplateColumns: `repeat(${slab.cells.length}, minmax(0, 1fr))`,
+        gridAutoRows: '1fr',
+        backgroundColor: 'white'
+      }}
+    >
       {slab.cells.map((row, rowIndex) => (
         <React.Fragment key={rowIndex}>
           {row.map((cell, colIndex) => (

@@ -14,7 +14,7 @@ import Delete from './components/Delete';
 import { DeepLinkHandler } from './components/DeepLinkHandler';
 import { VersionCheck } from './components/VersionCheck';
 import { DebugLogProvider } from './components/DebugLog';
-import { getPuzzle, getPuzzleByUuid, getAllDates } from './lib/supabase';
+import { getPuzzle, getPuzzleByUuid } from './lib/supabase';
 import { createSlab } from './components/Slab';
 import { Puzzle } from './lib/supabase';
 import { useNavigation } from './utils/navigation';
@@ -88,37 +88,6 @@ const loadSharedPuzzle = async ({ params }: { params: any }) => {
   }
 };
 
-const loadFirstPuzzle = async () => {
-  try {
-    // Get all available dates and find the first one
-    const response = await getAllDates();
-    if (response.success && response.dates.length > 0) {
-      // The dates are already sorted in ascending order (oldest first)
-      const firstDateStr = response.dates[0];
-      const firstDate = new Date(firstDateStr);
-      
-      // Create a timestamp for the end of the first day (23:59:59.999) in UTC
-      const year = firstDate.getUTCFullYear();
-      const month = firstDate.getUTCMonth();
-      const day = firstDate.getUTCDate();
-      const endOfDay = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
-      const timestamp = endOfDay.toISOString();
-      
-      const puzzleResponse = await getPuzzle(timestamp);
-      const currentSlab = createSlab();
-      
-      return {
-        puzzle: puzzleResponse.puzzle,
-        currentSlab
-      };
-    } else {
-      throw new Error('No puzzles available');
-    }
-  } catch (error) {
-    throw new Error(`Failed to load first puzzle: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-};
-
 // Create a dummy puzzle for creation mode
 const createDummyPuzzle = (): Puzzle => ({
   id: 'create-mode',
@@ -146,16 +115,8 @@ const CreateRoute = () => {
 };
 
 const TutorialRoute = () => {
-  const { puzzle } = useLoaderData() as { puzzle: Puzzle; currentSlab: any };
-  const { goToPuzzle, goHome } = useNavigation();
-  
-  const handleFirstPuzzle = () => {
-    // Navigate to the first puzzle
-    const firstDate = new Date(puzzle.publish_date);
-    goToPuzzle(firstDate);
-  };
-  
-  return <Tutorial onFirstPuzzle={handleFirstPuzzle} onHome={goHome} />;
+  const { goHome } = useNavigation();
+  return <Tutorial onComplete={goHome} onHome={goHome} />;
 };
 
 const PuzzlesListRoute = () => {
@@ -229,7 +190,6 @@ const router = createBrowserRouter([
       {
         path: '/tutorial',
         element: <TutorialRoute />,
-        loader: loadFirstPuzzle,
         errorElement: <ErrorBoundary error={new Error('Failed to load tutorial')} />
       },
       {
