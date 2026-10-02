@@ -2,10 +2,10 @@ import React from 'react';
 import { FiHelpCircle, FiStar } from 'react-icons/fi';
 import Slab, { COLORS, SlabData, createSlab } from '../Slab';
 import SlabMaker, { CoachHighlights } from '../SlabMaker';
-import IndividualSlabGuesser from '../IndividualSlabGuesser';
 import CoachBanner from './CoachBanner';
 import NextArrowButton from './NextArrowButton';
 import SparkleBurst from './SparkleBurst';
+import TutorialSlabGuesser from './TutorialSlabGuesser';
 import TutorialSlabList from './TutorialSlabList';
 import { useEvaluationFlight } from '../../hooks/useEvaluationFlight';
 import { useIdleFlag } from '../../hooks/useIdleFlag';
@@ -26,6 +26,7 @@ import {
 } from '../../tutorial/tutorialPuzzle';
 
 const TUTORIAL_GUESS_LIMIT = 3;
+const GUIDED_GUESS_SLAB_COUNT = 0;
 const HINT_NUDGE_DELAY_MS = 7000;
 
 type RoundScore = {
@@ -164,19 +165,16 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
       )}
 
       {guessSession.isGuessing ? (
-        <IndividualSlabGuesser
+        <TutorialSlabGuesser
           currentSlab={guessSession.slabsToGuess[guessSession.currentIndex]}
           currentIndex={guessSession.currentIndex}
           totalSlabs={guessSession.slabsToGuess.length}
           correctCount={guessSession.correctCount}
-          incorrectCount={guessSession.incorrectCount}
+          colors={COLORS}
+          guidedSlabCount={GUIDED_GUESS_SLAB_COUNT}
           onGuessSubmit={guessSession.submitGuess}
           onProceedToNext={guessSession.proceedToNext}
           onWinNext={guessSession.finishRound}
-          colors={COLORS}
-          colorblindMode="none"
-          getColorblindOverlay={() => null}
-          levelAttempts={guessSession.attemptCount}
         />
       ) : (
         <div

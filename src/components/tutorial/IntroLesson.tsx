@@ -1,8 +1,8 @@
 import React from 'react';
 import { SlabData } from '../Slab';
 import SlabMaker, { CoachHighlights } from '../SlabMaker';
-import IndividualSlabGuesser from '../IndividualSlabGuesser';
 import SparkleBurst from './SparkleBurst';
+import TutorialSlabGuesser from './TutorialSlabGuesser';
 import TutorialSlabList from './TutorialSlabList';
 import { useEvaluationFlight } from '../../hooks/useEvaluationFlight';
 import { useTutorialGuessSession } from '../../hooks/useTutorialGuessSession';
@@ -39,6 +39,7 @@ const ROUND_CONFIGS: Record<IntroRound, RoundConfig> = {
 const ENTRANCE_DURATION_MS = 1400;
 const INTRO_GRID_SIZE = 3;
 const LIST_SLAB_SIZE_PIXELS = 72;
+const GUIDED_GUESS_SLAB_COUNT = 1;
 
 type IntroLessonProps = {
   onContinue: () => void;
@@ -116,20 +117,16 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
   return (
     <div className="flex flex-col gap-4">
       {guessSession.isGuessing ? (
-        <IndividualSlabGuesser
+        <TutorialSlabGuesser
           currentSlab={guessSession.slabsToGuess[guessSession.currentIndex]}
           currentIndex={guessSession.currentIndex}
           totalSlabs={guessSession.slabsToGuess.length}
           correctCount={guessSession.correctCount}
-          incorrectCount={guessSession.incorrectCount}
+          colors={INTRO_COLORS}
+          guidedSlabCount={GUIDED_GUESS_SLAB_COUNT}
           onGuessSubmit={guessSession.submitGuess}
           onProceedToNext={handleProceedToNext}
           onWinNext={guessSession.finishRound}
-          colors={INTRO_COLORS}
-          colorblindMode="none"
-          getColorblindOverlay={() => null}
-          levelAttempts={guessSession.attemptCount}
-          showLabels={false}
         />
       ) : (
         <div
