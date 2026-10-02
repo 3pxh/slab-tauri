@@ -6,6 +6,34 @@ type IconProps = {
 };
 
 const CIRCLE_BASE_CLASSES = 'w-16 h-16 rounded-full flex items-center justify-center';
+const TRUTH_ICON_SIZE_PX = 64;
+const BADGE_BORDER_COLOR = '#d1d5db';
+
+type VerdictBadgeProps = IconProps & {
+  sizePx: number;
+  className?: string;
+};
+
+export const VerdictBadge: React.FC<VerdictBadgeProps> = ({ isStar, sizePx, className = '' }) => (
+  <div
+    className={`rounded-full bg-white flex items-center justify-center shadow-md ${className}`}
+    style={{
+      width: sizePx,
+      height: sizePx,
+      border: `${Math.max(1, sizePx / 32)}px solid ${BADGE_BORDER_COLOR}`
+    }}
+  >
+    {isStar ? (
+      <FiStar size={sizePx * 0.55} className="fill-yellow-400 text-yellow-500" />
+    ) : (
+      <FiX size={sizePx * 0.6} className="text-red-500" />
+    )}
+  </div>
+);
+
+export const TruthIcon: React.FC<IconProps> = ({ isStar }) => (
+  <VerdictBadge isStar={isStar} sizePx={TRUTH_ICON_SIZE_PX} />
+);
 
 export const GuessIcon: React.FC<IconProps> = ({ isStar }) => (
   <div
@@ -21,18 +49,16 @@ export const GuessIcon: React.FC<IconProps> = ({ isStar }) => (
   </div>
 );
 
-export const TruthIcon: React.FC<IconProps> = ({ isStar }) => (
-  <div className={`${CIRCLE_BASE_CLASSES} bg-white border-2 border-gray-300 shadow-md`}>
-    {isStar ? (
-      <FiStar size={30} className="fill-yellow-400 text-yellow-500" />
-    ) : (
-      <FiX size={30} className="text-red-500" />
-    )}
-  </div>
-);
-
 export const EmptyIconSlot: React.FC = () => (
   <div className={`${CIRCLE_BASE_CLASSES} border-2 border-dashed border-gray-300`} />
+);
+
+export const CoverDisc: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <div
+    className={`${CIRCLE_BASE_CLASSES} bg-gray-300 border-2 border-gray-400 text-2xl font-bold text-white shadow-inner ${className}`}
+  >
+    ?
+  </div>
 );
 
 export const ComparisonIcon: React.FC<{ isMatch: boolean }> = ({ isMatch }) => (

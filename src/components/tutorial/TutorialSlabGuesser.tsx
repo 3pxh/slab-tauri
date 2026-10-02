@@ -2,11 +2,19 @@ import React from 'react';
 import { FiStar, FiX } from 'react-icons/fi';
 import Slab, { SlabData } from '../Slab';
 import NextArrowButton from './NextArrowButton';
+import { BADGE_FLIGHT_SETTLE_MS, useBadgeFlight } from '../../hooks/useBadgeFlight';
 import { useSlabFlight } from '../../hooks/useSlabFlight';
-import { ComparisonIcon, EmptyIconSlot, GuessIcon, TruthIcon } from './GuessIcons';
+import {
+  ComparisonIcon,
+  CoverDisc,
+  EmptyIconSlot,
+  GuessIcon,
+  TruthIcon,
+  VerdictBadge
+} from './GuessIcons';
 import '../../slabAnimations.css';
 
-type GuessPhase = 'choosing' | 'guessed' | 'truthShown' | 'compared';
+type GuessPhase = 'choosing' | 'guessed' | 'truthShown' | 'compared' | 'attaching';
 
 const NEXT_PHASE: Partial<Record<GuessPhase, GuessPhase>> = {
   guessed: 'truthShown',
@@ -14,6 +22,7 @@ const NEXT_PHASE: Partial<Record<GuessPhase, GuessPhase>> = {
 };
 
 const AUTOMATIC_STEP_DELAY_MS = 800;
+const CORNER_BADGE_SIZE_PX = 52;
 
 const getTruthIsStar = (guessedStar: boolean | null, isCorrect: boolean | null): boolean | null => {
   if (guessedStar === null || isCorrect === null) return null;
@@ -45,6 +54,18 @@ const GuessRound: React.FC<GuessRoundProps> = ({
   const [phase, setPhase] = React.useState<GuessPhase>('choosing');
   const [guessedStar, setGuessedStar] = React.useState<boolean | null>(null);
   const [isCorrect, setIsCorrect] = React.useState<boolean | null>(null);
+  const truthCircleRef = React.useRef<HTMLDivElement>(null);
+  const cornerBadgeRef = React.useRef<HTMLDivElement>(null);
+  const isAttaching = phase === 'attaching';
+
+  useBadgeFlight(isAttaching, truthCircleRef, cornerBadgeRef);
+
+  React.useEffect(() => {
+    if (!isAttaching) return;
+
+    const timer = setTimeout(onRequestProceed, BADGE_FLIGHT_SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [isAttaching]);
 
   React.useEffect(() => {
     const nextPhase = NEXT_PHASE[phase];
@@ -65,14 +86,15 @@ const GuessRound: React.FC<GuessRoundProps> = ({
   const handleNext = () => {
     const nextPhase = NEXT_PHASE[phase];
     if (nextPhase) setPhase(nextPhase);
-    else onRequestProceed();
+    else if (phase === 'compared') setPhase('attaching');
   };
 
   const hasGuessed = phase !== 'choosing';
   const isTruthShown = phase === 'truthShown' || phase === 'compared';
+  const isComparisonShown = phase === 'compared' || isAttaching;
   const isCompared = phase === 'compared';
   const truthIsStar = getTruthIsStar(guessedStar, isCorrect);
-  const showNextArrow = (isGuided ? hasGuessed : isCompared) && !isProceeding;
+  const showNextArrow = (isGuided ? hasGuessed : isCompared) && !isAttaching && !isProceeding;
 
   const getSlabAnimationClass = (): string => {
     if (!isCompared || isProceeding) return '';
@@ -83,6 +105,11 @@ const GuessRound: React.FC<GuessRoundProps> = ({
     <div className="p-4 w-full max-w-md mx-auto flex flex-col items-center gap-4">
       <div ref={slabFlightRef} className={`relative w-48 h-48 ${getSlabAnimationClass()}`}>
         <Slab slab={slab} size="medium" className="w-full h-full" colors={colors} />
+        {isAttaching && truthIsStar !== null && (
+          <div ref={cornerBadgeRef} className="absolute -top-5 -right-5 z-10">
+            <VerdictBadge isStar={truthIsStar} sizePx={CORNER_BADGE_SIZE_PX} />
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-center gap-3 h-16">
@@ -94,15 +121,18 @@ const GuessRound: React.FC<GuessRoundProps> = ({
           <EmptyIconSlot />
         )}
         <div className="w-10 h-10 flex items-center justify-center">
-          {isCompared && isCorrect !== null && <ComparisonIcon isMatch={isCorrect} />}
+          {isComparisonShown && isCorrect !== null && <ComparisonIcon isMatch={isCorrect} />}
         </div>
-        {isTruthShown && truthIsStar !== null ? (
-          <div className="pop-in">
-            <TruthIcon isStar={truthIsStar} />
-          </div>
-        ) : (
-          <EmptyIconSlot />
-        )}
+        <div ref={truthCircleRef} className="relative w-16 h-16">
+          {isTruthShown && truthIsStar !== null && <TruthIcon isStar={truthIsStar} />}
+          {isAttaching && <EmptyIconSlot />}
+          {!isAttaching && (
+            <CoverDisc
+              key="cover"
+              className={`absolute inset-0 ${isTruthShown ? 'cover-roll-off' : ''}`}
+            />
+          )}
+        </div>
       </div>
 
       <div className="h-16 flex items-center justify-center gap-4">

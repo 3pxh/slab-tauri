@@ -177,3 +177,22 @@
 .pop-in {
   animation: pop-in 0.45s ease-out both;
 }
+
+@keyframes cover-roll-off {
+  0% { transform: translateX(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateX(110px) rotate(560deg); opacity: 0; }
+}
+
+.cover-roll-off {
+  animation: cover-roll-off 0.9s cubic-bezier(0.5, 0, 0.9, 0.6) forwards;
+  pointer-events: none;
+}
+
+@keyframes verdict-fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.verdict-fade-in {
+  animation: verdict-fade-in 0.15s ease-out both;
+}

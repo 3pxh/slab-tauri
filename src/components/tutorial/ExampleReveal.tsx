@@ -1,7 +1,7 @@
 import React from 'react';
-import { FiStar, FiX } from 'react-icons/fi';
 import Slab, { SlabData } from '../Slab';
 import NextArrowButton from './NextArrowButton';
+import { VerdictBadge } from './GuessIcons';
 import { useSlabFlight } from '../../hooks/useSlabFlight';
 import '../../slabAnimations.css';
 
@@ -15,8 +15,7 @@ type ExampleRevealProps = {
   onNext: () => void;
 };
 
-const BADGE_OUTLINE_FILTER =
-  'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)';
+const CORNER_BADGE_SIZE_PX = 64;
 
 const ExampleReveal: React.FC<ExampleRevealProps> = ({
   slab,
@@ -35,15 +34,8 @@ const ExampleReveal: React.FC<ExampleRevealProps> = ({
         <div className="pop-in w-full h-full">
           <Slab slab={slab} size="large" className="w-full h-full shadow-lg" colors={colors} />
         </div>
-        <div
-          className="verdict-mark-pop absolute -top-5 -right-5"
-          style={{ filter: BADGE_OUTLINE_FILTER }}
-        >
-          {passes ? (
-            <FiStar size={44} className="fill-yellow-400 text-yellow-500" />
-          ) : (
-            <FiX size={44} className="text-red-500" />
-          )}
+        <div className="verdict-mark-pop absolute -top-6 -right-6 z-10">
+          <VerdictBadge isStar={passes} sizePx={CORNER_BADGE_SIZE_PX} />
         </div>
       </div>
 

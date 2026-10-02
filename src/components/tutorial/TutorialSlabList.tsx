@@ -1,7 +1,7 @@
 import React from 'react';
-import { FiStar, FiX } from 'react-icons/fi';
 import Slab, { SlabData } from '../Slab';
 import { TutorialSlabEntry } from '../../hooks/useTutorialSlabEntries';
+import { VerdictBadge } from './GuessIcons';
 import '../../slabAnimations.css';
 
 type TutorialSlabListProps = {
@@ -20,19 +20,11 @@ type TutorialSlabListProps = {
 
 const REJECTED_SHAKE_DELAY_MS = 500;
 
-const MARK_OUTLINE_FILTER =
-  'drop-shadow(1px 1px 0 white) drop-shadow(-1px -1px 0 white) drop-shadow(1px -1px 0 white) drop-shadow(-1px 1px 0 white)';
+const LIST_BADGE_SIZE_PX = 20;
 
 const VerdictMark: React.FC<{ passes: boolean }> = ({ passes }) => (
-  <div
-    className="verdict-mark-pop absolute"
-    style={{ top: '-8px', right: '-8px', filter: MARK_OUTLINE_FILTER }}
-  >
-    {passes ? (
-      <FiStar size={16} className="fill-yellow-400 text-yellow-500" />
-    ) : (
-      <FiX size={16} className="text-red-500" />
-    )}
+  <div className="verdict-fade-in absolute" style={{ top: '-8px', right: '-8px' }}>
+    <VerdictBadge isStar={passes} sizePx={LIST_BADGE_SIZE_PX} />
   </div>
 );
 
