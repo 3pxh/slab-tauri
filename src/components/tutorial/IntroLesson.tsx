@@ -4,6 +4,7 @@ import SlabMaker, { CoachHighlights } from '../SlabMaker';
 import NextArrowButton from './NextArrowButton';
 import SparkleBurst from './SparkleBurst';
 import TutorialSlabList from './TutorialSlabList';
+import { useEvaluationFlight } from '../../hooks/useEvaluationFlight';
 import { useTutorialSlabEntries } from '../../hooks/useTutorialSlabEntries';
 import {
   INTRO_BLUE_COLOR_INDEX,
@@ -17,7 +18,7 @@ import { INTRO_SECOND_ROW_SLAB, INTRO_UNPAINTED_SLAB } from '../../tutorial/tuto
 
 type IntroRound = 'first' | 'second';
 
-type IntroStep = 'waiting' | 'swipeRow' | 'paintRow' | 'evaluate' | 'passed';
+type IntroStep = 'waiting' | 'evaluated' | 'swipeRow' | 'paintRow' | 'evaluate';
 
 type RoundConfig = {
   initialSlab?: SlabData;
@@ -31,7 +32,6 @@ const ROUND_CONFIGS: Record<IntroRound, RoundConfig> = {
 };
 
 const ENTRANCE_DURATION_MS = 1400;
-const FALL_DURATION_MS = 650;
 const INTRO_GRID_SIZE = 3;
 const LIST_SLAB_SIZE_PIXELS = 72;
 
@@ -42,21 +42,33 @@ type IntroLessonProps = {
 const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
   const [round, setRound] = React.useState<IntroRound>('first');
   const [isEntering, setIsEntering] = React.useState(true);
-  const [isFalling, setIsFalling] = React.useState(false);
-  const [passedSlab, setPassedSlab] = React.useState<SlabData | null>(null);
+  const [isFinished, setIsFinished] = React.useState(false);
   const [currentSlab, setCurrentSlab] = React.useState<SlabData>(INTRO_UNPAINTED_SLAB);
-  const { entries, addSlab } = useTutorialSlabEntries([INTRO_UNPAINTED_SLAB]);
+  const { entries, addSlab } = useTutorialSlabEntries([]);
   const { initialSlab, targetRowIndex, showFinger } = ROUND_CONFIGS[round];
 
+  const handleLanded = (slab: SlabData) => {
+    addSlab(slab);
+
+    if (round === 'first') {
+      setIsEntering(true);
+      setRound('second');
+      return;
+    }
+
+    setIsFinished(true);
+  };
+
+  const flight = useEvaluationFlight({ onLanded: handleLanded });
+
   React.useEffect(() => {
-    setIsEntering(true);
     const timer = setTimeout(() => setIsEntering(false), ENTRANCE_DURATION_MS);
     return () => clearTimeout(timer);
   }, [round]);
 
   const getStep = (): IntroStep => {
-    if (isEntering || isFalling) return 'waiting';
-    if (passedSlab) return 'passed';
+    if (isEntering) return 'waiting';
+    if (flight.pendingSlab) return 'evaluated';
     if (!isRowSingleGroup(currentSlab, targetRowIndex)) return 'swipeRow';
     if (getRowColorIndex(currentSlab, targetRowIndex) !== INTRO_BLUE_COLOR_INDEX) return 'paintRow';
     return 'evaluate';
@@ -78,59 +90,58 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
   };
 
   const handleCreate = (slab: SlabData) => {
-    if (containsBlue(slab)) setPassedSlab(slab);
+    if (containsBlue(slab)) flight.begin(slab);
   };
 
-  const dropPassedSlabIntoList = () => {
-    if (passedSlab) addSlab(passedSlab);
-    setPassedSlab(null);
-    setIsFalling(false);
-    setRound('second');
+  const handleSlabChange = (slab: SlabData) => {
+    setCurrentSlab(slab);
+    flight.cancelIfSlabEdited(slab);
   };
 
-  const handleNext = () => {
-    if (round === 'second') {
-      onContinue();
-      return;
-    }
-
-    setIsFalling(true);
-    setTimeout(dropPassedSlabIntoList, FALL_DURATION_MS);
-  };
-
-  const isPlayerInControl = step !== 'waiting';
+  const isMakerLocked = step === 'waiting' || flight.isSlotReserved;
+  const isStarShowing = flight.pendingSlab !== null && !flight.isSlotReserved;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className={`relative max-w-xs w-full mx-auto ${isPlayerInControl ? '' : 'pointer-events-none'}`}>
-        <div className={isFalling ? 'slab-shrink-into-list' : ''}>
-          <SlabMaker
-            key={round}
-            onCreate={handleCreate}
-            onEvaluate={async slab => containsBlue(slab)}
-            colors={INTRO_COLORS}
-            initialGridSize={INTRO_GRID_SIZE}
-            initialSlab={initialSlab}
-            persistSlabs={false}
-            entranceAnimation
-            coachHighlights={getCoachHighlights()}
-            onSlabChange={setCurrentSlab}
-          />
-        </div>
-        {step === 'passed' && <SparkleBurst />}
+      <div
+        className={`relative max-w-xs w-full mx-auto ${isMakerLocked ? 'pointer-events-none' : ''} ${
+          isFinished ? 'invisible' : ''
+        }`}
+      >
+        <SlabMaker
+          key={round}
+          onCreate={handleCreate}
+          onEvaluate={async slab => containsBlue(slab)}
+          colors={INTRO_COLORS}
+          initialGridSize={INTRO_GRID_SIZE}
+          initialSlab={initialSlab}
+          persistSlabs={false}
+          entranceAnimation
+          coachHighlights={getCoachHighlights()}
+          onSlabChange={handleSlabChange}
+          flightTargetRect={flight.targetRect}
+          onFlightEnd={flight.handleFlightEnd}
+        />
+        {isStarShowing && <SparkleBurst />}
       </div>
 
       <div className="h-16 flex justify-center items-center">
-        {step === 'passed' && <NextArrowButton onClick={handleNext} />}
+        {isFinished && <NextArrowButton onClick={onContinue} />}
       </div>
 
-      <TutorialSlabList
-        entries={entries}
-        colors={INTRO_COLORS}
-        passesRule={containsBlue}
-        slabSizePixels={LIST_SLAB_SIZE_PIXELS}
-        staggerMilliseconds={0}
-      />
+      <div className="max-w-xs w-full mx-auto">
+        <TutorialSlabList
+          entries={entries}
+          colors={INTRO_COLORS}
+          passesRule={containsBlue}
+          slabSizePixels={LIST_SLAB_SIZE_PIXELS}
+          staggerMilliseconds={0}
+          alignment="start"
+          slotRef={flight.slotRef}
+          slotPosition="end"
+          isSlotOutlined={!isFinished}
+        />
+      </div>
     </div>
   );
 };

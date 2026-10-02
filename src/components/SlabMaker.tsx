@@ -4,6 +4,7 @@ import { useGesture } from '@use-gesture/react';
 import { SlabData, createSlab, Cell, COLORS, getGroup, mapColorIndex, areSlabsEqual } from './Slab';
 import { deepCopy } from '../utils';
 import { GhostFingerSwipe, GhostFingerTap } from './tutorial/GhostFinger';
+import { useSlabFlight } from '../hooks/useSlabFlight';
 import { analytics } from '../utils/analytics';
 import { createSlab as saveSlabToDatabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -55,6 +56,8 @@ type SlabMakerProps = {
   entranceAnimation?: boolean;
   coachHighlights?: CoachHighlights;
   onSlabChange?: (slab: SlabData) => void;
+  flightTargetRect?: DOMRect | null;
+  onFlightEnd?: () => void;
 };
 
 const SlabMaker: React.FC<SlabMakerProps> = ({ 
@@ -78,7 +81,9 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   persistSlabs = true,
   entranceAnimation = false,
   coachHighlights = {},
-  onSlabChange
+  onSlabChange,
+  flightTargetRect = null,
+  onFlightEnd
 }) => {
   const { isAuthenticated } = useAuth();
   const [slab, setSlab] = React.useState<SlabData>(() =>
@@ -86,6 +91,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   );
   const gridSize = slab.cells.length;
   const fingerTarget = getFingerTarget(coachHighlights);
+  const flightElementRef = useSlabFlight(flightTargetRect, onFlightEnd);
   const [history, setHistory] = React.useState<SlabData[]>([]);
   const [, setIsDragging] = React.useState(false);
   const [encounteredCells, setEncounteredCells] = React.useState<Set<string>>(new Set());
@@ -770,7 +776,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
 
   return (
     <div className="p-4 w-full max-w-md mx-auto">
-      <div className="relative">
+      <div className="relative" ref={flightElementRef}>
         <div
           className="grid w-full"
           style={{ gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`, gridAutoRows: '1fr' }}

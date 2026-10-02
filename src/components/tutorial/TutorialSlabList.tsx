@@ -10,6 +10,10 @@ type TutorialSlabListProps = {
   passesRule: (slab: SlabData) => boolean;
   slabSizePixels?: number;
   staggerMilliseconds?: number;
+  alignment?: 'center' | 'start';
+  slotRef?: React.RefObject<HTMLDivElement>;
+  slotPosition?: 'start' | 'end';
+  isSlotOutlined?: boolean;
 };
 
 const REJECTED_SHAKE_DELAY_MS = 500;
@@ -19,7 +23,7 @@ const MARK_OUTLINE_FILTER =
 
 const VerdictMark: React.FC<{ passes: boolean }> = ({ passes }) => (
   <div
-    className="absolute"
+    className="verdict-mark-pop absolute"
     style={{ top: '-8px', right: '-8px', filter: MARK_OUTLINE_FILTER }}
   >
     {passes ? (
@@ -35,33 +39,51 @@ const TutorialSlabList: React.FC<TutorialSlabListProps> = ({
   colors,
   passesRule,
   slabSizePixels = 80,
-  staggerMilliseconds = 120
-}) => (
-  <div className="flex flex-wrap gap-2 justify-center">
-    {entries.map(({ id, slab }, index) => {
-      const passes = passesRule(slab);
+  staggerMilliseconds = 120,
+  alignment = 'center',
+  slotRef,
+  slotPosition = 'start',
+  isSlotOutlined = false
+}) => {
+  const slot = slotRef && (
+    <div
+      ref={slotRef}
+      className={`flex-shrink-0 rounded-sm ${
+        isSlotOutlined ? 'border-2 border-dashed border-gray-300' : 'invisible'
+      }`}
+      style={{ width: slabSizePixels, height: slabSizePixels }}
+    />
+  );
 
-      return (
-        <div
-          key={id}
-          className="slab-list-item-pop relative flex-shrink-0"
-          style={{
-            width: slabSizePixels,
-            height: slabSizePixels,
-            animationDelay: `${index * staggerMilliseconds}ms`
-          }}
-        >
+  return (
+    <div className={`flex flex-wrap gap-2 ${alignment === 'center' ? 'justify-center' : 'justify-start'}`}>
+      {slotPosition === 'start' && slot}
+      {entries.map(({ id, slab }, index) => {
+        const passes = passesRule(slab);
+
+        return (
           <div
-            className={`w-full h-full ${passes ? '' : 'slab-shake'}`}
-            style={{ animationDelay: `${REJECTED_SHAKE_DELAY_MS + index * staggerMilliseconds}ms` }}
+            key={id}
+            className="slab-list-item-pop relative flex-shrink-0"
+            style={{
+              width: slabSizePixels,
+              height: slabSizePixels,
+              animationDelay: `${index * staggerMilliseconds}ms`
+            }}
           >
-            <Slab slab={slab} size="small" className="w-full h-full" colors={colors} />
+            <div
+              className={`w-full h-full ${passes ? '' : 'slab-shake'}`}
+              style={{ animationDelay: `${REJECTED_SHAKE_DELAY_MS + index * staggerMilliseconds}ms` }}
+            >
+              <Slab slab={slab} size="small" className="w-full h-full" colors={colors} />
+            </div>
+            <VerdictMark passes={passes} />
           </div>
-          <VerdictMark passes={passes} />
-        </div>
-      );
-    })}
-  </div>
-);
+        );
+      })}
+      {slotPosition === 'end' && slot}
+    </div>
+  );
+};
 
 export default TutorialSlabList;

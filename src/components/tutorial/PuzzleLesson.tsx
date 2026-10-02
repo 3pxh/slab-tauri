@@ -7,6 +7,7 @@ import CoachBanner from './CoachBanner';
 import NextArrowButton from './NextArrowButton';
 import SparkleBurst from './SparkleBurst';
 import TutorialSlabList from './TutorialSlabList';
+import { useEvaluationFlight } from '../../hooks/useEvaluationFlight';
 import { useIdleFlag } from '../../hooks/useIdleFlag';
 import { useTutorialSlabEntries } from '../../hooks/useTutorialSlabEntries';
 import { useTutorialGuessSession } from '../../hooks/useTutorialGuessSession';
@@ -47,7 +48,17 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
   const [hasEvaluatedStar, setHasEvaluatedStar] = React.useState(false);
   const [lastRoundScore, setLastRoundScore] = React.useState<RoundScore | null>(null);
   const [isSolved, setIsSolved] = React.useState(false);
+  const [makerKey, setMakerKey] = React.useState(0);
+  const [restoredSlab, setRestoredSlab] = React.useState<SlabData | null>(null);
   const { entries, addSlab } = useTutorialSlabEntries(PUZZLE_EXAMPLE_SLABS);
+
+  const handleLanded = (slab: SlabData) => {
+    addSlab(slab);
+    setRestoredSlab(slab);
+    setMakerKey(key => key + 1);
+  };
+
+  const flight = useEvaluationFlight({ onLanded: handleLanded });
 
   const guessSession = useTutorialGuessSession({
     passesRule: everyRowIsSingleGroup,
@@ -85,12 +96,18 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
   };
 
   const handleCreate = (slab: SlabData) => {
-    addSlab(slab);
     setLastRoundScore(null);
     if (everyRowIsSingleGroup(slab)) setHasEvaluatedStar(true);
+    flight.begin(slab);
+  };
+
+  const handleSlabChange = (slab: SlabData) => {
+    setCurrentSlab(slab);
+    flight.cancelIfSlabEdited(slab);
   };
 
   const handleGuess = () => {
+    flight.handleFlightEnd();
     setLastRoundScore(null);
     guessSession.startRound(GUESS_ROUNDS[guessSession.attemptCount % GUESS_ROUNDS.length]);
   };
@@ -162,20 +179,33 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
           levelAttempts={guessSession.attemptCount}
         />
       ) : (
-        <SlabMaker
-          onCreate={handleCreate}
-          onEvaluate={async slab => everyRowIsSingleGroup(slab)}
-          onGuess={handleGuess}
-          guessCount={TUTORIAL_GUESS_LIMIT}
-          maxGuesses={TUTORIAL_GUESS_LIMIT}
-          colors={COLORS}
-          persistSlabs={false}
-          coachHighlights={getCoachHighlights()}
-          onSlabChange={setCurrentSlab}
-        />
+        <div
+          key={makerKey}
+          className={`${restoredSlab ? 'fade-in' : ''} ${flight.isSlotReserved ? 'pointer-events-none' : ''}`}
+        >
+          <SlabMaker
+            onCreate={handleCreate}
+            onEvaluate={async slab => everyRowIsSingleGroup(slab)}
+            onGuess={handleGuess}
+            guessCount={TUTORIAL_GUESS_LIMIT}
+            maxGuesses={TUTORIAL_GUESS_LIMIT}
+            colors={COLORS}
+            persistSlabs={false}
+            initialSlab={restoredSlab ?? undefined}
+            coachHighlights={getCoachHighlights()}
+            onSlabChange={handleSlabChange}
+            flightTargetRect={flight.targetRect}
+            onFlightEnd={flight.handleFlightEnd}
+          />
+        </div>
       )}
 
-      <TutorialSlabList entries={entries} colors={COLORS} passesRule={everyRowIsSingleGroup} />
+      <TutorialSlabList
+        entries={entries}
+        colors={COLORS}
+        passesRule={everyRowIsSingleGroup}
+        slotRef={flight.isSlotReserved ? flight.slotRef : undefined}
+      />
     </div>
   );
 };
