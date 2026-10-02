@@ -196,3 +196,7 @@
 .verdict-fade-in {
   animation: verdict-fade-in 0.15s ease-out both;
 }
+
+.coach-pulse-ring-brief {
+  animation: coach-pulse-ring 1.1s ease-in-out 2;
+}

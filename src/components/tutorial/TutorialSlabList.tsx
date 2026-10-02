@@ -77,7 +77,7 @@ const TutorialSlabList: React.FC<TutorialSlabListProps> = ({
               <Slab slab={slab} size="small" className="w-full h-full" colors={colors} />
             </div>
             {areEntriesPulsing && (
-              <div className="coach-pulse-ring absolute inset-0 rounded-sm pointer-events-none" />
+              <div className="coach-pulse-ring-brief absolute inset-0 rounded-sm pointer-events-none" />
             )}
             <VerdictMark passes={passes} />
           </div>
