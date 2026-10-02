@@ -3,8 +3,8 @@ import { SlabData } from '../components/Slab';
 
 type GuessSessionOptions = {
   passesRule: (slab: SlabData) => boolean;
-  onSlabGuessed: (slab: SlabData) => void;
-  onRoundFinished: (correctCount: number, totalCount: number) => void;
+  onSlabGuessed?: (slab: SlabData) => void;
+  onRoundFinished?: (correctCount: number, totalCount: number) => void;
 };
 
 export const useTutorialGuessSession = ({
@@ -39,7 +39,7 @@ export const useTutorialGuessSession = ({
     if (lastResult === true) setCorrectCount(count => count + 1);
     if (lastResult === false) setIncorrectCount(count => count + 1);
 
-    onSlabGuessed(slabsToGuess[currentIndex]);
+    onSlabGuessed?.(slabsToGuess[currentIndex]);
     setCurrentIndex(index => index + 1);
     setLastResult(null);
   };
@@ -47,7 +47,7 @@ export const useTutorialGuessSession = ({
   const finishRound = async () => {
     setIsGuessing(false);
     setAttemptCount(count => count + 1);
-    onRoundFinished(correctCount, slabsToGuess.length);
+    onRoundFinished?.(correctCount, slabsToGuess.length);
   };
 
   return {

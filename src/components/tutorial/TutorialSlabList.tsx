@@ -14,6 +14,7 @@ type TutorialSlabListProps = {
   slotRef?: React.RefObject<HTMLDivElement>;
   slotPosition?: 'start' | 'end';
   isSlotOutlined?: boolean;
+  areEntriesPulsing?: boolean;
 };
 
 const REJECTED_SHAKE_DELAY_MS = 500;
@@ -43,7 +44,8 @@ const TutorialSlabList: React.FC<TutorialSlabListProps> = ({
   alignment = 'center',
   slotRef,
   slotPosition = 'start',
-  isSlotOutlined = false
+  isSlotOutlined = false,
+  areEntriesPulsing = false
 }) => {
   const slot = slotRef && (
     <div
@@ -77,6 +79,9 @@ const TutorialSlabList: React.FC<TutorialSlabListProps> = ({
             >
               <Slab slab={slab} size="small" className="w-full h-full" colors={colors} />
             </div>
+            {areEntriesPulsing && (
+              <div className="coach-pulse-ring absolute inset-0 rounded-sm pointer-events-none" />
+            )}
             <VerdictMark passes={passes} />
           </div>
         );

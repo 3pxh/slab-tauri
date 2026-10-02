@@ -8,6 +8,7 @@ import {
 } from './tutorialRules';
 import {
   GUESS_ROUNDS,
+  INTRO_GUESS_SLABS,
   INTRO_SECOND_ROW_SLAB,
   INTRO_UNPAINTED_SLAB,
   PUZZLE_EXAMPLE_SLABS
@@ -19,6 +20,8 @@ const countPassing = (slabs: ReturnType<typeof buildBandedSlab>[]) =>
 assert.equal(containsBlue(INTRO_UNPAINTED_SLAB), false);
 assert.equal(containsBlue(INTRO_SECOND_ROW_SLAB), true);
 assert.equal(INTRO_SECOND_ROW_SLAB.cells.length, 3);
+assert.deepEqual(INTRO_GUESS_SLABS.map(containsBlue), [true, false]);
+INTRO_GUESS_SLABS.forEach(slab => assert.equal(slab.cells.length, 3));
 
 assert.deepEqual(PUZZLE_EXAMPLE_SLABS.map(everyRowIsSingleGroup), [true, false, true, false]);
 

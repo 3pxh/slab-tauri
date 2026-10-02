@@ -17,6 +17,7 @@ type IndividualSlabGuesserProps = {
   colorblindMode: 'none' | 'icon' | 'number' | 'letter';
   getColorblindOverlay: (colorIndex: number) => string | null;
   levelAttempts: number;
+  showLabels?: boolean;
 };
 
 const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
@@ -31,7 +32,8 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
   colors,
   colorblindMode,
   getColorblindOverlay,
-  levelAttempts
+  levelAttempts,
+  showLabels = true
 }) => {
   const [selectedGuess, setSelectedGuess] = React.useState<'star' | 'not-star' | null>(null);
   const [guessSubmitted, setGuessSubmitted] = React.useState(false);
@@ -99,10 +101,12 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
   return (
     <div className="p-4 w-full max-w-md mx-auto">
       {/* Guess attempt and score indicators */}
-      <div className="flex justify-between items-center mb-4 text-sm text-gray-600">
-        <span>Guess Attempt #{guessAttemptNumber}</span>
-        <span>{scoreText}</span>
-      </div>
+      {showLabels && (
+        <div className="flex justify-between items-center mb-4 text-sm text-gray-600">
+          <span>Guess Attempt #{guessAttemptNumber}</span>
+          <span>{scoreText}</span>
+        </div>
+      )}
 
       {/* Current slab display or final results */}
       <div className="flex justify-center mb-2">
@@ -157,7 +161,7 @@ const IndividualSlabGuesser: React.FC<IndividualSlabGuesserProps> = ({
       {/* Progress indicator below slab - only show when not in final results */}
       {currentIndex < totalSlabs && (
         <div className="flex justify-center mb-6 text-sm text-gray-600">
-          <span>{progressText}</span>
+          {showLabels && <span>{progressText}</span>}
         </div>
       )}
 

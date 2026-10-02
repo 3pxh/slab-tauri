@@ -18,6 +18,11 @@ export const INTRO_SECOND_ROW_SLAB: SlabData = buildSlabFromRows(
   { d: INTRO_BLUE_COLOR_INDEX }
 );
 
+export const INTRO_GUESS_SLABS: SlabData[] = [
+  buildSlabFromRows(['abj', 'dej', 'ghj'], { j: INTRO_BLUE_COLOR_INDEX }),
+  buildSlabFromRows(['abc', 'def', 'ghi'])
+];
+
 export const PUZZLE_EXAMPLE_SLABS: SlabData[] = [
   buildBandedSlab([RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE], 'horizontal'),
   buildBandedSlab([BLUE, YELLOW, RED], 'vertical'),
