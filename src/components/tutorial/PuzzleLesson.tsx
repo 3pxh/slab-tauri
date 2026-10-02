@@ -13,7 +13,7 @@ import { useTutorialSlabEntries } from '../../hooks/useTutorialSlabEntries';
 import { useTutorialGuessSession } from '../../hooks/useTutorialGuessSession';
 import {
   RainbowRowTarget,
-  everyRowIsSingleGroup,
+  isStripedSlab,
   findNextRainbowRow,
   getRowCells
 } from '../../tutorial/tutorialRules';
@@ -27,6 +27,7 @@ import {
 
 const TUTORIAL_GUESS_LIMIT = 3;
 const GUIDED_GUESS_SLAB_COUNT = 0;
+const GUESS_FLIGHT_VIEWING_MS = 0;
 const HINT_NUDGE_DELAY_MS = 7000;
 
 type RoundScore = {
@@ -54,6 +55,11 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
   const { entries, addSlab } = useTutorialSlabEntries(PUZZLE_EXAMPLE_SLABS);
 
   const handleLanded = (slab: SlabData) => {
+    if (guessSession.isGuessing) {
+      guessSession.proceedToNext();
+      return;
+    }
+
     addSlab(slab);
     setRestoredSlab(slab);
     setMakerKey(key => key + 1);
@@ -62,7 +68,7 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
   const flight = useEvaluationFlight({ onLanded: handleLanded });
 
   const guessSession = useTutorialGuessSession({
-    passesRule: everyRowIsSingleGroup,
+    passesRule: isStripedSlab,
     onSlabGuessed: addSlab,
     onRoundFinished: (correctCount, totalCount) => {
       if (correctCount === totalCount) {
@@ -98,7 +104,7 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
 
   const handleCreate = (slab: SlabData) => {
     setLastRoundScore(null);
-    if (everyRowIsSingleGroup(slab)) setHasEvaluatedStar(true);
+    if (isStripedSlab(slab)) setHasEvaluatedStar(true);
     flight.begin(slab);
   };
 
@@ -111,6 +117,10 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
     flight.handleFlightEnd();
     setLastRoundScore(null);
     guessSession.startRound(GUESS_ROUNDS[guessSession.attemptCount % GUESS_ROUNDS.length]);
+  };
+
+  const requestGuessSlabFlight = () => {
+    flight.begin(guessSession.slabsToGuess[guessSession.currentIndex], GUESS_FLIGHT_VIEWING_MS);
   };
 
   const handleHint = () => {
@@ -130,7 +140,7 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
           <NextArrowButton onClick={onFinish} />
           <SparkleBurst />
         </div>
-        <TutorialSlabList entries={entries} colors={COLORS} passesRule={everyRowIsSingleGroup} />
+        <TutorialSlabList entries={entries} colors={COLORS} passesRule={isStripedSlab} />
       </div>
     );
   }
@@ -173,7 +183,10 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
           colors={COLORS}
           guidedSlabCount={GUIDED_GUESS_SLAB_COUNT}
           onGuessSubmit={guessSession.submitGuess}
-          onProceedToNext={guessSession.proceedToNext}
+          onRequestProceed={requestGuessSlabFlight}
+          isProceeding={flight.pendingSlab !== null}
+          flightTargetRect={flight.targetRect}
+          onFlightEnd={flight.handleFlightEnd}
           onWinNext={guessSession.finishRound}
         />
       ) : (
@@ -183,7 +196,7 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
         >
           <SlabMaker
             onCreate={handleCreate}
-            onEvaluate={async slab => everyRowIsSingleGroup(slab)}
+            onEvaluate={async slab => isStripedSlab(slab)}
             onGuess={handleGuess}
             guessCount={TUTORIAL_GUESS_LIMIT}
             maxGuesses={TUTORIAL_GUESS_LIMIT}
@@ -201,7 +214,7 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
       <TutorialSlabList
         entries={entries}
         colors={COLORS}
-        passesRule={everyRowIsSingleGroup}
+        passesRule={isStripedSlab}
         slotRef={flight.isSlotReserved ? flight.slotRef : undefined}
       />
     </div>

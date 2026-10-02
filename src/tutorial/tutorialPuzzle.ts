@@ -13,10 +13,7 @@ const INTRO_GRID_SIZE = 3;
 
 export const INTRO_UNPAINTED_SLAB: SlabData = createSlab(INTRO_GRID_SIZE);
 
-export const INTRO_SECOND_ROW_SLAB: SlabData = buildSlabFromRows(
-  ['abc', 'ddd', 'ghi'],
-  { d: INTRO_BLUE_COLOR_INDEX }
-);
+export const INTRO_BOTTOM_ROW_MERGED_SLAB: SlabData = buildSlabFromRows(['abc', 'def', 'ggg']);
 
 export const INTRO_GUESS_SLABS: SlabData[] = [
   buildSlabFromRows(['abj', 'dej', 'ghj'], { j: INTRO_BLUE_COLOR_INDEX }),

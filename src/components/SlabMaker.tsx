@@ -58,6 +58,7 @@ type SlabMakerProps = {
   onSlabChange?: (slab: SlabData) => void;
   flightTargetRect?: DOMRect | null;
   onFlightEnd?: () => void;
+  isEvaluateDisabled?: boolean;
 };
 
 const SlabMaker: React.FC<SlabMakerProps> = ({ 
@@ -83,7 +84,8 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
   coachHighlights = {},
   onSlabChange,
   flightTargetRect = null,
-  onFlightEnd
+  onFlightEnd,
+  isEvaluateDisabled = false
 }) => {
   const { isAuthenticated } = useAuth();
   const [slab, setSlab] = React.useState<SlabData>(() =>
@@ -982,7 +984,10 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                 isInGuessSession 
                   ? 'bg-gray-400 text-white' 
                   : 'bg-blue-500 text-white hover:bg-blue-600'
-              } relative ${coachHighlights.evaluateButton ? 'coach-pulse-ring' : ''}`}
+              } relative ${coachHighlights.evaluateButton ? 'coach-pulse-ring' : ''} ${
+                isEvaluateDisabled ? 'opacity-40 cursor-not-allowed' : ''
+              }`}
+              disabled={isEvaluateDisabled}
               onClick={async () => {
                 if (puzzle) analytics.slabCreated(puzzle, Object.keys(slab.groups).length);
                 

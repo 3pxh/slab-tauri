@@ -12,12 +12,11 @@ import {
   INTRO_COLORS,
   containsBlue,
   getRowCells,
-  getRowColorIndex,
   isRowSingleGroup
 } from '../../tutorial/tutorialRules';
 import {
+  INTRO_BOTTOM_ROW_MERGED_SLAB,
   INTRO_GUESS_SLABS,
-  INTRO_SECOND_ROW_SLAB,
   INTRO_UNPAINTED_SLAB
 } from '../../tutorial/tutorialPuzzle';
 
@@ -33,10 +32,11 @@ type RoundConfig = {
 
 const ROUND_CONFIGS: Record<IntroRound, RoundConfig> = {
   first: { initialSlab: undefined, targetRowIndex: 0, showFinger: true },
-  second: { initialSlab: INTRO_SECOND_ROW_SLAB, targetRowIndex: 2, showFinger: false }
+  second: { initialSlab: INTRO_BOTTOM_ROW_MERGED_SLAB, targetRowIndex: 2, showFinger: false }
 };
 
 const ENTRANCE_DURATION_MS = 1400;
+const GUESS_FLIGHT_VIEWING_MS = 0;
 const INTRO_GRID_SIZE = 3;
 const LIST_SLAB_SIZE_PIXELS = 72;
 const GUIDED_GUESS_SLAB_COUNT = 1;
@@ -49,12 +49,26 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
   const [round, setRound] = React.useState<IntroRound>('first');
   const [isEntering, setIsEntering] = React.useState(true);
   const [currentSlab, setCurrentSlab] = React.useState<SlabData>(INTRO_UNPAINTED_SLAB);
-  const { entries, addSlab } = useTutorialSlabEntries([]);
+  const { entries, addSlab } = useTutorialSlabEntries([], { insertAt: 'end' });
   const { initialSlab, targetRowIndex, showFinger } = ROUND_CONFIGS[round];
 
-  const guessSession = useTutorialGuessSession({ passesRule: containsBlue });
+  const guessSession = useTutorialGuessSession({
+    passesRule: containsBlue,
+    onSlabGuessed: addSlab
+  });
+
+  const handleGuessSlabLanded = async () => {
+    const isLastGuessSlab = guessSession.currentIndex === INTRO_GUESS_SLABS.length - 1;
+    await guessSession.proceedToNext();
+    if (isLastGuessSlab) onContinue();
+  };
 
   const handleLanded = (slab: SlabData) => {
+    if (guessSession.isGuessing) {
+      handleGuessSlabLanded();
+      return;
+    }
+
     addSlab(slab);
 
     if (round === 'first') {
@@ -76,19 +90,24 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
   const getStep = (): IntroStep => {
     if (isEntering) return 'waiting';
     if (flight.pendingSlab) return 'evaluated';
-    if (!isRowSingleGroup(currentSlab, targetRowIndex)) return 'swipeRow';
-    if (getRowColorIndex(currentSlab, targetRowIndex) !== INTRO_BLUE_COLOR_INDEX) return 'paintRow';
-    return 'evaluate';
+    if (containsBlue(currentSlab)) return 'evaluate';
+    if (isRowSingleGroup(currentSlab, targetRowIndex)) return 'paintRow';
+    return 'swipeRow';
   };
 
   const step = getStep();
+  const targetRowCells = getRowCells(currentSlab, targetRowIndex);
 
   const getCoachHighlights = (): CoachHighlights => {
     switch (step) {
       case 'swipeRow':
-        return { cells: getRowCells(currentSlab, targetRowIndex), showFinger };
+        return { cells: targetRowCells, showFinger };
       case 'paintRow':
-        return { colorIndex: INTRO_BLUE_COLOR_INDEX, showFinger };
+        return {
+          cells: showFinger ? undefined : targetRowCells,
+          colorIndex: INTRO_BLUE_COLOR_INDEX,
+          showFinger
+        };
       case 'evaluate':
         return { evaluateButton: true, showFinger };
       default:
@@ -96,19 +115,13 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
     }
   };
 
-  const handleCreate = (slab: SlabData) => {
-    if (containsBlue(slab)) flight.begin(slab);
-  };
-
   const handleSlabChange = (slab: SlabData) => {
     setCurrentSlab(slab);
     flight.cancelIfSlabEdited(slab);
   };
 
-  const handleProceedToNext = async () => {
-    const isLastGuessSlab = guessSession.currentIndex === INTRO_GUESS_SLABS.length - 1;
-    await guessSession.proceedToNext();
-    if (isLastGuessSlab) onContinue();
+  const requestGuessSlabFlight = () => {
+    flight.begin(guessSession.slabsToGuess[guessSession.currentIndex], GUESS_FLIGHT_VIEWING_MS);
   };
 
   const isMakerLocked = step === 'waiting' || flight.isSlotReserved;
@@ -125,7 +138,10 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
           colors={INTRO_COLORS}
           guidedSlabCount={GUIDED_GUESS_SLAB_COUNT}
           onGuessSubmit={guessSession.submitGuess}
-          onProceedToNext={handleProceedToNext}
+          onRequestProceed={requestGuessSlabFlight}
+          isProceeding={flight.pendingSlab !== null}
+          flightTargetRect={flight.targetRect}
+          onFlightEnd={flight.handleFlightEnd}
           onWinNext={guessSession.finishRound}
         />
       ) : (
@@ -134,8 +150,9 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
         >
           <SlabMaker
             key={round}
-            onCreate={handleCreate}
+            onCreate={flight.begin}
             onEvaluate={async slab => containsBlue(slab)}
+            isEvaluateDisabled={!containsBlue(currentSlab)}
             colors={INTRO_COLORS}
             initialGridSize={INTRO_GRID_SIZE}
             initialSlab={initialSlab}
@@ -160,7 +177,7 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
           alignment="start"
           slotRef={flight.slotRef}
           slotPosition="end"
-          isSlotOutlined={!guessSession.isGuessing}
+          isSlotOutlined
           areEntriesPulsing={guessSession.isGuessing}
         />
       </div>

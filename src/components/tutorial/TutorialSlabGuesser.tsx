@@ -2,6 +2,7 @@ import React from 'react';
 import { FiStar, FiX } from 'react-icons/fi';
 import Slab, { SlabData } from '../Slab';
 import NextArrowButton from './NextArrowButton';
+import { useSlabFlight } from '../../hooks/useSlabFlight';
 import { ComparisonIcon, EmptyIconSlot, GuessIcon, TruthIcon } from './GuessIcons';
 import '../../slabAnimations.css';
 
@@ -24,7 +25,10 @@ type GuessRoundProps = {
   colors: string[];
   isGuided: boolean;
   onGuessSubmit: (isStar: boolean) => Promise<boolean>;
-  onProceed: () => void;
+  onRequestProceed: () => void;
+  isProceeding: boolean;
+  flightTargetRect: DOMRect | null;
+  onFlightEnd: () => void;
 };
 
 const GuessRound: React.FC<GuessRoundProps> = ({
@@ -32,8 +36,12 @@ const GuessRound: React.FC<GuessRoundProps> = ({
   colors,
   isGuided,
   onGuessSubmit,
-  onProceed
+  onRequestProceed,
+  isProceeding,
+  flightTargetRect,
+  onFlightEnd
 }) => {
+  const slabFlightRef = useSlabFlight(flightTargetRect, onFlightEnd);
   const [phase, setPhase] = React.useState<GuessPhase>('choosing');
   const [guessedStar, setGuessedStar] = React.useState<boolean | null>(null);
   const [isCorrect, setIsCorrect] = React.useState<boolean | null>(null);
@@ -57,23 +65,23 @@ const GuessRound: React.FC<GuessRoundProps> = ({
   const handleNext = () => {
     const nextPhase = NEXT_PHASE[phase];
     if (nextPhase) setPhase(nextPhase);
-    else onProceed();
+    else onRequestProceed();
   };
 
   const hasGuessed = phase !== 'choosing';
   const isTruthShown = phase === 'truthShown' || phase === 'compared';
   const isCompared = phase === 'compared';
   const truthIsStar = getTruthIsStar(guessedStar, isCorrect);
-  const showNextArrow = isGuided ? hasGuessed : isCompared;
+  const showNextArrow = (isGuided ? hasGuessed : isCompared) && !isProceeding;
 
   const getSlabAnimationClass = (): string => {
-    if (!isCompared) return '';
+    if (!isCompared || isProceeding) return '';
     return isCorrect ? 'slab-sparkle' : 'slab-shake';
   };
 
   return (
     <div className="p-4 w-full max-w-md mx-auto flex flex-col items-center gap-4">
-      <div className={`w-48 h-48 ${getSlabAnimationClass()}`}>
+      <div ref={slabFlightRef} className={`relative w-48 h-48 ${getSlabAnimationClass()}`}>
         <Slab slab={slab} size="medium" className="w-full h-full" colors={colors} />
       </div>
 
@@ -135,7 +143,10 @@ type TutorialSlabGuesserProps = {
   colors: string[];
   guidedSlabCount: number;
   onGuessSubmit: (isStar: boolean) => Promise<boolean>;
-  onProceedToNext: () => Promise<void>;
+  onRequestProceed: () => void;
+  isProceeding: boolean;
+  flightTargetRect: DOMRect | null;
+  onFlightEnd: () => void;
   onWinNext: () => Promise<void>;
 };
 
@@ -147,7 +158,10 @@ const TutorialSlabGuesser: React.FC<TutorialSlabGuesserProps> = ({
   colors,
   guidedSlabCount,
   onGuessSubmit,
-  onProceedToNext,
+  onRequestProceed,
+  isProceeding,
+  flightTargetRect,
+  onFlightEnd,
   onWinNext
 }) => {
   if (currentIndex >= totalSlabs) {
@@ -176,7 +190,10 @@ const TutorialSlabGuesser: React.FC<TutorialSlabGuesserProps> = ({
       colors={colors}
       isGuided={currentIndex < guidedSlabCount}
       onGuessSubmit={onGuessSubmit}
-      onProceed={onProceedToNext}
+      onRequestProceed={onRequestProceed}
+      isProceeding={isProceeding}
+      flightTargetRect={flightTargetRect}
+      onFlightEnd={onFlightEnd}
     />
   );
 };
