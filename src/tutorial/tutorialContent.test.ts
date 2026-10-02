@@ -9,7 +9,6 @@ import {
 import {
   GUESS_ROUNDS,
   INTRO_SECOND_ROW_SLAB,
-  INTRO_TOP_ROW_SLAB,
   INTRO_UNPAINTED_SLAB,
   PUZZLE_EXAMPLE_SLABS
 } from './tutorialPuzzle';
@@ -18,9 +17,8 @@ const countPassing = (slabs: ReturnType<typeof buildBandedSlab>[]) =>
   slabs.filter(everyRowIsSingleGroup).length;
 
 assert.equal(containsBlue(INTRO_UNPAINTED_SLAB), false);
-assert.equal(containsBlue(INTRO_TOP_ROW_SLAB), true);
 assert.equal(containsBlue(INTRO_SECOND_ROW_SLAB), true);
-assert.equal(INTRO_TOP_ROW_SLAB.cells.length, 3);
+assert.equal(INTRO_SECOND_ROW_SLAB.cells.length, 3);
 
 assert.deepEqual(PUZZLE_EXAMPLE_SLABS.map(everyRowIsSingleGroup), [true, false, true, false]);
 

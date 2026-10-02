@@ -1,10 +1,13 @@
 import React from 'react';
-import { FiAward, FiHelpCircle } from 'react-icons/fi';
-import { COLORS, SlabData, createSlab } from '../Slab';
+import { FiHelpCircle, FiStar } from 'react-icons/fi';
+import Slab, { COLORS, SlabData, createSlab } from '../Slab';
 import SlabMaker, { CoachHighlights } from '../SlabMaker';
 import IndividualSlabGuesser from '../IndividualSlabGuesser';
 import CoachBanner from './CoachBanner';
+import NextArrowButton from './NextArrowButton';
+import SparkleBurst from './SparkleBurst';
 import TutorialSlabList from './TutorialSlabList';
+import { useIdleFlag } from '../../hooks/useIdleFlag';
 import { useTutorialSlabEntries } from '../../hooks/useTutorialSlabEntries';
 import { useTutorialGuessSession } from '../../hooks/useTutorialGuessSession';
 import {
@@ -17,22 +20,21 @@ import {
   FIRST_VISUAL_HINT_LEVEL,
   GUESS_ROUNDS,
   PUZZLE_EXAMPLE_SLABS,
-  PUZZLE_RULE_DESCRIPTION,
+  PUZZLE_REVEAL_SLAB,
   TEXT_HINTS
 } from '../../tutorial/tutorialPuzzle';
 
 const TUTORIAL_GUESS_LIMIT = 3;
+const HINT_NUDGE_DELAY_MS = 7000;
 
-const getHintMessage = (hintLevel: number, rainbowTarget: RainbowRowTarget | null): string => {
-  if (hintLevel < FIRST_VISUAL_HINT_LEVEL) {
-    return `Hint ${hintLevel}: ${TEXT_HINTS[hintLevel - 1]}`;
-  }
+type RoundScore = {
+  correctCount: number;
+  totalCount: number;
+};
 
-  if (rainbowTarget === null) {
-    return `Hint ${hintLevel}: That's the whole rainbow! Tap Evaluate Slab.`;
-  }
-
-  return `Hint ${hintLevel}: Follow the glow. Merge the glowing row, then paint it the glowing color.`;
+const getHintBubbleText = (hintLevel: number): string => {
+  const isTextHint = hintLevel < FIRST_VISUAL_HINT_LEVEL;
+  return isTextHint ? `💡 ${TEXT_HINTS[hintLevel - 1]}` : '💡 👆';
 };
 
 type PuzzleLessonProps = {
@@ -43,7 +45,7 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
   const [currentSlab, setCurrentSlab] = React.useState<SlabData>(() => createSlab());
   const [hintLevel, setHintLevel] = React.useState(0);
   const [hasEvaluatedStar, setHasEvaluatedStar] = React.useState(false);
-  const [roundFeedback, setRoundFeedback] = React.useState<string | null>(null);
+  const [lastRoundScore, setLastRoundScore] = React.useState<RoundScore | null>(null);
   const [isSolved, setIsSolved] = React.useState(false);
   const { entries, addSlab } = useTutorialSlabEntries(PUZZLE_EXAMPLE_SLABS);
 
@@ -56,89 +58,93 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
         return;
       }
 
-      setRoundFeedback(
-        `You got ${correctCount} of ${totalCount}. Not quite! Keep experimenting, or tap Hint, then try again.`
-      );
+      setLastRoundScore({ correctCount, totalCount });
     }
   });
 
+  const shouldNudgeHint = useIdleFlag(HINT_NUDGE_DELAY_MS, [currentSlab, hintLevel, entries.length]);
   const isShowingVisualHint = hintLevel >= FIRST_VISUAL_HINT_LEVEL;
-  const rainbowTarget = isShowingVisualHint ? findNextRainbowRow(currentSlab) : null;
+  const rainbowTarget: RainbowRowTarget | null = isShowingVisualHint
+    ? findNextRainbowRow(currentSlab)
+    : null;
 
   const getCoachHighlights = (): CoachHighlights => {
     if (rainbowTarget) {
       return {
         cells: getRowCells(currentSlab, rainbowTarget.rowIndex),
-        colorIndex: rainbowTarget.colorIndex
+        colorIndex: rainbowTarget.colorIndex,
+        showFinger: true
       };
     }
 
-    if (isShowingVisualHint && !hasEvaluatedStar) return { evaluateButton: true };
-    return { guessButton: hasEvaluatedStar };
-  };
-
-  const getBannerMessage = (): string => {
-    if (roundFeedback) return roundFeedback;
-    if (hintLevel > 0) return getHintMessage(hintLevel, rainbowTarget);
-    if (hasEvaluatedStar) {
-      return 'A star! Think you know the rule? Tap Guess to test yourself on 5 slabs.';
+    if (isShowingVisualHint && !hasEvaluatedStar) {
+      return { evaluateButton: true, showFinger: true };
     }
-    return 'Now a real puzzle. What do the ⭐ slabs have in common? Build slabs to test your ideas.';
+
+    return { guessButton: hasEvaluatedStar, showFinger: hasEvaluatedStar };
   };
 
   const handleCreate = (slab: SlabData) => {
     addSlab(slab);
-    setRoundFeedback(null);
+    setLastRoundScore(null);
     if (everyRowIsSingleGroup(slab)) setHasEvaluatedStar(true);
   };
 
   const handleGuess = () => {
-    setRoundFeedback(null);
+    setLastRoundScore(null);
     guessSession.startRound(GUESS_ROUNDS[guessSession.attemptCount % GUESS_ROUNDS.length]);
   };
 
   const handleHint = () => {
-    setRoundFeedback(null);
+    setLastRoundScore(null);
     setHintLevel(level => level + 1);
   };
-
-  const hintButton = (
-    <button
-      onClick={handleHint}
-      className="flex items-center gap-1 px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium"
-    >
-      <FiHelpCircle size={16} />
-      Hint
-    </button>
-  );
 
   if (isSolved) {
     return (
       <div className="flex flex-col gap-4">
-        <div className="rounded-lg bg-yellow-50 border border-yellow-300 p-6 text-center">
-          <FiAward size={40} className="mx-auto mb-2 text-yellow-500 fill-yellow-300" />
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">You solved it!</h2>
-          <p className="text-gray-700 mb-4">{PUZZLE_RULE_DESCRIPTION}</p>
-          <p className="text-gray-600 text-sm mb-6">
-            A new puzzle with a new secret rule arrives every day. Have fun!
-          </p>
-          <button
-            onClick={onFinish}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-lg p-4 shadow-lg text-lg font-semibold"
-          >
-            Start playing
-          </button>
+        <div className="relative rounded-lg bg-yellow-50 border border-yellow-300 p-6 flex flex-col items-center gap-4">
+          <div className="text-5xl">🎉</div>
+          <div className="relative">
+            <Slab slab={PUZZLE_REVEAL_SLAB} size="medium" colors={COLORS} className="shadow-lg" />
+            <FiStar size={36} className="absolute -top-4 -right-4 fill-yellow-400 text-yellow-500" />
+          </div>
+          <NextArrowButton onClick={onFinish} />
+          <SparkleBurst />
         </div>
         <TutorialSlabList entries={entries} colors={COLORS} passesRule={everyRowIsSingleGroup} />
       </div>
     );
   }
 
+  const hintButton = (
+    <button
+      onClick={handleHint}
+      aria-label="Hint"
+      className={`flex items-center gap-1 px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white ${
+        shouldNudgeHint ? 'idle-wiggle' : ''
+      }`}
+    >
+      <FiHelpCircle size={20} />
+    </button>
+  );
+
   return (
     <div className="flex flex-col gap-4">
-      <CoachBanner action={guessSession.isGuessing ? undefined : hintButton}>
-        {getBannerMessage()}
-      </CoachBanner>
+      {!guessSession.isGuessing && (
+        <div className="flex items-center justify-end gap-3">
+          {lastRoundScore && (
+            <span className="text-lg font-semibold text-gray-600">
+              🤔 {lastRoundScore.correctCount}/{lastRoundScore.totalCount}
+            </span>
+          )}
+          {hintButton}
+        </div>
+      )}
+
+      {hintLevel > 0 && !guessSession.isGuessing && (
+        <CoachBanner>{getHintBubbleText(hintLevel)}</CoachBanner>
+      )}
 
       {guessSession.isGuessing ? (
         <IndividualSlabGuesser

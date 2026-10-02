@@ -11,10 +11,7 @@ interface TutorialProps {
   onHome: () => void;
 }
 
-const PHASE_TITLES: Record<TutorialPhase, string> = {
-  intro: 'How to play',
-  puzzle: 'Your first puzzle'
-};
+const PHASES: TutorialPhase[] = ['intro', 'puzzle'];
 
 const Tutorial: React.FC<TutorialProps> = ({ onComplete, onHome }) => {
   const [phase, setPhase] = React.useState<TutorialPhase>('intro');
@@ -36,14 +33,20 @@ const Tutorial: React.FC<TutorialProps> = ({ onComplete, onHome }) => {
   return (
     <div className="w-full max-w-md mx-auto p-4">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold text-gray-800">{PHASE_TITLES[phase]}</h1>
+        <div className="flex gap-2">
+          {PHASES.map(phaseDot => (
+            <div
+              key={phaseDot}
+              className={`w-2.5 h-2.5 rounded-full ${phaseDot === phase ? 'bg-blue-500' : 'bg-gray-300'}`}
+            />
+          ))}
+        </div>
         <button
           onClick={handleSkip}
-          className="flex items-center gap-1 px-2 py-1 rounded text-sm text-gray-600 hover:bg-gray-100"
+          className="p-2 rounded-full text-gray-500 hover:bg-gray-100"
           aria-label="Skip tutorial"
         >
-          <FiX size={18} />
-          Skip
+          <FiX size={20} />
         </button>
       </div>
 

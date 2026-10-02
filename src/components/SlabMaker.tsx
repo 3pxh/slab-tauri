@@ -3,6 +3,7 @@ import { FiRotateCcw, FiRefreshCw, FiStar, FiX } from 'react-icons/fi';
 import { useGesture } from '@use-gesture/react';
 import { SlabData, createSlab, Cell, COLORS, getGroup, mapColorIndex, areSlabsEqual } from './Slab';
 import { deepCopy } from '../utils';
+import { GhostFingerSwipe, GhostFingerTap } from './tutorial/GhostFinger';
 import { analytics } from '../utils/analytics';
 import { createSlab as saveSlabToDatabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -16,9 +17,21 @@ export type CoachHighlights = {
   colorIndex?: number | null;
   evaluateButton?: boolean;
   guessButton?: boolean;
+  showFinger?: boolean;
 };
 
 const ENTRANCE_WAVE_DELAY_MS = 120;
+
+type FingerTarget = 'cells' | 'color' | 'evaluate' | 'guess' | null;
+
+const getFingerTarget = (coachHighlights: CoachHighlights): FingerTarget => {
+  if (!coachHighlights.showFinger) return null;
+  if (coachHighlights.cells?.length) return 'cells';
+  if (coachHighlights.colorIndex != null) return 'color';
+  if (coachHighlights.evaluateButton) return 'evaluate';
+  if (coachHighlights.guessButton) return 'guess';
+  return null;
+};
 
 type SlabMakerProps = {
   onCreate: (slab: SlabData) => void;
@@ -72,6 +85,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
     initialSlab ? deepCopy(initialSlab) : createSlab(initialGridSize)
   );
   const gridSize = slab.cells.length;
+  const fingerTarget = getFingerTarget(coachHighlights);
   const [history, setHistory] = React.useState<SlabData[]>([]);
   const [, setIsDragging] = React.useState(false);
   const [encounteredCells, setEncounteredCells] = React.useState<Set<string>>(new Set());
@@ -837,6 +851,14 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
           ))}
         </div>
         
+        {fingerTarget === 'cells' && coachHighlights.cells && (
+          <GhostFingerSwipe
+            startColumn={coachHighlights.cells[0].col}
+            endColumn={coachHighlights.cells[coachHighlights.cells.length - 1].col}
+            rowIndex={coachHighlights.cells[0].row}
+            gridSize={gridSize}
+          />
+        )}
         {/* Evaluation Symbol Overlay - positioned relative to grid container */}
         {evaluationResult !== null && evaluatedSlab && areSlabsEqual(slab, evaluatedSlab) && (
           <div
@@ -909,6 +931,9 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                     : `Color ${originalIndex} - click to activate`
                 }
               >
+                {fingerTarget === 'color' && coachHighlights.colorIndex === originalIndex && (
+                  <GhostFingerTap />
+                )}
                 {activeColor === originalIndex && (
                   <div 
                     className="absolute inset-0 flex items-center justify-center"
@@ -951,7 +976,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                 isInGuessSession 
                   ? 'bg-gray-400 text-white' 
                   : 'bg-blue-500 text-white hover:bg-blue-600'
-              } ${coachHighlights.evaluateButton ? 'coach-pulse-ring' : ''}`}
+              } relative ${coachHighlights.evaluateButton ? 'coach-pulse-ring' : ''}`}
               onClick={async () => {
                 if (puzzle) analytics.slabCreated(puzzle, Object.keys(slab.groups).length);
                 
@@ -989,10 +1014,11 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
               title={isInGuessSession ? "Complete your guess first" : "Create puzzle from current slab"}
             >
               <span className="text-sm font-medium">Evaluate Slab</span>
+              {fingerTarget === 'evaluate' && <GhostFingerTap />}
             </button>
             {onGuess && guessCount > 0 && (
               <button
-                className={`px-3 py-2 rounded text-sm flex flex-col items-center justify-center h-12 transition-all duration-300 ${
+                className={`px-3 py-2 rounded text-sm flex flex-col items-center justify-center h-12 relative transition-all duration-300 ${
                   coachHighlights.guessButton ? 'coach-pulse-ring ' : ''
                 }${
                   flashGuessButton 
@@ -1011,6 +1037,7 @@ const SlabMaker: React.FC<SlabMakerProps> = ({
                 }
               >
                 <span className="text-sm font-medium">Guess</span>
+                {fingerTarget === 'guess' && <GhostFingerTap />}
                 <span className="text-xs">
                   {`${guessCount}/${maxGuesses}`}
                 </span>
