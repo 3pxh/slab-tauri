@@ -10,6 +10,7 @@ import TutorialSlabGuesser from './TutorialSlabGuesser';
 import TutorialSlabList from './TutorialSlabList';
 import { useEvaluationFlight } from '../../hooks/useEvaluationFlight';
 import { useIdleFlag } from '../../hooks/useIdleFlag';
+import { deepCopy } from '../../utils';
 import { useTutorialSlabEntries } from '../../hooks/useTutorialSlabEntries';
 import { useTutorialGuessSession } from '../../hooks/useTutorialGuessSession';
 import {
@@ -143,6 +144,13 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
     flight.begin(PUZZLE_EXAMPLE_SLABS[revealedExampleCount], EXAMPLE_FLIGHT_VIEWING_MS);
   };
 
+  const handleListSlabClick = (slab: SlabData) => {
+    if (flight.pendingSlab) return;
+
+    setRestoredSlab(deepCopy(slab));
+    document.getElementById('root')?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleHint = () => {
     setLastRoundScore(null);
     setHintLevel(level => level + 1);
@@ -262,6 +270,7 @@ const PuzzleLesson: React.FC<PuzzleLessonProps> = ({ onFinish }) => {
         colors={COLORS}
         passesRule={isStripedSlab}
         slotRef={flight.isSlotReserved ? flight.slotRef : undefined}
+        onSlabClick={guessSession.isGuessing ? undefined : handleListSlabClick}
       />
     </div>
   );

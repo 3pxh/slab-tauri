@@ -15,6 +15,7 @@ type TutorialSlabListProps = {
   slotPosition?: 'start' | 'end';
   isSlotOutlined?: boolean;
   areEntriesPulsing?: boolean;
+  onSlabClick?: (slab: SlabData) => void;
 };
 
 const REJECTED_SHAKE_DELAY_MS = 500;
@@ -45,7 +46,8 @@ const TutorialSlabList: React.FC<TutorialSlabListProps> = ({
   slotRef,
   slotPosition = 'start',
   isSlotOutlined = false,
-  areEntriesPulsing = false
+  areEntriesPulsing = false,
+  onSlabClick
 }) => {
   const slot = slotRef && (
     <div
@@ -66,7 +68,10 @@ const TutorialSlabList: React.FC<TutorialSlabListProps> = ({
         return (
           <div
             key={id}
-            className="slab-list-item-pop relative flex-shrink-0"
+            className={`slab-list-item-pop relative flex-shrink-0 ${
+              onSlabClick ? 'cursor-pointer hover:ring-2 hover:ring-blue-400 hover:ring-opacity-50 rounded-sm' : ''
+            }`}
+            onClick={onSlabClick ? () => onSlabClick(slab) : undefined}
             style={{
               width: slabSizePixels,
               height: slabSizePixels,
