@@ -32,3 +32,171 @@
 .slab-sparkle {
   animation: sparkle 0.8s ease-in-out;
 }
+
+/* Tutorial animations */
+@keyframes cell-drop-in {
+  0% { transform: translateY(-160%); opacity: 0; }
+  60% { transform: translateY(8%); opacity: 1; }
+  80% { transform: translateY(-3%); }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.slab-cell-drop-in {
+  animation: cell-drop-in 0.55s ease-out both;
+}
+
+@keyframes coach-pulse {
+  0%, 100% { background-color: rgba(255, 255, 255, 0.05); box-shadow: inset 0 0 0 3px rgba(250, 204, 21, 0.5); }
+  50% { background-color: rgba(255, 255, 255, 0.45); box-shadow: inset 0 0 0 3px rgba(250, 204, 21, 1); }
+}
+
+.coach-pulse {
+  animation: coach-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes coach-pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.9); }
+  50% { box-shadow: 0 0 0 6px rgba(250, 204, 21, 0.25); }
+}
+
+.coach-pulse-ring {
+  animation: coach-pulse-ring 1.1s ease-in-out infinite;
+}
+
+@keyframes list-item-pop {
+  0% { transform: scale(0.2); opacity: 0; }
+  70% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.slab-list-item-pop {
+  animation: list-item-pop 0.4s ease-out both;
+}
+
+/* Wordless tutorial cues */
+.ghost-finger {
+  position: absolute;
+  pointer-events: none;
+  z-index: 40;
+  font-size: 30px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+
+@keyframes finger-swipe {
+  0% { left: var(--finger-start-x); opacity: 0; transform: translate(-50%, -15%) scale(1.4); }
+  15% { left: var(--finger-start-x); opacity: 1; transform: translate(-50%, -15%) scale(1); }
+  75% { left: var(--finger-end-x); opacity: 1; transform: translate(-50%, -15%) scale(1); }
+  100% { left: var(--finger-end-x); opacity: 0; transform: translate(-50%, -15%) scale(1); }
+}
+
+.ghost-finger-swipe {
+  top: var(--finger-y);
+  animation: finger-swipe 1.9s ease-in-out infinite;
+}
+
+@keyframes finger-tap {
+  0%, 100% { transform: translate(-50%, 15%) scale(1); }
+  50% { transform: translate(-50%, -5%) scale(0.85); }
+}
+
+.ghost-finger-tap {
+  left: 50%;
+  top: 50%;
+  animation: finger-tap 0.9s ease-in-out infinite;
+}
+
+@keyframes sparkle-burst {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  30% { opacity: 1; transform: translate(calc(-50% + var(--dx) * 0.5), calc(-50% + var(--dy) * 0.5)) scale(1.3); }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.6); opacity: 0; }
+}
+
+.sparkle-burst-item {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  animation: sparkle-burst 1.2s ease-out both;
+}
+
+@keyframes gentle-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.gentle-bounce {
+  animation: gentle-bounce 1s ease-in-out infinite, coach-pulse-ring 1.1s ease-in-out infinite;
+}
+
+@keyframes idle-wiggle {
+  0%, 55%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(-14deg); }
+  20% { transform: rotate(12deg); }
+  30% { transform: rotate(-9deg); }
+  40% { transform: rotate(6deg); }
+}
+
+.idle-wiggle {
+  animation: idle-wiggle 1.6s ease-in-out infinite;
+}
+
+@keyframes verdict-mark-pop {
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(1.6); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.verdict-mark-pop {
+  animation: verdict-mark-pop 0.4s ease-out 0.35s both;
+}
+
+@keyframes fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.fade-in {
+  animation: fade-in 0.35s ease-out both;
+}
+
+@keyframes guess-rise-in {
+  0% { transform: translateY(90px) scale(1.25); opacity: 0.4; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.guess-rise-in {
+  animation: guess-rise-in 0.55s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+@keyframes pop-in {
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(1.35); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.pop-in {
+  animation: pop-in 0.45s ease-out both;
+}
+
+@keyframes cover-roll-off {
+  0% { transform: translateX(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateX(110px) rotate(560deg); opacity: 0; }
+}
+
+.cover-roll-off {
+  animation: cover-roll-off 0.9s cubic-bezier(0.5, 0, 0.9, 0.6) forwards;
+  pointer-events: none;
+}
+
+@keyframes verdict-fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.verdict-fade-in {
+  animation: verdict-fade-in 0.15s ease-out both;
+}
+
+.coach-pulse-ring-brief {
+  animation: coach-pulse-ring 1.1s ease-in-out 2;
+}
