@@ -16,7 +16,7 @@ import {
 } from '../../tutorial/tutorialRules';
 import {
   INTRO_BOTTOM_ROW_MERGED_SLAB,
-  INTRO_GUESS_SLABS,
+  INTRO_GUESS_ROUNDS,
   INTRO_UNPAINTED_SLAB
 } from '../../tutorial/tutorialPuzzle';
 
@@ -48,6 +48,7 @@ const INTRO_GRID_SIZE = 3;
 const LIST_SLAB_SIZE_PIXELS = 72;
 const GUIDED_GUESS_SLAB_COUNT = 1;
 const INTRO_GUESS_LIMIT = 3;
+const LAST_GUESS_ROUND_INDEX = INTRO_GUESS_ROUNDS.length - 1;
 
 type IntroLessonProps = {
   onContinue: () => void;
@@ -59,23 +60,32 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
   const [currentSlab, setCurrentSlab] = React.useState<SlabData>(INTRO_UNPAINTED_SLAB);
   const [selectedCell, setSelectedCell] = React.useState<CellCoordinate | null>(null);
   const [restoredSlab, setRestoredSlab] = React.useState<SlabData | null>(null);
+  const [guessRoundIndex, setGuessRoundIndex] = React.useState(0);
   const { entries, addSlab } = useTutorialSlabEntries([], { insertAt: 'end' });
   const targetRowIndex = TARGET_ROW_BY_ROUND[round];
 
+  const handleGuessRoundFinished = (correctCount: number, totalCount: number) => {
+    const isPerfect = correctCount === totalCount;
+
+    if (isPerfect || guessRoundIndex >= LAST_GUESS_ROUND_INDEX) {
+      onContinue();
+      return;
+    }
+
+    const nextRoundIndex = guessRoundIndex + 1;
+    setGuessRoundIndex(nextRoundIndex);
+    guessSession.startRound(INTRO_GUESS_ROUNDS[nextRoundIndex]);
+  };
+
   const guessSession = useTutorialGuessSession({
     passesRule: containsBlue,
-    onSlabGuessed: addSlab
+    onSlabGuessed: addSlab,
+    onRoundFinished: handleGuessRoundFinished
   });
-
-  const handleGuessSlabLanded = async () => {
-    const isLastGuessSlab = guessSession.currentIndex === INTRO_GUESS_SLABS.length - 1;
-    await guessSession.proceedToNext();
-    if (isLastGuessSlab) onContinue();
-  };
 
   const handleLanded = (slab: SlabData) => {
     if (guessSession.isGuessing) {
-      handleGuessSlabLanded();
+      guessSession.proceedToNext();
       return;
     }
 
@@ -154,7 +164,7 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
   };
 
   const handleGuess = () => {
-    guessSession.startRound(INTRO_GUESS_SLABS);
+    guessSession.startRound(INTRO_GUESS_ROUNDS[0]);
   };
 
   const requestGuessSlabFlight = () => {
@@ -166,6 +176,8 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
   const isMakerLocked = step === 'waiting' || flight.isSlotReserved;
   const isStarShowing = flight.pendingSlab !== null && !flight.isSlotReserved;
   const isFirstTwoRounds = round !== 'readyToGuess';
+  const isGuessRoundPerfect = guessSession.correctCount === guessSession.slabsToGuess.length;
+  const willRetryGuessRound = !isGuessRoundPerfect && guessRoundIndex < LAST_GUESS_ROUND_INDEX;
 
   return (
     <div className="flex flex-col gap-4">
@@ -176,13 +188,14 @@ const IntroLesson: React.FC<IntroLessonProps> = ({ onContinue }) => {
           totalSlabs={guessSession.slabsToGuess.length}
           correctCount={guessSession.correctCount}
           colors={INTRO_COLORS}
-          guidedSlabCount={GUIDED_GUESS_SLAB_COUNT}
+          guidedSlabCount={guessRoundIndex === 0 ? GUIDED_GUESS_SLAB_COUNT : 0}
           onGuessSubmit={guessSession.submitGuess}
           onRequestProceed={requestGuessSlabFlight}
           isProceeding={flight.pendingSlab !== null}
           flightTargetRect={flight.targetRect}
           onFlightEnd={flight.handleFlightEnd}
           onWinNext={guessSession.finishRound}
+          finalActionVariant={willRetryGuessRound ? 'retry' : 'next'}
         />
       ) : (
         <div

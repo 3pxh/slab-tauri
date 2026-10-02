@@ -15,9 +15,21 @@ export const INTRO_UNPAINTED_SLAB: SlabData = createSlab(INTRO_GRID_SIZE);
 
 export const INTRO_BOTTOM_ROW_MERGED_SLAB: SlabData = buildSlabFromRows(['abc', 'def', 'ggg']);
 
-export const INTRO_GUESS_SLABS: SlabData[] = [
-  buildSlabFromRows(['abj', 'dej', 'ghj'], { j: INTRO_BLUE_COLOR_INDEX }),
-  buildSlabFromRows(['abc', 'def', 'ghi'])
+const INTRO_BLUE = INTRO_BLUE_COLOR_INDEX;
+
+export const INTRO_GUESS_ROUNDS: SlabData[][] = [
+  [
+    buildSlabFromRows(['abj', 'dej', 'ghj'], { j: INTRO_BLUE }),
+    buildSlabFromRows(['abc', 'def', 'ghi']),
+    buildSlabFromRows(['aab', 'acb', 'ccb']),
+    buildSlabFromRows(['abc', 'dje', 'fgh'], { j: INTRO_BLUE })
+  ],
+  [
+    buildSlabFromRows(['jjc', 'def', 'ghi'], { j: INTRO_BLUE }),
+    buildSlabFromRows(['aaa', 'bcd', 'efg']),
+    buildSlabFromRows(['abc', 'def', 'ghj'], { j: INTRO_BLUE }),
+    buildSlabFromRows(['aab', 'ccb', 'dde'])
+  ]
 ];
 
 export const PUZZLE_EXAMPLE_SLABS: SlabData[] = [

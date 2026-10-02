@@ -148,6 +148,7 @@ type TutorialSlabGuesserProps = {
   flightTargetRect: DOMRect | null;
   onFlightEnd: () => void;
   onWinNext: () => Promise<void>;
+  finalActionVariant?: 'next' | 'retry';
 };
 
 const TutorialSlabGuesser: React.FC<TutorialSlabGuesserProps> = ({
@@ -162,7 +163,8 @@ const TutorialSlabGuesser: React.FC<TutorialSlabGuesserProps> = ({
   isProceeding,
   flightTargetRect,
   onFlightEnd,
-  onWinNext
+  onWinNext,
+  finalActionVariant = 'next'
 }) => {
   if (currentIndex >= totalSlabs) {
     const isPerfect = correctCount === totalSlabs;
@@ -178,7 +180,7 @@ const TutorialSlabGuesser: React.FC<TutorialSlabGuesserProps> = ({
             {correctCount}/{totalSlabs}
           </div>
         </div>
-        <NextArrowButton onClick={onWinNext} />
+        <NextArrowButton onClick={onWinNext} variant={finalActionVariant} />
       </div>
     );
   }
